@@ -33,25 +33,16 @@ class Invoice extends Model
             'data_emissao' => 'datetime',
         ];
     }
-/*
-    // Quando a nota for excluída, excluir também os itens
-    protected static function booted()
-    {
-        static::deleting(function ($invoice) {
-            // Excluir todos os itens da nota
-            $invoice->items()->delete();
-        });
-    }
-*/
-    protected static function booted()
+
+    protected static function booted(): void
     {
         static::deleting(function (Invoice $invoice) {
-            // Carrega os itens se ainda não estiverem carregados
-            // e deleta cada um acionando seus model events
             $invoice->loadMissing('items');
             $invoice->items->each->delete();
         });
     }
+
+    // ==================== RELATIONS ====================
 
     public function user()
     {
@@ -61,5 +52,24 @@ class Invoice extends Model
     public function items()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    // ==================== BUSINESS LOGIC ====================
+
+    /**
+     * Recalcula total_itens, valor_total e valor_pago a partir dos itens atuais.
+     * Chame sempre após criar, atualizar ou remover um InvoiceItem.
+     */
+    public function recalcularTotais(): void
+    {
+        $this->refresh();
+
+        $valorTotal = $this->items()->sum('valor_total');
+
+        $this->update([
+            'total_itens' => $this->items()->count(),
+            'valor_total' => $valorTotal,
+            'valor_pago'  => max(0, $valorTotal - ($this->descontos ?? 0)),
+        ]);
     }
 }
