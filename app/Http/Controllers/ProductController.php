@@ -136,25 +136,45 @@ class ProductController extends Controller
 
     public function categorias(Request $request): View
     {
-        $userId  = Auth::id();
-        $filtro  = $request->input('categoria');
+        $userId = Auth::id();
+        $cf     = $request->input('categoria'); // $cf = "categoria filtro"
 
         $query = Product::where('user_id', $userId)->with('category');
 
-        if ($filtro === 'sem') {
+        if ($cf === 'sem') {
             $query->whereNull('category_id');
-        } elseif ($filtro) {
-            $query->where('category_id', $filtro);
+        } elseif ($cf) {
+            $query->where('category_id', $cf);
         }
 
         if ($request->filled('search')) {
             $query->where('nome', 'ilike', '%' . $request->search . '%');
         }
 
-        $produtos   = $query->orderBy('nome')->paginate(50);
-        $categorias = Category::where('user_id', $userId)->ordenado()->get();
+        $produtos           = $query->orderBy('nome')->paginate(50);
+        $categorias         = Category::where('user_id', $userId)->ordenado()->get();
+        $contagemCategorias = $this->contagemPorCategoria($userId);
 
-        return view('products.categorias', compact('produtos', 'categorias', 'filtro'));
+        return view('products.categorias', compact('produtos', 'categorias', 'cf', 'contagemCategorias'));
+    }
+
+    /**
+     * Retorna contagem de produtos por category_id + chave 'sem'.
+     */
+    private function contagemPorCategoria(int $userId): array
+    {
+        $porCategoria = Product::where('user_id', $userId)
+            ->whereNotNull('category_id')
+            ->selectRaw('category_id, count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id')
+            ->toArray();
+
+        $porCategoria['sem'] = Product::where('user_id', $userId)
+            ->whereNull('category_id')
+            ->count();
+
+        return $porCategoria;
     }
 
     public function categorizarLote(Request $request): RedirectResponse
