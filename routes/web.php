@@ -125,3 +125,8 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// Normalização de Produtos
+Route::get('/products/normalizacao', [App\Http\Controllers\ProductController::class, 'normalizacao'])->name('products.normalizacao');
+Route::post('/products/{product}/normalizar', [App\Http\Controllers\ProductController::class, 'aprovarNormalizacao'])->name('products.normalizar');
+Route::post('/products/normalizar-todos', [App\Http\Controllers\ProductController::class, 'aprovarTodasNormalizacoes'])->name('products.normalizar-todos');

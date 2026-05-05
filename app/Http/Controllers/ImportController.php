@@ -94,6 +94,13 @@ class ImportController extends Controller
                     ['unidade_padrao' => $item['unidade']]
                 );
 
+
+// Gerar sugestão de normalização automaticamente
+if (!$product->nome_normalizado || $product->normalizacao_status === 'pendente') {
+    $normalizationService = app(ProductNormalizationService::class);
+    $normalizationService->markForReview($product);
+}
+
                 InvoiceItem::create([
                     'invoice_id'     => $invoice->id,
                     'product_id'     => $product->id,

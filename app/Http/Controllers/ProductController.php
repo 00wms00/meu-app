@@ -191,4 +191,49 @@ class ProductController extends Controller
             }
         );
     }
+public function normalizacao(Request $request, ProductNormalizationService $service)
+{
+    $userId = Auth::id();
+    
+    $status = $request->input('status', 'pendente');
+    
+    $produtos = Product::where('user_id', $userId)
+        ->when($status === 'pendente', fn($q) => $q
+            ->where(function($q) {
+                $q->whereNull('normalizacao_status')
+                  ->orWhere('normalizacao_status', 'pendente');
+            })
+        )
+        ->when($status === 'revisar', fn($q) => $q->where('normalizacao_status', 'revisar'))
+        ->when($status === 'aprovado', fn($q) => $q->where('normalizacao_status', 'aprovado'))
+        ->when($request->filled('search'), fn($q) => $q->where('nome', 'ilike', "%{$request->search}%"))
+        ->orderBy('nome')
+        ->paginate(50);
+
+    // Gerar análises para os pendentes
+    $analises = [];
+    foreach ($produtos as $produto) {
+        if (!$produto->nome_normalizado) {
+            $analises[$produto->id] = $service->analyze($produto);
+        }
+    }
+
+    return view('products.normalizacao', compact('produtos', 'analises', 'status'));
 }
+
+public function aprovarNormalizacao(Product $product, Request $request, ProductNormalizationService $service)
+{
+    if ($product->user_id !== Auth::id()) abort(403);
+    
+    $service->approve($product, $request->input('nome_exibicao'));
+    
+    return back()->with('success', "Produto normalizado: " . $product->nome_exibicao);
+}
+
+public function aprovarTodasNormalizacoes(ProductNormalizationService $service)
+{
+    $count = $service->approveAllPending(Auth::id());
+    
+    return back()->with('success', "{$count} produtos aprovados automaticamente!");
+}
+    }
