@@ -72,9 +72,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/products/{product}/foto', [ProductFotoController::class, 'upload'])->name('products.foto');
     Route::delete('/products/{product}/foto', [ProductFotoController::class, 'remover'])->name('products.foto.remover');
 
-    // Categorias
+    // Categorias (resource — apenas views)
     Route::resource('categories', CategoryController::class)->except(['show', 'create']);
-    Route::get('/api/categories', [CategoryController::class, 'apiIndex'])->name('categories.api');
 
     // Lançamento Manual
     Route::get('/lancamento-manual', [LancamentoManualController::class, 'create'])->name('lancamento.create');
