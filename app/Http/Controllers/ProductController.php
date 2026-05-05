@@ -6,10 +6,6 @@ use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\PriceAlert;
 use App\Models\Product;
-use App\Services\PriceAlertService;
-use App\Services\ProductGrouperService;
-use App\Services\ProductSimilarityService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,12 +14,6 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    public function __construct(
-        protected ProductGrouperService    $grouperService,
-        protected ProductSimilarityService $mlService,
-        protected PriceAlertService        $alertService,
-    ) {}
-
     // ==================== CRUD ====================
 
     public function index(Request $request): View
@@ -56,15 +46,6 @@ class ProductController extends Controller
               ->orWhere('canonical_product_id', $produtoExibicao->id)
         )->pluck('id');
 
-        /*
-         * ANTES: orderBy('created_at') — ordenava pela data de inserção do
-         * registro no banco, não pela data real da nota fiscal. Notas importadas
-         * fora de ordem cronológica produziam $serie embaralhada, gráfico torto
-         * e variação de preço calculada entre pontos errados.
-         *
-         * AGORA: join com invoices + orderBy('invoices.data_emissao') — ordena
-         * pela data real da nota, independente de quando o item foi importado.
-         */
         $items = InvoiceItem::with('invoice')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
@@ -73,12 +54,6 @@ class ProductController extends Controller
             ->select('invoice_items.*')
             ->get();
 
-        /*
-         * sortBy('data') removido: a query já devolve os itens em ordem
-         * cronológica correta. Manter o sortBy era redundante e mascarava
-         * o bug original (ordenava a string 'Y-m-d', que coincide com a
-         * ordem alfabética, mas não consertava o created_at na query).
-         */
         $serie = $items
             ->map(fn ($i) => [
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
@@ -125,38 +100,6 @@ class ProductController extends Controller
             ->with('success', 'Produto atualizado!');
     }
 
-    // ==================== FOTO ====================
-
-    public function uploadFoto(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        $request->validate(['foto' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048']);
-
-        if ($product->foto) {
-            Storage::disk('public')->delete($product->foto);
-        }
-
-        $product->update([
-            'foto' => $request->file('foto')->store('produtos/' . Auth::id(), 'public'),
-        ]);
-
-        return back()->with('success', 'Foto atualizada!');
-    }
-
-    public function removerFoto(Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        if ($product->foto) {
-            Storage::disk('public')->delete($product->foto);
-        }
-
-        $product->update(['foto' => null]);
-
-        return back()->with('success', 'Foto removida!');
-    }
-
     // ==================== CATEGORIAS ====================
 
     public function categorias(Request $request): View
@@ -183,22 +126,6 @@ class ProductController extends Controller
         return view('products.categorias', compact('produtos', 'categorias', 'cf', 'contagemCategorias'));
     }
 
-    private function contagemPorCategoria(int $userId): array
-    {
-        $porCategoria = Product::where('user_id', $userId)
-            ->whereNotNull('category_id')
-            ->selectRaw('category_id, count(*) as total')
-            ->groupBy('category_id')
-            ->pluck('total', 'category_id')
-            ->toArray();
-
-        $porCategoria['sem'] = Product::where('user_id', $userId)
-            ->whereNull('category_id')
-            ->count();
-
-        return $porCategoria;
-    }
-
     public function categorizarLote(Request $request): RedirectResponse
     {
         $ids = $request->produto_ids ?? [];
@@ -219,226 +146,21 @@ class ProductController extends Controller
         return back()->with('success', 'Categoria atualizada!');
     }
 
-    // ==================== AGRUPAMENTOS ====================
+    // ==================== HELPERS ====================
 
-    public function agrupamentos(Request $request): View
+    private function contagemPorCategoria(int $userId): array
     {
-        $userId = Auth::id();
-        $search = $request->input('search');
+        $porCategoria = Product::where('user_id', $userId)
+            ->whereNotNull('category_id')
+            ->selectRaw('category_id, count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id')
+            ->toArray();
 
-        $grupos = Product::where('user_id', $userId)
-            ->where('is_canonical', true)
-            ->with(['groupedProducts' => fn ($q) => $q->orderBy('nome')])
-            ->orderBy('nome')
-            ->get();
+        $porCategoria['sem'] = Product::where('user_id', $userId)
+            ->whereNull('category_id')
+            ->count();
 
-        $naoAgrupados = Product::where('user_id', $userId)
-            ->where('is_canonical', false)
-            ->whereNull('canonical_product_id')
-            ->orderBy('nome')
-            ->get();
-
-        if ($search) {
-            $grupos = $grupos->filter(
-                fn ($g) => stripos($g->nome, $search) !== false
-                        || $g->groupedProducts->contains(fn ($p) => stripos($p->nome, $search) !== false)
-            );
-            $naoAgrupados = $naoAgrupados->filter(fn ($p) => stripos($p->nome, $search) !== false);
-        }
-
-        return view('products.agrupamentos', compact('grupos', 'naoAgrupados', 'search'));
-    }
-
-    public function agrupar(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        $canonico = Product::findOrFail($request->canonical_id);
-
-        if (! $canonico->is_canonical) {
-            $this->grouperService->tornarCanonico($canonico);
-        }
-
-        $this->grouperService->agrupar($product, $canonico);
-
-        return back()->with('success', 'Agrupado!');
-    }
-
-    public function desagrupar(Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-        $this->grouperService->desagrupar($product);
-
-        return back()->with('success', 'Desagrupado!');
-    }
-
-    public function tornarCanonico(Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-        $this->grouperService->tornarCanonico($product);
-
-        return back()->with('success', 'Definido como produto principal!');
-    }
-
-    public function criarGrupo(Request $request): RedirectResponse
-    {
-        $request->validate(['produto_ids' => 'required|array|min:2']);
-
-        $produtos = Product::whereIn('id', $request->produto_ids)
-            ->where('user_id', Auth::id())
-            ->get();
-
-        $canonico = $produtos->first();
-        $this->grouperService->tornarCanonico($canonico);
-
-        if ($request->filled('nome_grupo')) {
-            $canonico->update(['nome' => $request->nome_grupo]);
-        }
-
-        foreach ($produtos->skip(1) as $produto) {
-            $this->grouperService->agrupar($produto, $canonico);
-        }
-
-        return back()->with('success', 'Grupo criado!');
-    }
-
-    public function renomearGrupo(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-        $product->update(['nome' => $request->nome]);
-
-        return back()->with('success', 'Renomeado!');
-    }
-
-    public function desfazerGrupo(Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        Product::where('canonical_product_id', $product->id)
-            ->update(['canonical_product_id' => null]);
-
-        $product->update(['is_canonical' => false]);
-
-        return back()->with('success', 'Grupo desfeito!');
-    }
-
-    public function adicionarAoGrupo(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        $count = 0;
-        foreach ($request->produto_ids ?? [] as $id) {
-            $p = Product::find($id);
-            if ($p) {
-                $this->grouperService->agrupar($p, $product);
-                $count++;
-            }
-        }
-
-        return back()->with('success', "{$count} produto(s) adicionado(s)!");
-    }
-
-    public function agruparAutomatico(): RedirectResponse
-    {
-        $userId = Auth::id();
-
-        Product::where('user_id', $userId)->each(function (Product $produto) use ($userId) {
-            if ($produto->canonical_product_id || $produto->is_canonical) return;
-
-            $canonico = $this->grouperService->encontrarCanonico($produto, $userId);
-
-            $canonico
-                ? $this->grouperService->agrupar($produto, $canonico)
-                : $this->grouperService->tornarCanonico($produto);
-        });
-
-        return back()->with('success', 'Agrupamento automático concluído!');
-    }
-
-    // ==================== ALERTAS ====================
-
-    public function alertas(): View
-    {
-        $alertas = PriceAlert::where('user_id', Auth::id())
-            ->with('product')
-            ->orderBy('variacao_percentual', 'desc')
-            ->get();
-
-        $disparados = $this->alertService->verificarTodos(Auth::id());
-
-        return view('products.alertas', compact('alertas', 'disparados'));
-    }
-
-    public function criarAlerta(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('view', $product);
-
-        $this->alertService->criarOuAtualizar(Auth::id(), $product->id, $request->limite_alerta);
-
-        return redirect()
-            ->route('products.show', $product)
-            ->with('alerta_criado', true)
-            ->with('success', 'Alerta de preço salvo com sucesso!');
-    }
-
-    public function removerAlerta(PriceAlert $alerta): RedirectResponse
-    {
-        $this->authorize('delete', $alerta);
-        $alerta->delete();
-
-        return back()->with('success', 'Alerta removido!');
-    }
-
-    public function toggleAlerta(PriceAlert $alerta): RedirectResponse
-    {
-        $this->authorize('update', $alerta);
-        $alerta->update(['ativo' => ! $alerta->ativo]);
-
-        return back()->with('success', 'Alerta alternado!');
-    }
-
-    // ==================== MACHINE LEARNING ====================
-
-    public function similares(Request $request, Product $product): View
-    {
-        $this->authorize('view', $product);
-
-        $similares = $this->mlService->encontrarSimilares($product, 10);
-
-        return view('products.similares', compact('product', 'similares'));
-    }
-
-    public function mlSugestoesInterativo(): View
-    {
-        $sugestoes = $this->mlService->sugerirAgrupamentosML(Auth::id());
-
-        return view('products.ml-interativo', compact('sugestoes'));
-    }
-
-    public function mlConfirmarAgrupamento(Request $request): JsonResponse
-    {
-        $request->validate([
-            'produto_id'  => 'required|exists:products,id',
-            'canonico_id' => 'nullable|exists:products,id',
-            'acao'        => 'required|in:agrupar,pular,ignorar',
-        ]);
-
-        if ($request->acao === 'agrupar') {
-            $produto  = Product::findOrFail($request->produto_id);
-            $canonico = Product::findOrFail($request->canonico_id);
-
-            if (! $canonico->is_canonical) {
-                $this->grouperService->tornarCanonico($canonico);
-            }
-
-            $this->grouperService->agrupar($produto, $canonico);
-
-            return response()->json([
-                'status'  => 'agrupado',
-                'message' => "{$produto->nome} → {$canonico->nome}",
-            ]);
-        }
-
-        return response()->json(['status' => $request->acao]);
+        return $porCategoria;
     }
 }
