@@ -84,10 +84,10 @@ class InvoiceController extends Controller
 
                 $campos = [
                     'product_id'     => $product->id,
-                    'quantidade'     => $this->parseFloat($itemData['quantidade']    ?? '0'),
+                    'quantidade'     => $this->parseFloat($itemData['quantidade']     ?? '0'),
                     'unidade'        => $itemData['unidade'] ?? 'UN',
-                    'valor_unitario' => $this->parseFloat($itemData['valor_unitario'] ?? '0'),
-                    'valor_total'    => $this->parseFloat($itemData['valor_total']    ?? '0'),
+                    'valor_unitario' => $this->parseFloat($itemData['valor_unitario']  ?? '0'),
+                    'valor_total'    => $this->parseFloat($itemData['valor_total']     ?? '0'),
                 ];
 
                 if (str_starts_with((string) $itemId, 'novo_')) {
@@ -124,6 +124,13 @@ class InvoiceController extends Controller
     public function updateItem(Request $request, Invoice $invoice, InvoiceItem $item): RedirectResponse
     {
         $this->authorize('update', $invoice);
+
+        // Converte vírgulas antes de validar — sem isso, "1,50" seria rejeitado pela regra numeric
+        $request->merge([
+            'quantidade'     => $this->parseFloat($request->quantidade     ?? '0'),
+            'valor_unitario' => $this->parseFloat($request->valor_unitario  ?? '0'),
+            'valor_total'    => $this->parseFloat($request->valor_total     ?? '0'),
+        ]);
 
         $validated = $request->validate([
             'nome_produto'   => 'required|string|max:255',
