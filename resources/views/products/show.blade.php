@@ -8,24 +8,35 @@
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{ $produtoExibicao->nome }}</h1>
         <p class="mt-1 text-gray-600">Histórico de preços</p>
     </div>
-    <div class="flex flex-wrap gap-2">
-        {{--
-            ANTES: onclick="mostrarModalAlerta(@json($produtoExibicao->id), ...)"
-            PROBLEMA: $produtoExibicao->id é o produto canônico (agrupado),
-            mas a rota usa route model binding em $product->id.
-            Ao estar agrupado, o ID diferente causava 404 ou 403 silencioso.
+    <div class="flex flex-wrap gap-2 items-center">
 
-            AGORA: a action correta é gerada pelo Blade via route() com $product
-            (o modelo original), e passada via data-action no botão.
-            O nome do produto exibido vem de data-nome (nome canônico).
+        {{--
+            Botão de alerta: exibe estado atual (ativo / inativo / sem alerta).
+            - data-action: URL gerada pelo Blade com $product (ID correto do binding)
+            - data-limite: valor atual do alerta, usado para pré-preencher o modal
+            O estado visual vem de $alertaExistente, passado pelo controller.
         --}}
+        @if($alertaExistente)
+            <span id="alertaBadge"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded text-sm
+                         {{ $alertaExistente->ativo ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-500 border border-gray-300' }}"
+                  title="Alerta em {{ $alertaExistente->variacao_percentual }}%">
+                {{ $alertaExistente->ativo ? '🔔' : '🔕' }}
+                Alerta {{ $alertaExistente->ativo ? 'ativo' : 'pausado' }}
+                &bull; {{ $alertaExistente->variacao_percentual }}%
+            </span>
+        @endif
+
         <button
             id="btnAbrirAlerta"
             data-action="{{ route('alertas.criar', $product) }}"
             data-nome="{{ $produtoExibicao->nome }}"
-            class="btn-outline-secondary text-sm flex items-center gap-1">
-            🔔 Alerta de Preço
+            data-limite="{{ $alertaExistente->variacao_percentual ?? 10 }}"
+            class="btn-outline-secondary text-sm flex items-center gap-1"
+            aria-label="{{ $alertaExistente ? 'Editar alerta de preço' : 'Criar alerta de preço' }}">
+            🔔 {{ $alertaExistente ? 'Editar Alerta' : 'Alerta de Preço' }}
         </button>
+
         <a href="{{ route('products.edit', $produtoExibicao) }}" class="btn-outline-primary text-sm">✏️ Editar</a>
         <a href="{{ route('products.similares', $produtoExibicao) }}" class="btn-outline-secondary text-sm flex items-center gap-1">
             🧠 Similares
@@ -33,6 +44,23 @@
         <a href="{{ route('products.index') }}" class="btn-back">← Voltar</a>
     </div>
 </div>
+
+{{--
+    Flash de alerta criado/atualizado — ancorado próximo ao botão (topo da área de conteúdo),
+    separado do flash global do layout para garantir visibilidade imediata
+    mesmo que o usuário não role até o topo da página.
+--}}
+@if(session('alerta_criado'))
+    <div class="mb-4 flex items-center gap-2 bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded"
+         role="status"
+         aria-live="polite">
+        <span aria-hidden="true">✅</span>
+        <span>{{ session('success') }}</span>
+        <a href="{{ route('alertas.index') }}" class="ml-auto text-sm underline hover:no-underline">
+            Ver todos os alertas
+        </a>
+    </div>
+@endif
 
 @if($product->id !== $produtoExibicao->id)
     <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4" role="status">
@@ -185,7 +213,7 @@
      aria-modal="true"
      aria-labelledby="modalAlertaTitulo">
     <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
-        <h3 id="modalAlertaTitulo" class="text-lg font-semibold text-gray-800 mb-2">🔔 Criar Alerta de Preço</h3>
+        <h3 id="modalAlertaTitulo" class="text-lg font-semibold text-gray-800 mb-2">🔔 Alerta de Preço</h3>
         <p class="text-sm text-gray-600 mb-4" id="modalAlertaProduto"></p>
         <form id="formAlerta" method="POST">
             @csrf
@@ -200,7 +228,7 @@
             </div>
             <div class="flex gap-3 justify-end">
                 <button type="button" id="btnFecharModal" class="btn-outline-secondary text-sm">Cancelar</button>
-                <button type="submit" class="btn-primary text-sm">💾 Criar Alerta</button>
+                <button type="submit" class="btn-primary text-sm">💾 Salvar Alerta</button>
             </div>
         </form>
     </div>
@@ -253,17 +281,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function abrirModal() {
         ultimoFoco = document.activeElement;
-        // action e nome vêm dos data-attributes gerados pelo Blade com route()
-        // Isso garante que o ID correto ($product, não $produtoExibicao) seja usado.
         formAlerta.action = btnAbrir.dataset.action;
         document.getElementById('modalAlertaProduto').textContent =
             'Produto: ' + btnAbrir.dataset.nome;
+        // Pré-preenche com o limite atual do alerta (ou 10 como padrão)
+        inputLimite.value = btnAbrir.dataset.limite || 10;
         modal.classList.remove('hidden');
         setTimeout(function () { inputLimite.focus(); }, 50);
     }
 
     function fecharModal() {
         modal.classList.add('hidden');
+        // Reseta o campo para o valor original ao fechar sem salvar
+        inputLimite.value = btnAbrir.dataset.limite || 10;
         if (ultimoFoco) ultimoFoco.focus();
     }
 

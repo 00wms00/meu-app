@@ -19,7 +19,7 @@ use Illuminate\View\View;
 class ProductController extends Controller
 {
     public function __construct(
-        protected ProductGrouperService   $grouperService,
+        protected ProductGrouperService    $grouperService,
         protected ProductSimilarityService $mlService,
         protected PriceAlertService        $alertService,
     ) {}
@@ -59,18 +59,23 @@ class ProductController extends Controller
         $items = InvoiceItem::with('invoice')
             ->whereIn('product_id', $produtoIds)
             ->whereHas('invoice', fn ($q) => $q->where('user_id', Auth::id()))
-            ->orderBy('created_at')
+            ->orderBy('created_at')  // garante ordem cronológica consistente
             ->get();
 
-        $serie = $items->map(fn ($i) => [
-            'data'           => $i->invoice->data_emissao->format('Y-m-d'),
-            'valor_unitario' => $i->valor_unitario,
-            'unidade'        => $i->unidade,
-        ])->values();
+        // Ordena explicitamente por data_emissao para evitar gráfico torto
+        // quando compras fora de ordem cronológica existem no banco.
+        $serie = $items
+            ->map(fn ($i) => [
+                'data'           => $i->invoice->data_emissao->format('Y-m-d'),
+                'valor_unitario' => $i->valor_unitario,
+                'unidade'        => $i->unidade,
+            ])
+            ->sortBy('data')
+            ->values();
 
-        $variacao  = null;
-        $primeiro  = $serie->first();
-        $ultimo    = $serie->last();
+        $variacao = null;
+        $primeiro = $serie->first();
+        $ultimo   = $serie->last();
 
         if ($primeiro && $ultimo && $primeiro['valor_unitario'] > 0) {
             $variacao = (($ultimo['valor_unitario'] - $primeiro['valor_unitario']) / $primeiro['valor_unitario']) * 100;
@@ -78,7 +83,14 @@ class ProductController extends Controller
 
         $agrupados = Product::where('canonical_product_id', $produtoExibicao->id)->get();
 
-        return view('products.show', compact('product', 'produtoExibicao', 'serie', 'variacao', 'agrupados'));
+        // Alerta existente para este produto + usuário (se houver)
+        $alertaExistente = PriceAlert::where('user_id', Auth::id())
+            ->where('product_id', $product->id)
+            ->first();
+
+        return view('products.show', compact(
+            'product', 'produtoExibicao', 'serie', 'variacao', 'agrupados', 'alertaExistente'
+        ));
     }
 
     public function edit(Product $product): View
@@ -92,8 +104,8 @@ class ProductController extends Controller
         $this->authorize('update', $product);
 
         $product->update($request->validate([
-            'nome'            => 'required|string|max:255',
-            'unidade_padrao'  => 'nullable|string|max:10',
+            'nome'           => 'required|string|max:255',
+            'unidade_padrao' => 'nullable|string|max:10',
         ]));
 
         return redirect()->route('products.show', $product)
@@ -262,7 +274,7 @@ class ProductController extends Controller
     {
         $request->validate(['produto_ids' => 'required|array|min:2']);
 
-        $produtos  = Product::whereIn('id', $request->produto_ids)
+        $produtos = Product::whereIn('id', $request->produto_ids)
             ->where('user_id', Auth::id())
             ->get();
 
@@ -337,7 +349,7 @@ class ProductController extends Controller
 
     public function alertas(): View
     {
-        $alertas   = PriceAlert::where('user_id', Auth::id())
+        $alertas = PriceAlert::where('user_id', Auth::id())
             ->with('product')
             ->orderBy('variacao_percentual', 'desc')
             ->get();
@@ -353,7 +365,10 @@ class ProductController extends Controller
 
         $this->alertService->criarOuAtualizar(Auth::id(), $product->id, $request->limite_alerta);
 
-        return back()->with('success', 'Alerta criado!');
+        return redirect()
+            ->route('products.show', $product)
+            ->with('alerta_criado', true)
+            ->with('success', 'Alerta de preço salvo com sucesso!');
     }
 
     public function removerAlerta(PriceAlert $alerta): RedirectResponse
