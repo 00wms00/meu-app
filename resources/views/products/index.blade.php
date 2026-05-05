@@ -19,7 +19,8 @@
                        placeholder="Buscar produto pelo nome..."
                        class="form-control">
             </div>
-            <button type="submit" class="btn btn-primary">
+            {{-- btn-primary inclui o estilo base via @apply; prefixo 'btn' era redundante --}}
+            <button type="submit" class="btn-primary">
                 🔍 Buscar
             </button>
         </div>
@@ -33,7 +34,7 @@
             @if($products->isNotEmpty())
                 {{ $products->total() }} produto(s) encontrado(s)
             @else
-                Nenhum produto encontrado
+                Nenhuma produto encontrado
             @endif
         </h2>
     </div>
@@ -74,8 +75,9 @@
                                 </span>
                             </td>
                             <td class="py-4 px-6 text-center">
+                                {{-- btn-outline-primary + btn-sm: variantão semântica correta --}}
                                 <a href="{{ route('products.show', $product) }}"
-                                   class="btn btn-outline-primary btn-sm">
+                                   class="btn-outline-primary btn-sm">
                                     📈 Histórico de Preços
                                 </a>
                             </td>
@@ -93,7 +95,7 @@
             <span class="text-6xl" aria-hidden="true">📦</span>
             <p class="text-gray-500 mt-4 text-lg">Nenhum produto cadastrado ainda.</p>
             <p class="text-gray-400 text-sm">Importe uma NFC-e para começar.</p>
-            <a href="{{ route('import.create') }}" class="btn btn-primary mt-4 inline-block">
+            <a href="{{ route('import.create') }}" class="btn-primary mt-4 inline-block">
                 📥 Importar NFC-e
             </a>
         </div>

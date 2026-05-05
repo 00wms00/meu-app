@@ -9,7 +9,8 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🏷️ Categorias</h1>
             <p class="mt-1 text-gray-600">Gerencie suas categorias personalizadas</p>
         </div>
-        <button id="btnNovaCat" class="btn-primary">➕ Nova Categoria</button>
+        {{-- type="button": abre modal, não submete form --}}
+        <button type="button" id="btnNovaCat" class="btn-primary">➕ Nova Categoria</button>
     </div>
 </div>
 
@@ -43,12 +44,8 @@
                     </div>
                 </div>
                 <div class="flex gap-1">
-                    {{--
-                        @json() garante escape seguro de qualquer string em contexto JS.
-                        addslashes() não é suficiente: uma categoria com nome contendo
-                        </script> ou aspas duplas quebraria o onclick.
-                    --}}
-                    <button class="text-gray-400 hover:text-blue-600 p-1"
+                    <button type="button"
+                            class="text-gray-400 hover:text-blue-600 p-1"
                             aria-label="Editar categoria {{ $cat->nome }}"
                             onclick="editarCategoria(
                                 @json($cat->id),
@@ -59,7 +56,6 @@
                                 @json($cat->ordem)
                             )">✏️</button>
 
-                    {{-- data-confirm interceptado pelo globalConfirmBanner no layout --}}
                     <form action="{{ route('categories.destroy', $cat) }}" method="POST" class="inline"
                           data-confirm="Excluir a categoria '{{ $cat->nome }}'? Os produtos permanecerão, mas perderão esta categoria.">
                         @csrf
@@ -75,7 +71,7 @@
         <div class="col-span-full bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <span class="text-4xl" aria-hidden="true">🏷️</span>
             <p class="text-gray-500 mt-2">Nenhuma categoria criada ainda.</p>
-            <button id="btnNovaCatEmpty" class="btn-primary mt-3">➕ Criar Primeira Categoria</button>
+            <button type="button" id="btnNovaCatEmpty" class="btn-primary mt-3">➕ Criar Primeira Categoria</button>
         </div>
     @endforelse
 </div>
@@ -89,12 +85,10 @@
      aria-labelledby="modalCategoriaTitulo">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" style="max-height: 90vh; overflow-y: auto;">
 
-        {{-- Cabeçalho fixo --}}
         <div class="sticky top-0 bg-white rounded-t-lg px-6 py-4 border-b z-10">
             <h3 id="modalCategoriaTitulo" class="text-lg font-semibold text-gray-800">➕ Nova Categoria</h3>
         </div>
 
-        {{-- Corpo --}}
         <div class="px-6 py-4">
             <form id="formCategoria" method="POST" action="{{ route('categories.store') }}">
                 @csrf
@@ -103,7 +97,7 @@
                 <div class="space-y-4">
                     <div>
                         <label for="inputNome" class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                        <input type="text" name="nome" id="inputNome" class="form-control" required placeholder="Ex: Hortifrúti">
+                        <input type="text" name="nome" id="inputNome" class="form-control" required placeholder="Ex: Hortifruti">
                     </div>
 
                     <div>
@@ -160,10 +154,10 @@
             </form>
         </div>
 
-        {{-- Rodapé fixo --}}
         <div class="sticky bottom-0 bg-white rounded-b-lg px-6 py-4 border-t">
             <div class="flex gap-3 justify-end">
                 <button type="button" id="btnCancelarCat" class="btn-outline-secondary text-sm">Cancelar</button>
+                {{-- type="button" explicitamente: chama submit via JS para validar o form antes --}}
                 <button type="button" onclick="document.getElementById('formCategoria').submit()" class="btn-primary text-sm">💾 Salvar</button>
             </div>
         </div>
@@ -175,131 +169,74 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Emoji grid ──────────────────────────────────────────────────────
     const EMOJIS = [
         '🥬','🥩','🧀','🍚','🍞','🥤','🧴','🧹','📦',
         '🍎','🍌','🍇','🥕','🥦','🌽','🍅','🥑','🍊',
         '🐄','🐔','🐟','🍗','🥓','🍖','🦐','🐑','🦃',
-        '🥛','🧨','🍦','🍰','🧃','🍺','🍷','☕','🍵',
-        '🍩','🍪','🎂','🍫','🍬','🍯','🧂','🎝️','🍕',
-        '🥜','🥖','🧅','🧄','�abe8','🥫','🧻','🪥','🧼',
-        '🪢','💄','�abe7','🧻a','🦽','�aaxa3','🧯','🛒','💰',
-        '⭐','🔥','💧','🎯','🏠','🚗','📱','💡','🎵',
+        '🥛','🍦','🍰','🥃','🍺','🍷','☕','🍵',
+        '🍩','🍪','🎂','🍫','🍬','🍯','🧂','🎵','🍕',
+        '🥜','🥖','🧅','🧄','🫙','🥫','🧻','��','🧼',
+        '🛋️','📄','🛒','💰','⭐','🔥','💧','🎯','🏠',
     ];
 
     const grid = document.getElementById('emojiGrid');
-    EMOJIS.forEach(function (emoji) {
+    EMOJIS.forEach(e => {
         const btn = document.createElement('button');
-        btn.type      = 'button';
-        btn.className = 'text-lg w-8 h-8 flex items-center justify-center hover:bg-blue-100 rounded cursor-pointer transition';
-        btn.textContent = emoji;
-        btn.title     = emoji;
-        btn.addEventListener('click', function (e) { e.stopPropagation(); setEmoji(emoji); });
+        btn.type = 'button';
+        btn.textContent = e;
+        btn.className = 'text-xl hover:bg-gray-100 rounded p-0.5 cursor-pointer';
+        btn.setAttribute('aria-label', 'Emoji ' + e);
+        btn.addEventListener('click', () => {
+            document.getElementById('inputEmoji').value = e;
+            document.getElementById('emojiPreview').textContent = e;
+            document.getElementById('emojiPicker').classList.add('hidden');
+        });
         grid.appendChild(btn);
     });
 
-    // ── Emoji picker ────────────────────────────────────────────────
-    window.setEmoji = function (emoji) {
-        document.getElementById('inputEmoji').value = emoji;
-        document.getElementById('emojiPreview').textContent = emoji;
-        document.getElementById('emojiPicker').classList.add('hidden');
-    };
-    window.toggleEmojiPicker = function () {
+    window.toggleEmojiPicker = function() {
         document.getElementById('emojiPicker').classList.toggle('hidden');
     };
 
-    document.addEventListener('click', function (e) {
-        const picker  = document.getElementById('emojiPicker');
-        const preview = document.getElementById('emojiPreview');
-        if (picker && !picker.classList.contains('hidden')
-            && !picker.contains(e.target) && e.target !== preview) {
-            picker.classList.add('hidden');
-        }
-    });
-
-    // ── Cor rápida ───────────────────────────────────────────────────
-    window.setCor = function (cor) {
-        document.getElementById('inputCor').value = cor;
-        document.getElementById('inputCorTexto').value = cor;
+    window.setCor = function(hex) {
+        document.getElementById('inputCor').value      = hex;
+        document.getElementById('inputCorTexto').value = hex;
     };
 
-    // ── Modal ─────────────────────────────────────────────────────────
-    const modal    = document.getElementById('modalCategoria');
-    const titulo   = document.getElementById('modalCategoriaTitulo');
-    const form     = document.getElementById('formCategoria');
-    const btnNova  = document.getElementById('btnNovaCat');
-    const btnEmpty = document.getElementById('btnNovaCatEmpty');
-    const btnFechar= document.getElementById('btnCancelarCat');
-    let   ultimoFoco = null;
+    const modal        = document.getElementById('modalCategoria');
+    const titulo       = document.getElementById('modalCategoriaTitulo');
+    const form         = document.getElementById('formCategoria');
+    const inputMethod  = document.getElementById('formMethod');
+    const btnNovaCat   = document.getElementById('btnNovaCat');
+    const btnNovaCatEmpty = document.getElementById('btnNovaCatEmpty');
+    const btnCancelar  = document.getElementById('btnCancelarCat');
 
     function abrirModal() {
-        ultimoFoco = document.activeElement;
         modal.classList.remove('hidden');
-        // Foca no primeiro campo ao abrir
-        setTimeout(function () {
-            document.getElementById('inputNome').focus();
-        }, 50);
+        document.getElementById('inputNome').focus();
     }
 
     function fecharModal() {
         modal.classList.add('hidden');
-        // Devolve foco a quem abriu o modal
-        if (ultimoFoco) ultimoFoco.focus();
-    }
-
-    function resetForm() {
+        form.reset();
+        form.action       = '{{ route('categories.store') }}';
+        inputMethod.value = 'POST';
         titulo.textContent = '➕ Nova Categoria';
-        form.action = @json(route('categories.store'));
-        document.getElementById('formMethod').value = 'POST';
-        document.getElementById('inputNome').value  = '';
-        document.getElementById('inputEmoji').value = '';
         document.getElementById('emojiPreview').textContent = '📁';
-        document.getElementById('inputCor').value       = '#3b82f6';
-        document.getElementById('inputCorTexto').value  = '#3b82f6';
-        document.getElementById('inputDescricao').value = '';
-        document.getElementById('inputOrdem').value     = '0';
-        document.getElementById('emojiPicker').classList.add('hidden');
     }
 
-    window.mostrarModalCriar = function () { resetForm(); abrirModal(); };
+    btnNovaCat?.addEventListener('click', abrirModal);
+    btnNovaCatEmpty?.addEventListener('click', abrirModal);
+    btnCancelar.addEventListener('click', fecharModal);
+    modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
 
-    window.editarCategoria = function (id, nome, emoji, cor, descricao, ordem) {
+    window.editarCategoria = function(id, nome, emoji, cor, descricao, ordem) {
+        form.action       = `/categories/${id}`;
+        inputMethod.value = 'PUT';
         titulo.textContent = '✏️ Editar Categoria';
-        form.action = '/categories/' + id;
-        document.getElementById('formMethod').value     = 'PUT';
-        document.getElementById('inputNome').value      = nome;
-        document.getElementById('inputEmoji').value     = emoji  || '';
-        document.getElementById('emojiPreview').textContent = emoji || '📁';
-        document.getElementById('inputCor').value       = cor    || '#3b82f6';
-        document.getElementById('inputCorTexto').value  = cor    || '#3b82f6';
-        document.getElementById('inputDescricao').value = descricao || '';
-        document.getElementById('inputOrdem').value     = ordem  || 0;
-        document.getElementById('emojiPicker').classList.add('hidden');
-        abrirModal();
-    };
 
-    if (btnNova)  btnNova.addEventListener('click', window.mostrarModalCriar);
-    if (btnEmpty) btnEmpty.addEventListener('click', window.mostrarModalCriar);
-    btnFechar.addEventListener('click', fecharModal);
-    modal.addEventListener('click', function (e) { if (e.target === modal) fecharModal(); });
-
-    // Escape fecha modal (sem interferir com o banner global do layout)
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
-    });
-
-    // Trap de foco dentro do modal (Tab / Shift+Tab)
-    modal.addEventListener('keydown', function (e) {
-        if (e.key !== 'Tab') return;
-        const focusables = modal.querySelectorAll(
-            'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusables[0];
-        const last  = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    });
-
-});
-</script>
-@endpush
+        document.getElementById('inputNome').value     = nome;
+        document.getElementById('inputEmoji').value    = emoji ?? '';
+        document.getElementById('inputCor').value      = cor ?? '#3b82f6';
+        document.getElementById('inputCorTexto

@@ -11,8 +11,9 @@
             <p class="mt-1 text-gray-600">Detalhes da compra #{{ $invoice->numero }}</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            <a href="{{ route('invoices.edit', $invoice) }}" class="btn-edit">✏️ Editar</a>
-            <a href="{{ route('invoices.index') }}" class="btn-back">← Voltar</a>
+            {{-- btn-outline-primary: semântico, sem !important --}}
+            <a href="{{ route('invoices.edit', $invoice) }}" class="btn-outline-primary">✏️ Editar</a>
+            <a href="{{ route('invoices.index') }}" class="btn-outline-secondary">← Voltar</a>
         </div>
     </div>
 </div>
@@ -54,22 +55,11 @@
 
                 <div class="mt-4 pt-4 border-t border-gray-200">
                     <span class="text-xs font-medium text-gray-500 uppercase">Chave de Acesso</span>
-                    {{--
-                        ATENÇÃO: chunk_split() é lógica de apresentação e deve ficar
-                        no model como accessor: getChaveFormatadaAttribute()
-                        Exemplo: return implode(' ', str_split($this->chave, 4));
-                        Aqui usamos $invoice->chave_formatada quando o accessor existir.
-                    --}}
                     <p class="text-xs text-gray-500 font-mono break-all mt-1">{{ $invoice->chave_formatada ?? chunk_split($invoice->chave, 4, ' ') }}</p>
                 </div>
             </div>
         </div>
 
-        {{--
-            ATENÇÃO N+1: certifique-se que o controller carrega os itens com eager loading:
-            $invoice->load('items.product')  ou  Invoice::with('items.product')->findOrFail($id)
-            Sem isso, cada linha da tabela dispara uma query no banco.
-        --}}
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="text-lg font-semibold text-gray-800">🛒 Itens da Compra</h2>
@@ -116,7 +106,7 @@
                 </div>
             @else
                 <div class="p-12 text-center">
-                    <span class="text-5xl">📦</span>
+                    <span class="text-5xl" aria-hidden="true">📦</span>
                     <p class="mt-3 text-gray-500">Nenhum item registrado nesta nota.</p>
                 </div>
             @endif
@@ -155,55 +145,14 @@
             </div>
         </div>
 
-        {{-- Consumidor --}}
-        @if($invoice->consumidor_cpf || $invoice->consumidor_nome)
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h2 class="text-lg font-semibold text-gray-800">👤 Consumidor</h2>
-                </div>
-                <div class="p-6">
-                    @if($invoice->consumidor_nome)
-                        <div class="mb-2">
-                            <span class="text-xs text-gray-500 uppercase">Nome</span>
-                            <p class="text-sm text-gray-900">{{ $invoice->consumidor_nome }}</p>
-                        </div>
-                    @endif
-                    @if($invoice->consumidor_cpf)
-                        <div>
-                            <span class="text-xs text-gray-500 uppercase">CPF</span>
-                            {{--
-                                CPF mascarado: exibe apenas primeiros 3 e últimos 2 dígitos.
-                                O ideal é um accessor no model: getCpfMascaradoAttribute()
-                                Exemplo: preg_replace('/(\ d{3})\.\d{3}\.\d{3}-(\d{2})/', '$1.***.***-$2', $this->consumidor_cpf)
-                            --}}
-                            <p class="text-sm text-gray-900 font-mono">
-                                {{ preg_replace('/^(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})$/', '$1.***.***-$4', $invoice->consumidor_cpf) }}
-                            </p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        @endif
-
-        {{-- Endereço --}}
-        @if($invoice->endereco_estabelecimento)
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h2 class="text-lg font-semibold text-gray-800">📍 Endereço</h2>
-                </div>
-                <div class="p-6">
-                    <p class="text-sm text-gray-600">{{ $invoice->endereco_estabelecimento }}</p>
-                </div>
-            </div>
-        @endif
-
         {{-- Ações --}}
         <div class="bg-white rounded-lg shadow-sm border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="text-lg font-semibold text-gray-800">⚙️ Ações</h2>
             </div>
             <div class="p-6 space-y-3">
-                <a href="{{ route('invoices.edit', $invoice) }}" class="btn-edit block text-center">✏️ Editar Nota</a>
+                <a href="{{ route('invoices.edit', $invoice) }}" class="btn-outline-primary block text-center">✏️ Editar Nota</a>
+                {{-- type="button": abre modal de confirmação; não submete form --}}
                 <button type="button"
                         id="btnAbrirExcluir"
                         class="btn-delete w-full">
@@ -212,69 +161,36 @@
             </div>
         </div>
 
-    </div>
-</div>
-
-{{-- Modal de Confirmação de Exclusão --}}
-<div id="modalExcluir"
-     class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="modalExcluirTitulo">
-    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
-        <div class="flex items-start gap-4 mb-4">
-            <div class="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <span class="text-red-600 text-lg">⚠️</span>
+        {{-- Confirmação de Exclusão (inline) --}}
+        <div id="painelExcluir" class="hidden bg-red-50 border border-red-200 rounded-lg p-4"
+             role="alertdialog" aria-labelledby="excluirMsg">
+            <p id="excluirMsg" class="text-sm text-red-700 mb-3">
+                ⚠️ Tem certeza? Esta ação não pode ser desfeita.
+            </p>
+            <div class="flex gap-2">
+                <button type="button" id="btnCancelarExcluir" class="btn-outline-secondary text-sm">Cancelar</button>
+                <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="flex-1">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn-delete text-sm w-full">🗑️ Confirmar Exclusão</button>
+                </form>
             </div>
-            <div>
-                <h3 id="modalExcluirTitulo" class="text-base font-semibold text-gray-900">Excluir nota fiscal?</h3>
-                <p class="text-sm text-gray-500 mt-1">
-                    Esta ação irá remover permanentemente a nota <strong>#{{ $invoice->numero }}</strong>
-                    e todos os seus itens. Não é possível desfazer.
-                </p>
-            </div>
-        </div>
-        <div class="flex gap-3 justify-end">
-            <button type="button" id="btnCancelarExcluir" class="btn-outline-secondary text-sm">Cancelar</button>
-            <form action="{{ route('invoices.destroy', $invoice) }}" method="POST">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn-delete text-sm">🗑️ Confirmar Exclusão</button>
-            </form>
         </div>
     </div>
 </div>
-@endsection
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const modal       = document.getElementById('modalExcluir');
     const btnAbrir    = document.getElementById('btnAbrirExcluir');
     const btnCancelar = document.getElementById('btnCancelarExcluir');
+    const painel      = document.getElementById('painelExcluir');
 
-    function abrirModal() {
-        modal.classList.remove('hidden');
-        btnCancelar.focus();
-    }
-
-    function fecharModal() {
-        modal.classList.add('hidden');
-        btnAbrir.focus();
-    }
+    function abrirModal()  { painel.classList.remove('hidden'); btnCancelar.focus(); }
+    function fecharModal() { painel.classList.add('hidden');    btnAbrir.focus(); }
 
     btnAbrir.addEventListener('click', abrirModal);
     btnCancelar.addEventListener('click', fecharModal);
-
-    // Fecha ao clicar no backdrop
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) fecharModal();
-    });
-
-    // Fecha com Escape
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
-    });
-});
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
 </script>
 @endpush
+@endsection

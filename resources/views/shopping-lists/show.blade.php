@@ -28,7 +28,7 @@
                     <button type="submit" class="btn-outline-secondary text-sm">🔓 Reabrir</button>
                 </form>
             @endif
-            <a href="{{ route('shopping-lists.index') }}" class="btn-back">← Voltar</a>
+            <a href="{{ route('shopping-lists.index') }}" class="btn-outline-secondary">← Voltar</a>
         </div>
     </div>
 </div>
@@ -46,7 +46,8 @@
                 <h2 class="text-lg font-semibold text-gray-800">📋 Itens</h2>
                 <form action="{{ route('shopping-lists.limpar', $shoppingList) }}" method="POST" class="inline">
                     @csrf
-                    <button type="submit" class="text-xs text-gray-500 hover:text-red-500">🗑️ Limpar comprados</button>
+                    <button type="submit" class="text-xs text-gray-500 hover:text-red-500"
+                            aria-label="Limpar itens já comprados">🗑️ Limpar comprados</button>
                 </form>
             </div>
 
@@ -98,7 +99,6 @@
                 </div>
             @endif
 
-            {{-- Total estimado --}}
             @php
                 $totalEstimado = $shoppingList->items->sum(fn($i) => ($i->preco_estimado ?? 0) * $i->quantidade);
             @endphp
@@ -110,7 +110,6 @@
             @endif
         </div>
 
-        {{-- Adicionar Item Manual --}}
         @if($shoppingList->ativa)
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-4 p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">➕ Adicionar Item</h3>
@@ -166,12 +165,12 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 class="text-sm font-semibold text-gray-700 mb-3">⚙️ Ações</h3>
             <div class="space-y-2">
-                {{-- @json() escapa corretamente para JS; addslashes() não é suficiente --}}
-                <button id="btnRenomearLista"
+                {{-- type="button": abre modal, não submete form --}}
+                <button type="button"
+                        id="btnRenomearLista"
                         onclick="renomearLista(@json($shoppingList->id), @json($shoppingList->nome))"
                         class="text-blue-600 hover:text-blue-800 text-sm block">✏️ Renomear</button>
 
-                {{-- data-confirm interceptado pelo globalConfirmBanner no layout --}}
                 <form action="{{ route('shopping-lists.destroy', $shoppingList) }}" method="POST"
                       data-confirm="Excluir a lista '{{ $shoppingList->nome }}'? Esta ação não pode ser desfeita.">
                     @csrf
@@ -183,19 +182,18 @@
     </div>
 </div>
 
-{{-- Modal Renomear Lista --}}
+{{-- Modal Renomear --}}
 <div id="modalRenomear"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="modalRenomearTitulo">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+     role="dialog" aria-modal="true" aria-labelledby="modalRenomearTitulo">
+    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
         <h3 id="modalRenomearTitulo" class="text-lg font-semibold text-gray-800 mb-4">✏️ Renomear Lista</h3>
         <form id="formRenomear" method="POST">
             @csrf
-            @method('PUT')
-            <label for="inputRenomear" class="sr-only">Novo nome da lista</label>
-            <input type="text" name="nome" id="inputRenomear" class="form-control mb-4" required>
+            @method('PATCH')
+            <label for="inputNomeLista" class="sr-only">Novo nome da lista</label>
+            <input type="text" name="nome" id="inputNomeLista"
+                   class="form-control mb-4" placeholder="Novo nome..." required>
             <div class="flex gap-3 justify-end">
                 <button type="button" id="btnFecharRenomear" class="btn-outline-secondary text-sm">Cancelar</button>
                 <button type="submit" class="btn-primary text-sm">Salvar</button>
@@ -203,34 +201,26 @@
         </form>
     </div>
 </div>
-@endsection
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const modal     = document.getElementById('modalRenomear');
-    const input     = document.getElementById('inputRenomear');
-    const btnFechar = document.getElementById('btnFecharRenomear');
-    let ultimoFoco  = null;
+function renomearLista(id, nomeAtual) {
+    const form  = document.getElementById('formRenomear');
+    const input = document.getElementById('inputNomeLista');
+    form.action = `/shopping-lists/${id}`;
+    input.value = nomeAtual;
+    document.getElementById('modalRenomear').classList.remove('hidden');
+    input.focus();
+}
 
-    function fecharModal() {
-        modal.classList.add('hidden');
-        if (ultimoFoco) ultimoFoco.focus();
-    }
+const btnFechar = document.getElementById('btnFecharRenomear');
+const modal     = document.getElementById('modalRenomear');
 
-    window.renomearLista = function (id, nome) {
-        ultimoFoco = document.activeElement;
-        input.value = nome;
-        document.getElementById('formRenomear').action = '/shopping-lists/' + id;
-        modal.classList.remove('hidden');
-        setTimeout(function () { input.focus(); input.select(); }, 50);
-    };
+btnFechar.addEventListener('click', fecharModal);
+modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
 
-    btnFechar.addEventListener('click', fecharModal);
-    modal.addEventListener('click', function (e) { if (e.target === modal) fecharModal(); });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
-    });
-});
+function fecharModal() { modal.classList.add('hidden'); }
 </script>
 @endpush
+@endsection

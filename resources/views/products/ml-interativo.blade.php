@@ -12,9 +12,11 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <button onclick="confirmarTodos()" class="btn-success text-sm">✅ Confirmar Todos</button>
-            <button onclick="pularTodos()" class="btn-outline-secondary text-sm">⏭️ Pular Todos</button>
-            <a href="{{ route('products.agrupamentos') }}" class="btn-back">← Voltar</a>
+            {{-- type="button": estes botões não estão dentro de form, mas o atributo
+                 explícito documenta a intenção e é boa prática defensiva --}}
+            <button type="button" onclick="confirmarTodos()" class="btn-success text-sm">✅ Confirmar Todos</button>
+            <button type="button" onclick="pularTodos()" class="btn-outline-secondary text-sm">⏭️ Pular Todos</button>
+            <a href="{{ route('products.agrupamentos') }}" class="btn-outline-secondary">← Voltar</a>
         </div>
     </div>
 </div>
@@ -25,7 +27,7 @@
 
 <div id="sugestoesContainer" class="space-y-4">
     @forelse($sugestoes as $index => $sugestao)
-    <div class="sugestao-card bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition" 
+    <div class="sugestao-card bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition"
          id="card-{{ $sugestao['produto']->id }}">
         <div class="flex items-start justify-between gap-4">
             <!-- Produto Original -->
@@ -33,7 +35,10 @@
                 <div class="flex items-center gap-2 mb-2">
                     <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Produto</span>
                     @if($sugestao['produto']->foto)
-                    <img src="{{ asset('storage/' . $sugestao['produto']->foto) }}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px;">
+                    <img src="{{ asset('storage/' . $sugestao['produto']->foto) }}"
+                         alt="Foto de {{ $sugestao['produto']->nome }}"
+                         style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px;"
+                         loading="lazy" width="30" height="30">
                     @endif
                 </div>
                 <p class="text-sm text-gray-800">{{ $sugestao['produto']->nome }}</p>
@@ -42,7 +47,7 @@
 
             <!-- Seta -->
             <div class="flex items-center pt-4">
-                <span class="text-2xl text-gray-300">→</span>
+                <span class="text-2xl text-gray-300" aria-hidden="true">→</span>
             </div>
 
             <!-- Produto Similar Sugerido -->
@@ -59,12 +64,14 @@
                 <p class="text-xs text-gray-400 mt-1">
                     {{ $sugestao['melhor_match']['product']->invoiceItems->count() }} compras
                 </p>
-                
+
                 @if(count($sugestao['similares']) > 1)
                 <div class="mt-2">
                     <p class="text-xs text-gray-400 mb-1">Outras opções:</p>
                     @foreach(array_slice($sugestao['similares'], 1, 3) as $alt)
-                    <button onclick="selecionarAlternativa('{{ $sugestao['produto']->id }}', '{{ $alt['product']->id }}', '{{ addslashes($alt['product']->nome) }}')"
+                    {{-- @json() escapa corretamente strings em contexto JS; addslashes() não é suficiente --}}
+                    <button type="button"
+                            onclick="selecionarAlternativa(@json($sugestao['produto']->id), @json($alt['product']->id), @json($alt['product']->nome))"
                             class="text-xs text-blue-500 hover:text-blue-700 block">
                         ↳ {{ $alt['product']->nome }} ({{ $alt['similaridade'] }}%)
                     </button>
@@ -75,33 +82,43 @@
 
             <!-- Botões de Ação -->
             <div class="flex items-center gap-2 flex-shrink-0">
-                <button onclick="confirmarAgrupamento('{{ $sugestao['produto']->id }}', '{{ $sugestao['melhor_match']['product']->id }}', this)"
-                        class="btn-success text-sm px-4 py-2" title="Agrupar">
+                <button type="button"
+                        onclick="confirmarAgrupamento(@json($sugestao['produto']->id), @json($sugestao['melhor_match']['product']->id), this)"
+                        class="btn-success text-sm px-4 py-2" title="Agrupar"
+                        aria-label="Agrupar {{ $sugestao['produto']->nome }} com {{ $sugestao['melhor_match']['product']->nome }}">
                     ✅ Agrupar
                 </button>
-                <button onclick="pularSugestao('{{ $sugestao['produto']->id }}', this)"
-                        class="btn-outline-secondary text-sm px-3 py-2" title="Pular">
+                <button type="button"
+                        onclick="pularSugestao(@json($sugestao['produto']->id), this)"
+                        class="btn-outline-secondary text-sm px-3 py-2" title="Pular"
+                        aria-label="Pular sugestão para {{ $sugestao['produto']->nome }}">
                     ⏭️
                 </button>
-                <button onclick="ignorarSugestao('{{ $sugestao['produto']->id }}', this)"
-                        class="text-red-400 hover:text-red-600 text-sm px-2 py-2" title="Ignorar">
+                <button type="button"
+                        onclick="ignorarSugestao(@json($sugestao['produto']->id), this)"
+                        class="text-red-400 hover:text-red-600 text-sm px-2 py-2" title="Ignorar"
+                        aria-label="Ignorar sugestão para {{ $sugestao['produto']->nome }}">
                     ✕
                 </button>
             </div>
         </div>
 
         <!-- Barra de Similaridade -->
-        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3"
+             role="progressbar"
+             aria-valuenow="{{ $sugestao['melhor_match']['similaridade'] }}"
+             aria-valuemin="0" aria-valuemax="100"
+             aria-label="Similaridade: {{ $sugestao['melhor_match']['similaridade'] }}%">
             <div class="h-1.5 rounded-full {{ $sugestao['melhor_match']['similaridade'] > 70 ? 'bg-green-500' : ($sugestao['melhor_match']['similaridade'] > 50 ? 'bg-yellow-500' : 'bg-gray-400') }}"
                  style="width: {{ $sugestao['melhor_match']['similaridade'] }}%"></div>
         </div>
 
         <!-- Status (oculto inicialmente) -->
-        <div class="status-message hidden mt-2 text-sm font-medium"></div>
+        <div class="status-message hidden mt-2 text-sm font-medium" aria-live="polite"></div>
     </div>
     @empty
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center col-span-full">
-        <span class="text-6xl">🧠</span>
+        <span class="text-6xl" aria-hidden="true">🧠</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma sugestão encontrada!</p>
         <p class="text-sm text-gray-400 mt-1">O algoritmo não encontrou produtos similares para agrupar.</p>
         <a href="{{ route('products.agrupamentos') }}" class="btn-primary mt-4 inline-block">← Voltar para Agrupamentos</a>
@@ -130,7 +147,7 @@
 </div>
 
 <!-- Toast de notificação -->
-<div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-sm"></div>
+<div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-sm" role="status" aria-live="polite"></div>
 @endsection
 
 @push('scripts')
@@ -140,7 +157,7 @@ let contador = { agrupados: 0, pulados: 0, ignorados: 0 };
 function mostrarToast(mensagem, tipo = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = mensagem;
-    toast.className = 'fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg z-50 text-sm text-white ' + 
+    toast.className = 'fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg z-50 text-sm text-white ' +
         (tipo === 'success' ? 'bg-green-600' : tipo === 'error' ? 'bg-red-600' : 'bg-gray-600');
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 2500);
@@ -148,7 +165,7 @@ function mostrarToast(mensagem, tipo = 'success') {
 
 function processarAcao(produtoId, canonicoId, acao, botao) {
     const card = document.getElementById('card-' + produtoId);
-    
+
     fetch('{{ route('products.ml-confirmar') }}', {
         method: 'POST',
         headers: {
@@ -181,10 +198,8 @@ function processarAcao(produtoId, canonicoId, acao, botao) {
             card.remove();
             mostrarToast('Produto ignorado');
         }
-        
-        // Desabilitar botões
+
         card.querySelectorAll('button').forEach(b => b.disabled = true);
-        
         atualizarResumo();
     })
     .catch(err => {
@@ -216,7 +231,7 @@ function selecionarAlternativa(produtoId, novoCanonicoId, nome) {
 }
 
 function confirmarTodos() {
-    if (confirm('Deseja confirmar TODAS as sugestões de agrupamento?\n\nTodas as sugestões serão aplicadas automaticamente.')) {
+    if (confirm('Deseja confirmar TODAS as sugestões de uma vez?')) {
         document.querySelectorAll('.sugestao-card').forEach(card => {
             const btnAgrupar = card.querySelector('button[onclick*="confirmarAgrupamento"]');
             if (btnAgrupar && !btnAgrupar.disabled) {
@@ -227,28 +242,22 @@ function confirmarTodos() {
 }
 
 function pularTodos() {
-    if (confirm('Pular todas as sugestões restantes?')) {
-        document.querySelectorAll('.sugestao-card').forEach(card => {
-            const btnPular = card.querySelector('button[onclick*="pularSugestao"]');
-            if (btnPular && !btnPular.disabled) {
-                btnPular.click();
-            }
-        });
-    }
+    document.querySelectorAll('.sugestao-card').forEach(card => {
+        const btnPular = card.querySelector('button[onclick*="pularSugestao"]');
+        if (btnPular && !btnPular.disabled) {
+            btnPular.click();
+        }
+    });
 }
 
 function atualizarResumo() {
     document.getElementById('countAgrupados').textContent = contador.agrupados;
-    document.getElementById('countPulados').textContent = contador.pulados;
+    document.getElementById('countPulados').textContent   = contador.pulados;
     document.getElementById('countIgnorados').textContent = contador.ignorados;
-    document.getElementById('resumo').classList.remove('hidden');
-}
 
-// Atualizar resumo ao carregar
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.querySelectorAll('.sugestao-card').length === 0) {
-        document.getElementById('resumo').classList.remove('hidden');
-    }
-});
+    const total = contador.agrupados + contador.pulados + contador.ignorados;
+    const totalCards = document.querySelectorAll('.sugestao-card').length;
+    if (total > 0) document.getElementById('resumo').classList.remove('hidden');
+}
 </script>
 @endpush
