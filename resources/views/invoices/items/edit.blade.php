@@ -11,18 +11,18 @@
 <div class="max-w-2xl mx-auto">
     <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">📦 {{ $item->product->nome }}</h2>
-        
+
         <form action="{{ route('invoices.items.update', ['invoice' => $invoice, 'item' => $item]) }}" method="POST" id="editItemForm">
             @csrf
             @method('PUT')
-            
+
             <div class="space-y-4">
                 <!-- Nome do Produto -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
                     <input type="text" name="nome_produto" id="nome_produto"
-                           value="{{ old('nome_produto', $item->product->nome) }}" 
-                           class="form-control" required>
+                           value="{{ old('nome_produto', $item->product->nome) }}"
+                           class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
                 </div>
 
                 <!-- Quantidade e Unidade -->
@@ -30,13 +30,14 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
                         <input type="text" name="quantidade" id="quantidade"
-                               value="{{ old('quantidade', number_format($item->quantidade, 3, '.', '')) }}" 
-                               class="form-control" required
+                               value="{{ old('quantidade', number_format($item->quantidade, 3, '.', '')) }}"
+                               class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required
                                oninput="calcularValores()">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
-                        <select name="unidade" id="unidade" class="form-control" required>
+                        <select name="unidade" id="unidade"
+                                class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
                             <option value="UN" {{ $item->unidade == 'UN' ? 'selected' : '' }}>UN - Unidade</option>
                             <option value="KG" {{ $item->unidade == 'KG' ? 'selected' : '' }}>KG - Quilograma</option>
                             <option value="L" {{ $item->unidade == 'L' ? 'selected' : '' }}>L - Litro</option>
@@ -58,8 +59,8 @@
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
                                 <input type="text" name="valor_unitario" id="valor_unitario"
-                                       value="{{ old('valor_unitario', number_format($item->valor_unitario, 2, '.', '')) }}" 
-                                       class="form-control pl-10" required
+                                       value="{{ old('valor_unitario', number_format($item->valor_unitario, 2, '.', '')) }}"
+                                       class="w-full pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required
                                        oninput="calcularTotal()">
                             </div>
                         </div>
@@ -70,13 +71,13 @@
                             <div class="relative">
                                 <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
                                 <input type="text" name="valor_total" id="valor_total"
-                                       value="{{ old('valor_total', number_format($item->valor_total, 2, '.', '')) }}" 
-                                       class="form-control pl-10" required
+                                       value="{{ old('valor_total', number_format($item->valor_total, 2, '.', '')) }}"
+                                       class="w-full pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required
                                        oninput="calcularUnitario()">
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Indicador de cálculo -->
                     <div id="calculoInfo" class="text-xs text-gray-500 bg-white rounded p-2 border border-gray-100">
                         💡 <strong>Como funciona:</strong>
@@ -85,17 +86,20 @@
                             <li>Ao editar o <strong>Valor Total</strong>, o Valor Unitário é recalculado automaticamente (Total ÷ Quantidade)</li>
                         </ul>
                     </div>
-                    
+
                     <!-- Último campo editado -->
                     <input type="hidden" name="ultimo_campo_editado" id="ultimo_campo_editado" value="">
                 </div>
             </div>
 
             <div class="mt-6 flex gap-3 justify-between">
-                <button type="submit" class="btn-primary" onclick="return validarFormulario()">
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition"
+                        onclick="return validarFormulario()">
                     💾 Salvar Alterações
                 </button>
-                <a href="{{ route('invoices.edit', $invoice) }}" class="btn-outline-secondary">
+                <a href="{{ route('invoices.edit', $invoice) }}"
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
                     Cancelar
                 </a>
             </div>
@@ -133,17 +137,17 @@ function formatQuantity(value) {
 function calcularTotal() {
     if (isCalculating) return;
     isCalculating = true;
-    
+
     const unitario = parseFloatBR(document.getElementById('valor_unitario').value);
     const quantidade = parseFloatBR(document.getElementById('quantidade').value);
-    
+
     if (unitario > 0 && quantidade > 0) {
         const total = unitario * quantidade;
         document.getElementById('valor_total').value = total.toFixed(2).replace('.', ',');
     }
-    
+
     document.getElementById('ultimo_campo_editado').value = 'unitario';
-    
+
     isCalculating = false;
 }
 
@@ -151,17 +155,17 @@ function calcularTotal() {
 function calcularUnitario() {
     if (isCalculating) return;
     isCalculating = true;
-    
+
     const total = parseFloatBR(document.getElementById('valor_total').value);
     const quantidade = parseFloatBR(document.getElementById('quantidade').value);
-    
+
     if (total > 0 && quantidade > 0) {
         const unitario = total / quantidade;
         document.getElementById('valor_unitario').value = unitario.toFixed(2).replace('.', ',');
     }
-    
+
     document.getElementById('ultimo_campo_editado').value = 'total';
-    
+
     isCalculating = false;
 }
 
@@ -169,10 +173,10 @@ function calcularUnitario() {
 function calcularValores() {
     if (isCalculating) return;
     isCalculating = true;
-    
+
     const ultimoCampo = document.getElementById('ultimo_campo_editado').value;
     const quantidade = parseFloatBR(document.getElementById('quantidade').value);
-    
+
     if (quantidade > 0) {
         if (ultimoCampo === 'unitario') {
             // Recalcular total baseado no unitário
@@ -190,7 +194,7 @@ function calcularValores() {
             }
         }
     }
-    
+
     isCalculating = false;
 }
 
@@ -199,26 +203,26 @@ function validarFormulario() {
     const quantidade = parseFloatBR(document.getElementById('quantidade').value);
     const unitario = parseFloatBR(document.getElementById('valor_unitario').value);
     const total = parseFloatBR(document.getElementById('valor_total').value);
-    
+
     if (quantidade <= 0) {
         alert('A quantidade deve ser maior que zero.');
         return false;
     }
-    
+
     if (unitario <= 0) {
         alert('O valor unitário deve ser maior que zero.');
         return false;
     }
-    
+
     if (total <= 0) {
         alert('O valor total deve ser maior que zero.');
         return false;
     }
-    
+
     // Garantir que os valores estejam consistentes
     const totalCalculado = unitario * quantidade;
     const diferenca = Math.abs(total - totalCalculado);
-    
+
     if (diferenca > 0.02) {
         const confirmar = confirm(
             'Os valores não estão batendo:\n\n' +
@@ -232,12 +236,12 @@ function validarFormulario() {
             return false;
         }
     }
-    
+
     // Converter vírgulas para pontos antes de enviar
     document.getElementById('quantidade').value = quantidade.toString().replace(',', '.');
     document.getElementById('valor_unitario').value = unitario.toString().replace(',', '.');
     document.getElementById('valor_total').value = total.toString().replace(',', '.');
-    
+
     return true;
 }
 
