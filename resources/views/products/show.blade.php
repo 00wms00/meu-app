@@ -10,12 +10,6 @@
     </div>
     <div class="flex flex-wrap gap-2 items-center">
 
-        {{--
-            Botão de alerta: exibe estado atual (ativo / inativo / sem alerta).
-            - data-action: URL gerada pelo Blade com $product (ID correto do binding)
-            - data-limite: valor atual do alerta, usado para pré-preencher o modal
-            O estado visual vem de $alertaExistente, passado pelo controller.
-        --}}
         @if($alertaExistente)
             <span id="alertaBadge"
                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded text-sm
@@ -38,18 +32,26 @@
         </button>
 
         <a href="{{ route('products.edit', $produtoExibicao) }}" class="btn-outline-primary text-sm">✏️ Editar</a>
-        <a href="{{ route('products.similares', $produtoExibicao) }}" class="btn-outline-secondary text-sm flex items-center gap-1">
+
+        {{--
+            ANTES: route('products.similares', $produtoExibicao) — usava o canônico,
+            mas o controller de similares recebe $product via route model binding
+            (o ID que está na URL). Quando o usuário chegou via redirect do show
+            (produto agrupado → canônico), $produtoExibicao->id pode ser diferente
+            de $product->id, gerando uma URL de similares com ID inconsistente.
+
+            AGORA: usa $product (o binding original da rota), garantindo que
+            similares.blade.php receba o mesmo $product e o ← Voltar consiga
+            reconstruir o caminho correto via canonical_product_id.
+        --}}
+        <a href="{{ route('products.similares', $product) }}" class="btn-outline-secondary text-sm flex items-center gap-1">
             🧠 Similares
         </a>
+
         <a href="{{ route('products.index') }}" class="btn-back">← Voltar</a>
     </div>
 </div>
 
-{{--
-    Flash de alerta criado/atualizado — ancorado próximo ao botão (topo da área de conteúdo),
-    separado do flash global do layout para garantir visibilidade imediata
-    mesmo que o usuário não role até o topo da página.
---}}
 @if(session('alerta_criado'))
     <div class="mb-4 flex items-center gap-2 bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded"
          role="status"
@@ -284,7 +286,6 @@ document.addEventListener('DOMContentLoaded', function () {
         formAlerta.action = btnAbrir.dataset.action;
         document.getElementById('modalAlertaProduto').textContent =
             'Produto: ' + btnAbrir.dataset.nome;
-        // Pré-preenche com o limite atual do alerta (ou 10 como padrão)
         inputLimite.value = btnAbrir.dataset.limite || 10;
         modal.classList.remove('hidden');
         setTimeout(function () { inputLimite.focus(); }, 50);
@@ -292,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function fecharModal() {
         modal.classList.add('hidden');
-        // Reseta o campo para o valor original ao fechar sem salvar
         inputLimite.value = btnAbrir.dataset.limite || 10;
         if (ultimoFoco) ultimoFoco.focus();
     }
