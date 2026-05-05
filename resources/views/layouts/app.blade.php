@@ -3,16 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{-- csrf-token é necessário para requisicões AJAX/fetch (ex: axios, fetch nativo) --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Mercado e Finanças')</title>
     @stack('styles')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    {{-- Alpine carregado via npm/vite no app.js — CDN removido para evitar conflito de versão --}}
 </head>
 <body class="h-full">
 
-    {{-- Skip link: primeiro elemento focavel, obrigatório para acessibilidade (WCAG 2.4.1) --}}
     <a href="#main-content"
        class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded focus:shadow-lg focus:text-sm">
         Ir para o conteúdo principal
@@ -26,9 +23,16 @@
                     📊 Mercado e Finanças
                 </a>
 
-                {{-- Menu Desktop --}}
+                {{-- ====================================================
+                     MENU DESKTOP
+                     Grupos: Dashboard | Notas | Produtos | Compras | Finanças | Sair
+                     "Finanças" reúne: Orçamento + Alertas + Ofertas + Categorias
+                     (itens que não cabem na barra sem dropdown próprio)
+                     ==================================================== --}}
                 <div class="hidden md:flex items-center space-x-1">
                     @auth
+
+                        {{-- Dashboard --}}
                         <a href="{{ route('dashboard') }}"
                            class="px-3 py-2 rounded text-sm {{ request()->routeIs('dashboard') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
                             📈 Dashboard
@@ -55,13 +59,15 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  @click.outside="openDropdown = null"
                                  @keydown.escape.window="openDropdown = null"
-                                 class="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('import.create') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📥 Importar NFC-e</a>
-                                <a href="{{ route('lancamento.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">✍️ Lançamento Manual</a>
-                                <a href="{{ route('invoices.index') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📋 Ver Notas</a>
-                                <a href="{{ route('relatorio.mensal') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📊 Relatório Mensal</a>
-                                <a href="{{ route('relatorio.periodo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📅 Relatório por Período</a>
+                                <a href="{{ route('import.create') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4E5; Importar NFC-e</a>
+                                <a href="{{ route('lancamento.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x270D; Lançamento Manual</a>
+                                <hr class="my-1 border-gray-100">
+                                <a href="{{ route('invoices.index') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Ver Notas</a>
+                                <hr class="my-1 border-gray-100">
+                                <a href="{{ route('relatorio.mensal') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CA; Relatório Mensal</a>
+                                <a href="{{ route('relatorio.periodo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4C5; Relatório por Período</a>
                             </div>
                         </div>
 
@@ -86,38 +92,82 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  @click.outside="openDropdown = null"
                                  @keydown.escape.window="openDropdown = null"
-                                 class="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('products.index') }}"        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📋 Todos os Produtos</a>
-                                <a href="{{ route('products.categorias') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🏷️ Categorizar</a>
-                                <a href="{{ route('products.agrupamentos') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🔗 Agrupamentos</a>
+                                <a href="{{ route('products.index') }}"        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Todos os Produtos</a>
+                                <hr class="my-1 border-gray-100">
+                                <a href="{{ route('products.categorias') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F3F7; Categorizar</a>
+                                <a href="{{ route('categories.index') }}"      class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x2699; Gerenciar Categorias</a>
+                                <hr class="my-1 border-gray-100">
+                                <a href="{{ route('products.agrupamentos') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F517; Agrupamentos</a>
+                                <a href="{{ route('products.ml-interativo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F916; ML Interativo</a>
                             </div>
                         </div>
 
-                        {{-- Links diretos (desktop) --}}
-                        <a href="{{ route('budgets.index') }}"
-                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('budgets.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                            💰 Orçamento
-                        </a>
-                        <a href="{{ route('alertas.index') }}"
-                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('alertas.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                            🔔 Alertas
-                        </a>
-                        <a href="{{ route('shopping-lists.index') }}"
-                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('shopping-lists.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                            🛒 Compras
-                        </a>
-                        <a href="{{ route('offers.index') }}"
-                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('offers.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
-                            🏷️ Ofertas
-                        </a>
+                        {{-- Dropdown: Compras --}}
+                        <div class="relative">
+                            <button @click="openDropdown = openDropdown === 'compras' ? null : 'compras'"
+                                    :aria-expanded="openDropdown === 'compras'"
+                                    aria-haspopup="true"
+                                    class="px-3 py-2 rounded text-sm inline-flex items-center gap-1 transition
+                                           {{ request()->routeIs('shopping-lists.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                                🛒 Compras
+                                <svg class="w-4 h-4 transition-transform" :class="openDropdown === 'compras' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="openDropdown === 'compras'"
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 @click.outside="openDropdown = null"
+                                 @keydown.escape.window="openDropdown = null"
+                                 class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 role="menu">
+                                <a href="{{ route('shopping-lists.index') }}"       class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Listas de Compras</a>
+                                <a href="{{ route('shopping-lists.planejamento') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F5D3; Planejamento</a>
+                            </div>
+                        </div>
+
+                        {{-- Dropdown: Finanças --}}
+                        <div class="relative">
+                            <button @click="openDropdown = openDropdown === 'financas' ? null : 'financas'"
+                                    :aria-expanded="openDropdown === 'financas'"
+                                    aria-haspopup="true"
+                                    class="px-3 py-2 rounded text-sm inline-flex items-center gap-1 transition
+                                           {{ request()->routeIs('budgets.*','alertas.*','offers.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                                💰 Finanças
+                                <svg class="w-4 h-4 transition-transform" :class="openDropdown === 'financas' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="openDropdown === 'financas'"
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 @click.outside="openDropdown = null"
+                                 @keydown.escape.window="openDropdown = null"
+                                 class="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 role="menu">
+                                <a href="{{ route('budgets.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4B0; Orçamento</a>
+                                <a href="{{ route('alertas.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F514; Alertas de Preço</a>
+                                <a href="{{ route('offers.index') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F3F7; Ofertas / Encartes</a>
+                            </div>
+                        </div>
 
                         <form method="POST" action="{{ route('logout') }}" class="inline ml-1">
                             @csrf
                             <button type="submit" class="px-3 py-2 rounded text-sm text-gray-400 hover:bg-red-600 hover:text-white transition" title="Sair" aria-label="Sair da conta">
-                                🚪
+                                🚶
                             </button>
                         </form>
+
                     @else
                         <a href="{{ route('login') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded text-sm">
                             🔑 Login
@@ -137,30 +187,49 @@
                 </button>
             </div>
 
-            {{-- Menu Mobile --}}
+            {{-- ====================================================
+                 MENU MOBILE
+                 Mesmos grupos do desktop, na mesma ordem, sem omissões.
+                 ==================================================== --}}
             <div id="mobile-menu" x-show="mobileOpen" class="md:hidden pb-3" x-transition>
                 @auth
-                    <a href="{{ route('dashboard') }}"            class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📈 Dashboard</a>
-                    <hr class="my-1 border-gray-700">
-                    <a href="{{ route('import.create') }}"         class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📥 Importar NFC-e</a>
-                    <a href="{{ route('lancamento.create') }}"     class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">✍️ Lançamento Manual</a>
-                    <a href="{{ route('invoices.index') }}"        class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📋 Ver Notas</a>
-                    <a href="{{ route('relatorio.mensal') }}"      class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📊 Relatório Mensal</a>
-                    <hr class="my-1 border-gray-700">
-                    <a href="{{ route('products.index') }}"        class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📦 Produtos</a>
-                    <a href="{{ route('products.categorias') }}"   class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Categorizar</a>
-                    <a href="{{ route('products.agrupamentos') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🔗 Agrupamentos</a>
-                    <hr class="my-1 border-gray-700">
-                    <a href="{{ route('categories.index') }}"      class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Categorias</a>
-                    <a href="{{ route('budgets.index') }}"         class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">💰 Orçamento</a>
-                    <a href="{{ route('alertas.index') }}"         class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🔔 Alertas</a>
-                    <a href="{{ route('shopping-lists.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🛒 Lista de Compras</a>
-                    <a href="{{ route('offers.index') }}"          class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Ofertas</a>
-                    <hr class="my-1 border-gray-700">
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="block w-full text-left px-3 py-2 rounded text-sm text-red-400 hover:bg-red-600 hover:text-white">🚪 Sair</button>
-                    </form>
+                    {{-- Dashboard --}}
+                    <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📈 Dashboard</a>
+
+                    {{-- Notas --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Notas</p>
+                    <a href="{{ route('import.create') }}"    class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📥 Importar NFC-e</a>
+                    <a href="{{ route('lancamento.create') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">✍️ Lançamento Manual</a>
+                    <a href="{{ route('invoices.index') }}"    class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📋 Ver Notas</a>
+                    <a href="{{ route('relatorio.mensal') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📊 Relatório Mensal</a>
+                    <a href="{{ route('relatorio.periodo') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📅 Relatório por Período</a>
+
+                    {{-- Produtos --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Produtos</p>
+                    <a href="{{ route('products.index') }}"         class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📦 Todos os Produtos</a>
+                    <a href="{{ route('products.categorias') }}"    class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Categorizar</a>
+                    <a href="{{ route('categories.index') }}"       class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">⚙️ Gerenciar Categorias</a>
+                    <a href="{{ route('products.agrupamentos') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🔗 Agrupamentos</a>
+                    <a href="{{ route('products.ml-interativo') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🤖 ML Interativo</a>
+
+                    {{-- Compras --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Compras</p>
+                    <a href="{{ route('shopping-lists.index') }}"       class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📋 Listas de Compras</a>
+                    <a href="{{ route('shopping-lists.planejamento') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🗓️ Planejamento</a>
+
+                    {{-- Finanças --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Finanças</p>
+                    <a href="{{ route('budgets.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">💰 Orçamento</a>
+                    <a href="{{ route('alertas.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🔔 Alertas de Preço</a>
+                    <a href="{{ route('offers.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Ofertas / Encartes</a>
+
+                    {{-- Sair --}}
+                    <div class="pt-2">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="block w-full text-left px-3 py-2 rounded text-sm text-red-400 hover:bg-red-600 hover:text-white">🚶 Sair</button>
+                        </form>
+                    </div>
                 @endauth
             </div>
         </div>
@@ -173,12 +242,6 @@
 
     @stack('scripts')
 
-    {{--
-        Utilitário global data-confirm.
-        Qualquer <form data-confirm="mensagem"> no projeto terá submit interceptado
-        e exibirá este banner em vez do confirm() nativo do browser.
-        Não é necessário duplicar este JS em cada view.
-    --}}
     <div id="globalConfirmBanner"
          class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] bg-white border border-gray-300 shadow-xl rounded-lg px-5 py-4 flex items-center gap-4 w-full max-w-sm"
          role="alertdialog"
