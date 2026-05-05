@@ -266,11 +266,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /* ── Dados para os gráficos ──────────────────────────────── */
-    const categorias = @json($gastosPorCategoria->map(fn($c) => [
-        'nome'  => $c->categoria_emoji . ' ' . $c->categoria_nome,
-        'valor' => round($c->gasto_total, 2),
-        'cor'   => $c->categoria_cor,
-    ])->values());
+    @php
+        $categoriasJson = $gastosPorCategoria->map(fn($c) => [
+            'nome'  => $c->categoria_emoji . ' ' . $c->categoria_nome,
+            'valor' => round($c->gasto_total, 2),
+            'cor'   => $c->categoria_cor,
+        ])->values();
+    @endphp
+    const categorias = @json($categoriasJson);
 
     if (!categorias.length) return;
 
