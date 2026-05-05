@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\AgruparAutomaticoJob;
 use App\Models\Product;
 use App\Services\ProductGrouperService;
 use Illuminate\Http\RedirectResponse;
@@ -132,20 +133,18 @@ class ProductAgrupamentoController extends Controller
         return back()->with('success', "{$count} produto(s) adicionado(s)!");
     }
 
+    /**
+     * Despacha o agrupamento automático para uma fila assíncrona.
+     *
+     * ANTES: loop síncrono sobre todos os produtos do usuário — trava
+     * o request por vários segundos em bases grandes.
+     * AGORA: job na fila 'default' com timeout de 5 min. O response
+     * é imediato; a view pode exibir um spinner ou polling de status.
+     */
     public function agruparAutomatico(): RedirectResponse
     {
-        $userId = Auth::id();
+        AgruparAutomaticoJob::dispatch(Auth::id());
 
-        Product::where('user_id', $userId)->each(function (Product $produto) use ($userId) {
-            if ($produto->canonical_product_id || $produto->is_canonical) return;
-
-            $canonico = $this->grouperService->encontrarCanonico($produto, $userId);
-
-            $canonico
-                ? $this->grouperService->agrupar($produto, $canonico)
-                : $this->grouperService->tornarCanonico($produto);
-        });
-
-        return back()->with('success', 'Agrupamento automático concluído!');
+        return back()->with('success', 'Agrupamento automático iniciado! Pode levar alguns instantes.');
     }
 }

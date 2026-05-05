@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmarAgrupamentoRequest;
 use App\Models\Product;
 use App\Services\ProductGrouperService;
 use App\Services\ProductSimilarityService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -33,14 +33,14 @@ class ProductMlController extends Controller
         return view('products.ml-interativo', compact('sugestoes'));
     }
 
-    public function confirmarAgrupamento(Request $request): JsonResponse
+    /**
+     * ANTES: Request $request com validate() inline — sem verificação
+     * de ownership. Qualquer produto_id válido no banco era aceito.
+     * AGORA: ConfirmarAgrupamentoRequest valida ownership via Rule::exists
+     * com where('user_id') antes de qualquer lógica de negocio.
+     */
+    public function confirmarAgrupamento(ConfirmarAgrupamentoRequest $request): JsonResponse
     {
-        $request->validate([
-            'produto_id'  => 'required|exists:products,id',
-            'canonico_id' => 'nullable|exists:products,id',
-            'acao'        => 'required|in:agrupar,pular,ignorar',
-        ]);
-
         if ($request->acao === 'agrupar') {
             $produto  = Product::findOrFail($request->produto_id);
             $canonico = Product::findOrFail($request->canonico_id);

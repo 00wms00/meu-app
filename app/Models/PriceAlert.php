@@ -10,17 +10,22 @@ class PriceAlert extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'product_id', 'preco_referencia', 'preco_atual',
-        'variacao_percentual', 'limite_alerta', 'ativo', 'ultimo_alerta',
+        'user_id',
+        'product_id',
+        'limite_alerta',
+        'variacao_percentual',
+        'ativo',
     ];
 
+    /**
+     * $casts explícito evita que valores numéricos do banco cheguem
+     * como string em operações de comparação (ex: $alerta->limite_alerta > 10
+     * falharia silenciosamente se o valor fosse '10.00' string).
+     */
     protected $casts = [
-        'preco_referencia' => 'float',
-        'preco_atual' => 'float',
+        'limite_alerta'       => 'float',
         'variacao_percentual' => 'float',
-        'limite_alerta' => 'float',
-        'ativo' => 'boolean',
-        'ultimo_alerta' => 'datetime',
+        'ativo'               => 'boolean',
     ];
 
     public function user()
@@ -31,18 +36,5 @@ class PriceAlert extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
-    }
-
-    // Scope: alertas ativos
-    public function scopeAtivos($query)
-    {
-        return $query->where('ativo', true);
-    }
-
-    // Scope: alertas disparados (variação >= limite)
-    public function scopeDisparados($query)
-    {
-        return $query->where('ativo', true)
-                     ->whereRaw('variacao_percentual >= limite_alerta');
     }
 }
