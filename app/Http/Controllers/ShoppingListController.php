@@ -211,21 +211,22 @@ class ShoppingListController extends Controller
         $userId = Auth::id();
 
         // --- Tendências (cards do topo) ---
-        $mesAtual    = now()->month;
-        $anoAtual    = now()->year;
-        $mesAnterior = now()->subMonth()->month;
-        $anoAnterior = now()->subMonth()->year;
+        $agora       = now();
+        $mesAtual    = $agora->month;
+        $anoAtual    = $agora->year;
+        $mesAnterior = $agora->copy()->subMonth()->month;
+        $anoAnterior = $agora->copy()->subMonth()->year;
 
         $gastoAtual = ShoppingList::where('user_id', $userId)
-            ->whereMonth('data_compra', $mesAtual)
-            ->whereYear('data_compra', $anoAtual)
             ->whereNotNull('data_compra')
+            ->whereRaw('EXTRACT(MONTH FROM data_compra) = ?', [$mesAtual])
+            ->whereRaw('EXTRACT(YEAR  FROM data_compra) = ?', [$anoAtual])
             ->sum('valor_total');
 
         $gastoAnterior = ShoppingList::where('user_id', $userId)
-            ->whereMonth('data_compra', $mesAnterior)
-            ->whereYear('data_compra', $anoAnterior)
             ->whereNotNull('data_compra')
+            ->whereRaw('EXTRACT(MONTH FROM data_compra) = ?', [$mesAnterior])
+            ->whereRaw('EXTRACT(YEAR  FROM data_compra) = ?', [$anoAnterior])
             ->sum('valor_total');
 
         $variacao = $gastoAnterior > 0
@@ -233,9 +234,9 @@ class ShoppingListController extends Controller
             : 0;
 
         $totalListas = ShoppingList::where('user_id', $userId)->count();
-        $mediaLista  = $totalListas > 0
-            ? ShoppingList::where('user_id', $userId)->whereNotNull('valor_total')->avg('valor_total') ?? 0
-            : 0;
+        $mediaLista  = ShoppingList::where('user_id', $userId)
+            ->whereNotNull('valor_total')
+            ->avg('valor_total') ?? 0;
 
         $tendencias = [
             'gasto_atual'  => $gastoAtual,
@@ -245,9 +246,8 @@ class ShoppingListController extends Controller
         ];
 
         // --- Próximas Compras sugeridas ---
-        // Sugere categorias com listas finalizadas, ordenando pelas mais frequentes
+        $categorias      = Category::where('user_id', $userId)->get();
         $proximasCompras = collect();
-        $categorias = Category::where('user_id', $userId)->get();
 
         foreach ($categorias as $categoria) {
             $listasCategoria = ShoppingList::where('user_id', $userId)
@@ -261,14 +261,12 @@ class ShoppingListController extends Controller
                 continue;
             }
 
-            $mediaGasto  = $listasCategoria->avg('valor_total') ?? 0;
-            $totalListas = $listasCategoria->count();
-            $ultimaCompra = $listasCategoria->first()->data_compra;
+            $mediaGasto      = $listasCategoria->avg('valor_total') ?? 0;
+            $totalListasCat  = $listasCategoria->count();
+            $ultimaCompra    = $listasCategoria->first()->data_compra;
             $diasDesdeUltima = now()->diffInDays($ultimaCompra);
 
-            // Score baseado em frequência e tempo desde a última compra
-            $score = min(10, round(($diasDesdeUltima / 7) + ($totalListas / 2)));
-
+            $score    = min(10, round(($diasDesdeUltima / 7) + ($totalListasCat / 2)));
             $urgencia = match (true) {
                 $score >= 7 => 'alta',
                 $score >= 4 => 'media',
@@ -276,11 +274,11 @@ class ShoppingListController extends Controller
             };
 
             $proximasCompras->push([
-                'categoria'     => $categoria,
-                'tipo'          => $diasDesdeUltima >= 20 ? 'mensal' : 'semanal',
+                'categoria'      => $categoria,
+                'tipo'           => $diasDesdeUltima >= 20 ? 'mensal' : 'semanal',
                 'valor_previsto' => $mediaGasto,
-                'score'         => $score,
-                'urgencia'      => $urgencia,
+                'score'          => $score,
+                'urgencia'       => $urgencia,
             ]);
         }
 
@@ -301,43 +299,43 @@ class ShoppingListController extends Controller
 
             $totalGasto  = $listas->sum('valor_total');
             $mediaGasto  = $listas->avg('valor_total') ?? 0;
-            $totalListas = $listas->count();
+            $totalListasCat = $listas->count();
 
             $frequencia = match (true) {
-                $totalListas >= 4 => 'alta',
-                $totalListas >= 2 => 'media',
-                default           => 'baixa',
+                $totalListasCat >= 4 => 'alta',
+                $totalListasCat >= 2 => 'media',
+                default              => 'baixa',
             };
 
             $analiseCategoria->push([
-                'categoria'   => $categoria,
-                'total_listas' => $totalListas,
-                'gasto_total' => $totalGasto,
-                'media_gasto' => $mediaGasto,
-                'frequencia'  => $frequencia,
+                'categoria'    => $categoria,
+                'total_listas' => $totalListasCat,
+                'gasto_total'  => $totalGasto,
+                'media_gasto'  => $mediaGasto,
+                'frequencia'   => $frequencia,
             ]);
         }
 
         $analiseCategoria = $analiseCategoria->sortByDesc('gasto_total')->values();
 
-        // --- Sazonalidade (histórico mensal) ---
+        // --- Sazonalidade (histórico mensal) --- PostgreSQL: EXTRACT()
         $sazonalidade = ShoppingList::where('user_id', $userId)
             ->whereNotNull('data_compra')
             ->select(
-                DB::raw('YEAR(data_compra) as ano'),
-                DB::raw('MONTH(data_compra) as mes'),
-                DB::raw('COUNT(*) as total_listas'),
-                DB::raw('SUM(valor_total) as total_gasto')
+                DB::raw('EXTRACT(YEAR  FROM data_compra)::int AS ano'),
+                DB::raw('EXTRACT(MONTH FROM data_compra)::int AS mes'),
+                DB::raw('COUNT(*)           AS total_listas'),
+                DB::raw('SUM(valor_total)   AS total_gasto')
             )
-            ->groupBy('ano', 'mes')
-            ->orderBy('ano', 'desc')
-            ->orderBy('mes', 'desc')
-            ->take(12)
+            ->groupBy(DB::raw('EXTRACT(YEAR FROM data_compra)'), DB::raw('EXTRACT(MONTH FROM data_compra)'))
+            ->orderBy(DB::raw('EXTRACT(YEAR FROM data_compra)'), 'desc')
+            ->orderBy(DB::raw('EXTRACT(MONTH FROM data_compra)'), 'desc')
+            ->limit(12)
             ->get()
             ->map(fn ($row) => [
-                'mes_nome'    => \Carbon\Carbon::create($row->ano, $row->mes, 1)->translatedFormat('F Y'),
+                'mes_nome'     => \Carbon\Carbon::create($row->ano, $row->mes, 1)->translatedFormat('F Y'),
                 'total_listas' => $row->total_listas,
-                'total_gasto' => $row->total_gasto ?? 0,
+                'total_gasto'  => $row->total_gasto ?? 0,
             ]);
 
         return view('shopping-lists.planejamento', compact(
