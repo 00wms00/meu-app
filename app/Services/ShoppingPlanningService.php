@@ -13,7 +13,7 @@ class ShoppingPlanningService
 {
     /**
      * Analisa o ciclo de consumo de cada produto e retorna status de reposição.
-     * Usa 3 queries fixas independente da quantidade de produtos.
+     * Retorna apenas arrays primitivos — sem objetos Eloquent — para compatibilidade com cache.
      */
     public function analisarCicloConsumo(int $userId): array
     {
@@ -74,8 +74,10 @@ class ShoppingPlanningService
                 default                                  => 'ok',
             };
 
+            // Armazenar apenas primitivos — nunca objetos Eloquent no cache
             $ciclos[] = [
-                'produto'           => $produto,
+                'produto_id'        => $produto->id,
+                'produto_nome'      => $produto->nome,
                 'intervalo_medio'   => $intervaloMedio,
                 'ultima_compra'     => $ultimaCompra->format('d/m/Y'),
                 'dias_desde_ultima' => $diasDesdeUltima,
@@ -122,9 +124,9 @@ class ShoppingPlanningService
         foreach ($rows as $grupo) {
             if ($grupo->count() < 2) continue;
 
-            $sorted   = $grupo->sortBy('preco_medio');
-            $barato   = $sorted->first();
-            $caro     = $sorted->last();
+            $sorted    = $grupo->sortBy('preco_medio');
+            $barato    = $sorted->first();
+            $caro      = $sorted->last();
             $diferenca = round((float) $caro->preco_medio - (float) $barato->preco_medio, 2);
 
             if ($diferenca <= 0) continue;
@@ -155,7 +157,7 @@ class ShoppingPlanningService
             ->whereYear('data_emissao', now()->year)
             ->sum('valor_pago');
 
-        $mesAnterior  = now()->subMonth();
+        $mesAnterior   = now()->subMonth();
         $gastoAnterior = Invoice::where('user_id', $userId)
             ->whereMonth('data_emissao', $mesAnterior->month)
             ->whereYear('data_emissao', $mesAnterior->year)
@@ -178,6 +180,7 @@ class ShoppingPlanningService
 
     /**
      * Retorna distribuição de compras por dia da semana para cada categoria.
+     * Categorias são convertidas para array primitivo.
      */
     public function analisarComprasPorDia(int $userId): array
     {
@@ -195,8 +198,11 @@ class ShoppingPlanningService
 
             if ($compras->count() > 0) {
                 $dados[$cat->id] = [
-                    'categoria'         => $cat,
-                    'dias'              => $compras->pluck('total', 'dia')->toArray(),
+                    // Primitivos apenas — sem objeto Eloquent
+                    'categoria_id'       => $cat->id,
+                    'categoria_nome'     => $cat->nome,
+                    'categoria_emoji'    => $cat->emoji ?? null,
+                    'dias'               => $compras->pluck('total', 'dia')->toArray(),
                     'dia_mais_frequente' => (int) $compras->first()->dia,
                 ];
             }
@@ -233,6 +239,7 @@ class ShoppingPlanningService
 
     /**
      * Retorna top 10 produtos por categoria com preço médio.
+     * Converte para array primitivo — sem objetos Eloquent.
      */
     public function getProdutosFrequentesPorCategoria(int $userId): array
     {
@@ -250,13 +257,16 @@ class ShoppingPlanningService
             ->withCount('invoiceItems')
             ->orderBy('invoice_items_count', 'desc')
             ->get()
-            ->each(function ($p) use ($precosMedios) {
-                $p->preco_medio = $precosMedios->has($p->id)
-                    ? round((float) $precosMedios[$p->id], 2)
-                    : null;
-            })
             ->groupBy('category_id')
-            ->map(fn($grupo) => $grupo->take(10))
+            ->map(fn($grupo) => $grupo->take(10)->map(fn($p) => [
+                'id'                 => $p->id,
+                'nome'               => $p->nome,
+                'unidade_padrao'     => $p->unidade_padrao,
+                'invoice_items_count' => $p->invoice_items_count,
+                'preco_medio'        => $precosMedios->has($p->id)
+                    ? round((float) $precosMedios[$p->id], 2)
+                    : null,
+            ])->values()->all())
             ->all();
     }
 
@@ -292,14 +302,15 @@ class ShoppingPlanningService
             $dia = $dados['dia_mais_frequente'] ?? null;
             if ($dia === null) continue;
 
-            $proximo  = $this->proximoDiaSemana((int) $dia);
-            $diasAte  = max(0, (int) now()->startOfDay()->diffInDays($proximo->startOfDay()));
+            $proximo = $this->proximoDiaSemana((int) $dia);
+            $diasAte = max(0, (int) now()->startOfDay()->diffInDays($proximo->startOfDay()));
 
             $sugestoes[] = [
-                'categoria'   => $dados['categoria'],
-                'dia_nome'    => $diasSemana[(int) $dia],
-                'proxima_data' => $proximo->format('d/m/Y'),
-                'dias_ate'    => $diasAte,
+                'categoria_id'   => $dados['categoria_id'],
+                'categoria_nome' => $dados['categoria_nome'],
+                'dia_nome'       => $diasSemana[(int) $dia],
+                'proxima_data'   => $proximo->format('d/m/Y'),
+                'dias_ate'       => $diasAte,
             ];
         }
 
