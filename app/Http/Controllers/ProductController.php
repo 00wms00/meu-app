@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ProductNormalizationService;
 use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\PriceAlert;
