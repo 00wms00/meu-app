@@ -56,19 +56,35 @@ class ProductController extends Controller
               ->orWhere('canonical_product_id', $produtoExibicao->id)
         )->pluck('id');
 
+        /*
+         * ANTES: orderBy('created_at') — ordenava pela data de inserção do
+         * registro no banco, não pela data real da nota fiscal. Notas importadas
+         * fora de ordem cronológica produziam $serie embaralhada, gráfico torto
+         * e variação de preço calculada entre pontos errados.
+         *
+         * AGORA: join com invoices + orderBy('invoices.data_emissao') — ordena
+         * pela data real da nota, independente de quando o item foi importado.
+         */
         $items = InvoiceItem::with('invoice')
-            ->whereIn('product_id', $produtoIds)
-            ->whereHas('invoice', fn ($q) => $q->where('user_id', Auth::id()))
-            ->orderBy('created_at')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->whereIn('invoice_items.product_id', $produtoIds)
+            ->where('invoices.user_id', Auth::id())
+            ->orderBy('invoices.data_emissao')
+            ->select('invoice_items.*')
             ->get();
 
+        /*
+         * sortBy('data') removido: a query já devolve os itens em ordem
+         * cronológica correta. Manter o sortBy era redundante e mascarava
+         * o bug original (ordenava a string 'Y-m-d', que coincide com a
+         * ordem alfabética, mas não consertava o created_at na query).
+         */
         $serie = $items
             ->map(fn ($i) => [
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
                 'valor_unitario' => $i->valor_unitario,
                 'unidade'        => $i->unidade,
             ])
-            ->sortBy('data')
             ->values();
 
         $variacao = null;
