@@ -7,18 +7,16 @@ use App\Models\Product;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListItem;
 use App\Services\ShoppingListItemService;
-use App\Services\ShoppingPlanningService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ShoppingListController extends Controller
 {
     public function __construct(
         private ShoppingListItemService $itemService,
-        private ShoppingPlanningService $planningService,
     ) {}
 
     // ==================== CRUD ====================
@@ -208,42 +206,145 @@ class ShoppingListController extends Controller
 
     // ==================== PLANEJAMENTO ====================
 
-    public function planejamento()
+    public function planejamento(): View
     {
         $userId = Auth::id();
 
-        $dados = Cache::remember("planejamento-{$userId}", 3600, function () use ($userId) {
-            return [
-                'cicloConsumo'                   => $this->planningService->analisarCicloConsumo($userId),
-                'categoriasPorDia'               => $this->planningService->analisarComprasPorDia($userId),
-                'estabelecimentosPorCategoria'   => $this->planningService->analisarEstabelecimentosPorCategoria($userId),
-                'produtosFrequentesPorCategoria' => $this->planningService->getProdutosFrequentesPorCategoria($userId),
-                'compraMensal'                   => $this->planningService->sugerirCompraMensal($userId),
-                'economiaPotencial'              => $this->planningService->calcularEconomiaPotencial($userId),
-                'tendencias'                     => $this->planningService->analisarTendencias($userId),
-            ];
-        });
+        // --- Tendências (cards do topo) ---
+        $mesAtual    = now()->month;
+        $anoAtual    = now()->year;
+        $mesAnterior = now()->subMonth()->month;
+        $anoAnterior = now()->subMonth()->year;
 
-        $cicloConsumo                   = $dados['cicloConsumo'];
-        $reposicaoUrgente               = array_filter($cicloConsumo, fn($c) => $c['status'] === 'urgente');
-        $categoriasPorDia               = $dados['categoriasPorDia'];
-        $estabelecimentosPorCategoria   = $dados['estabelecimentosPorCategoria'];
-        $produtosFrequentesPorCategoria = $dados['produtosFrequentesPorCategoria'];
-        $sugestoesDias                  = $this->planningService->gerarSugestoesDias($categoriasPorDia);
-        $compraMensal                   = $dados['compraMensal'];
-        $economiaPotencial              = $dados['economiaPotencial'];
-        $tendencias                     = $dados['tendencias'];
+        $gastoAtual = ShoppingList::where('user_id', $userId)
+            ->whereMonth('data_compra', $mesAtual)
+            ->whereYear('data_compra', $anoAtual)
+            ->whereNotNull('data_compra')
+            ->sum('valor_total');
 
-        $listasAtivas = ShoppingList::where('user_id', $userId)
-            ->where('ativa', true)
-            ->withCount(['items', 'itemsComprados'])
-            ->get();
+        $gastoAnterior = ShoppingList::where('user_id', $userId)
+            ->whereMonth('data_compra', $mesAnterior)
+            ->whereYear('data_compra', $anoAnterior)
+            ->whereNotNull('data_compra')
+            ->sum('valor_total');
+
+        $variacao = $gastoAnterior > 0
+            ? round((($gastoAtual - $gastoAnterior) / $gastoAnterior) * 100, 1)
+            : 0;
+
+        $totalListas = ShoppingList::where('user_id', $userId)->count();
+        $mediaLista  = $totalListas > 0
+            ? ShoppingList::where('user_id', $userId)->whereNotNull('valor_total')->avg('valor_total') ?? 0
+            : 0;
+
+        $tendencias = [
+            'gasto_atual'  => $gastoAtual,
+            'variacao'     => $variacao,
+            'media_lista'  => $mediaLista,
+            'total_listas' => $totalListas,
+        ];
+
+        // --- Próximas Compras sugeridas ---
+        // Sugere categorias com listas finalizadas, ordenando pelas mais frequentes
+        $proximasCompras = collect();
+        $categorias = Category::where('user_id', $userId)->get();
+
+        foreach ($categorias as $categoria) {
+            $listasCategoria = ShoppingList::where('user_id', $userId)
+                ->where('nome', 'like', "%{$categoria->nome}%")
+                ->whereNotNull('data_compra')
+                ->orderBy('data_compra', 'desc')
+                ->take(5)
+                ->get();
+
+            if ($listasCategoria->isEmpty()) {
+                continue;
+            }
+
+            $mediaGasto  = $listasCategoria->avg('valor_total') ?? 0;
+            $totalListas = $listasCategoria->count();
+            $ultimaCompra = $listasCategoria->first()->data_compra;
+            $diasDesdeUltima = now()->diffInDays($ultimaCompra);
+
+            // Score baseado em frequência e tempo desde a última compra
+            $score = min(10, round(($diasDesdeUltima / 7) + ($totalListas / 2)));
+
+            $urgencia = match (true) {
+                $score >= 7 => 'alta',
+                $score >= 4 => 'media',
+                default     => 'baixa',
+            };
+
+            $proximasCompras->push([
+                'categoria'     => $categoria,
+                'tipo'          => $diasDesdeUltima >= 20 ? 'mensal' : 'semanal',
+                'valor_previsto' => $mediaGasto,
+                'score'         => $score,
+                'urgencia'      => $urgencia,
+            ]);
+        }
+
+        $proximasCompras = $proximasCompras->sortByDesc('score')->take(6)->values();
+
+        // --- Análise por Categoria ---
+        $analiseCategoria = collect();
+
+        foreach ($categorias as $categoria) {
+            $listas = ShoppingList::where('user_id', $userId)
+                ->where('nome', 'like', "%{$categoria->nome}%")
+                ->whereNotNull('data_compra')
+                ->get();
+
+            if ($listas->isEmpty()) {
+                continue;
+            }
+
+            $totalGasto  = $listas->sum('valor_total');
+            $mediaGasto  = $listas->avg('valor_total') ?? 0;
+            $totalListas = $listas->count();
+
+            $frequencia = match (true) {
+                $totalListas >= 4 => 'alta',
+                $totalListas >= 2 => 'media',
+                default           => 'baixa',
+            };
+
+            $analiseCategoria->push([
+                'categoria'   => $categoria,
+                'total_listas' => $totalListas,
+                'gasto_total' => $totalGasto,
+                'media_gasto' => $mediaGasto,
+                'frequencia'  => $frequencia,
+            ]);
+        }
+
+        $analiseCategoria = $analiseCategoria->sortByDesc('gasto_total')->values();
+
+        // --- Sazonalidade (histórico mensal) ---
+        $sazonalidade = ShoppingList::where('user_id', $userId)
+            ->whereNotNull('data_compra')
+            ->select(
+                DB::raw('YEAR(data_compra) as ano'),
+                DB::raw('MONTH(data_compra) as mes'),
+                DB::raw('COUNT(*) as total_listas'),
+                DB::raw('SUM(valor_total) as total_gasto')
+            )
+            ->groupBy('ano', 'mes')
+            ->orderBy('ano', 'desc')
+            ->orderBy('mes', 'desc')
+            ->take(12)
+            ->get()
+            ->map(fn ($row) => [
+                'mes_nome'    => \Carbon\Carbon::create($row->ano, $row->mes, 1)->translatedFormat('F Y'),
+                'total_listas' => $row->total_listas,
+                'total_gasto' => $row->total_gasto ?? 0,
+            ]);
 
         return view('shopping-lists.planejamento', compact(
-            'cicloConsumo', 'reposicaoUrgente', 'categoriasPorDia',
-            'estabelecimentosPorCategoria', 'produtosFrequentesPorCategoria',
-            'sugestoesDias', 'compraMensal', 'economiaPotencial',
-            'tendencias', 'listasAtivas'
+            'tendencias',
+            'proximasCompras',
+            'analiseCategoria',
+            'sazonalidade',
         ));
     }
 
