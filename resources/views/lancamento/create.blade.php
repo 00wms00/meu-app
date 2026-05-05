@@ -9,7 +9,10 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">✍️ Lançamento Manual</h1>
             <p class="mt-1 text-gray-600">Registre compras sem NFC-e (feira, pequenos comércios, etc.)</p>
         </div>
-        <a href="{{ route('invoices.index') }}" class="btn-back">← Voltar</a>
+        <a href="{{ route('invoices.index') }}"
+           class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
+            ← Voltar
+        </a>
     </div>
 </div>
 
@@ -33,7 +36,7 @@
                             <label for="nomeEstabelecimento" class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento *</label>
                             <input type="text" name="nome_estabelecimento" id="nomeEstabelecimento"
                                    value="{{ old('nome_estabelecimento') }}"
-                                   class="form-control" required
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required
                                    placeholder="Ex: Feira do Produtor, Mercado do Bairro...">
                         </div>
 
@@ -41,25 +44,27 @@
                             <label for="dataEmissao" class="block text-sm font-medium text-gray-700 mb-1">Data da Compra *</label>
                             <input type="datetime-local" name="data_emissao" id="dataEmissao"
                                    value="{{ old('data_emissao', now()->format('Y-m-d\TH:i')) }}"
-                                   class="form-control" required>
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
                         </div>
 
                         <div>
                             <label for="cnpj" class="block text-sm font-medium text-gray-700 mb-1">CNPJ (opcional)</label>
                             <input type="text" name="cnpj" id="cnpj"
                                    value="{{ old('cnpj') }}"
-                                   class="form-control" placeholder="00.000.000/0000-00">
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                                   placeholder="00.000.000/0000-00">
                         </div>
 
                         <div>
                             <label for="formaPagamento" class="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
-                            <select name="forma_pagamento" id="formaPagamento" class="form-control">
+                            <select name="forma_pagamento" id="formaPagamento"
+                                    class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                                 <option value="">Selecionar...</option>
-                                <option value="Dinheiro"      {{ old('forma_pagamento') === 'Dinheiro'          ? 'selected' : '' }}>💵 Dinheiro</option>
-                                <option value="Pix"           {{ old('forma_pagamento') === 'Pix'               ? 'selected' : '' }}>📱 Pix</option>
-                                <option value="Cartão de Débito" {{ old('forma_pagamento') === 'Cartão de Débito' ? 'selected' : '' }}>💳 Cartão de Débito</option>
+                                <option value="Dinheiro"         {{ old('forma_pagamento') === 'Dinheiro'           ? 'selected' : '' }}>💵 Dinheiro</option>
+                                <option value="Pix"              {{ old('forma_pagamento') === 'Pix'                ? 'selected' : '' }}>📱 Pix</option>
+                                <option value="Cartão de Débito" {{ old('forma_pagamento') === 'Cartão de Débito'  ? 'selected' : '' }}>💳 Cartão de Débito</option>
                                 <option value="Cartão de Crédito" {{ old('forma_pagamento') === 'Cartão de Crédito' ? 'selected' : '' }}>💳 Cartão de Crédito</option>
-                                <option value="Outros"         {{ old('forma_pagamento') === 'Outros'            ? 'selected' : '' }}>📦 Outros</option>
+                                <option value="Outros"            {{ old('forma_pagamento') === 'Outros'             ? 'selected' : '' }}>📦 Outros</option>
                             </select>
                         </div>
 
@@ -67,7 +72,8 @@
                             <label for="descontos" class="block text-sm font-medium text-gray-700 mb-1">Descontos (R$)</label>
                             <input type="text" name="descontos" id="descontos"
                                    value="{{ old('descontos', '0,00') }}"
-                                   class="form-control" inputmode="decimal">
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                                   inputmode="decimal">
                         </div>
                     </div>
 
@@ -76,7 +82,7 @@
                         <label for="chaveAcesso" class="block text-sm font-medium text-gray-700 mb-1">🔑 Chave de Acesso (automática)</label>
                         <input type="text" name="chave" id="chaveAcesso"
                                value="{{ old('chave', $proximaChave) }}"
-                               class="form-control text-xs font-mono bg-gray-100" readonly>
+                               class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs font-mono bg-gray-100" readonly>
                         <p class="text-xs text-gray-500 mt-1">
                             Formato especial para lançamentos manuais (9999 + sequencial).<br>
                             Não conflita com NFC-e oficiais.
@@ -143,7 +149,8 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-primary w-full mt-6 text-lg py-3">
+                    <button type="submit"
+                            class="w-full inline-flex items-center justify-center mt-6 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-md transition">
                         💾 Registrar Compra
                     </button>
                 </div>
@@ -165,7 +172,7 @@
     let itemIndex = 0;
     const UNIDADES = ['UN','KG','L','CX','PC','FD','LT','DZ','Bandeja','Pacote','Maço'];
 
-    /* ── Helpers numéricos ──────────────────────────────────────── */
+    /* ── Helpers numéricos ──────────────────────────────────── */
     function parseFloatBR(value) {
         if (!value) return 0;
         let v = value.toString().replace(/[^\d,.-]/g, '');
@@ -178,7 +185,7 @@
         return value.toFixed(2).replace('.', ',');
     }
 
-    /* ── Criação de linha ───────────────────────────────────────── */
+    /* ── Criação de linha ────────────────────────────────────── */
     function opcoesUnidade(idx) {
         return UNIDADES.map(u =>
             `<option value="${u}">${u}</option>`
@@ -267,7 +274,7 @@
         atualizarTotais();
     }
 
-    /* ── Totais globais ─────────────────────────────────────────── */
+    /* ── Totais globais ───────────────────────────────────────── */
     function atualizarTotais() {
         let valorTotal = 0;
         let qtdItens   = 0;
@@ -286,7 +293,7 @@
         document.getElementById('valorPagoLabel').textContent  = 'R$ ' + formatMoney(valorPago);
     }
 
-    /* ── Adicionar / Remover linhas ─────────────────────────────── */
+    /* ── Adicionar / Remover linhas ───────────────────────────────── */
     function adicionarItem() {
         const tbody = document.getElementById('itensTableBody');
         const row   = criarLinhaItem(itemIndex);
@@ -309,7 +316,7 @@
         atualizarTotais();
     }
 
-    /* ── Delegação de eventos na tabela ─────────────────────────── */
+    /* ── Delegação de eventos na tabela ──────────────────────────── */
     function bindTabela() {
         const tbody = document.getElementById('itensTableBody');
 
@@ -326,7 +333,7 @@
         });
     }
 
-    /* ── Submit: normalizar vírgula → ponto ─────────────────────── */
+    /* ── Submit: normalizar vírgula → ponto ──────────────────────────── */
     function bindSubmit() {
         document.getElementById('formLancamento').addEventListener('submit', function () {
             this.querySelectorAll('input').forEach(function (input) {
@@ -339,7 +346,7 @@
         });
     }
 
-    /* ── Init ───────────────────────────────────────────────────── */
+    /* ── Init ───────────────────────────────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btnAdicionarItem')
                 .addEventListener('click', adicionarItem);
