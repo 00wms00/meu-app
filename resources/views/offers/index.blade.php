@@ -9,10 +9,13 @@
         <p class="text-gray-600 text-sm mt-1">Acompanhe promoções e preços especiais</p>
     </div>
     <div class="flex gap-2">
-        {{-- btn-outline-primary: inclui estilo base via @apply; sem prefixo 'btn' redundante --}}
-        <a href="{{ route('offers.create') }}" class="btn-outline-primary text-sm">✍️ Cadastrar Manual</a>
+        <a href="{{ route('offers.create') }}"
+           class="inline-flex items-center px-3 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold rounded-md transition">
+            ✍️ Cadastrar Manual
+        </a>
         {{-- type="button" explícito — este botão abre um input file via JS, não submete form --}}
-        <button type="button" id="btnUploadEncarte" class="btn-primary text-sm flex items-center gap-1">
+        <button type="button" id="btnUploadEncarte"
+                class="inline-flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
             📷 Encarte
         </button>
         <form id="formUpload" action="{{ route('offers.upload-encarte') }}" method="POST"
@@ -33,7 +36,10 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <span class="text-5xl" aria-hidden="true">🏷️</span>
         <p class="text-gray-500 mt-4">Nenhuma oferta cadastrada ainda.</p>
-        <a href="{{ route('offers.create') }}" class="btn-primary mt-4 inline-block">✍️ Cadastrar Primeira Oferta</a>
+        <a href="{{ route('offers.create') }}"
+           class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition mt-4">
+            ✍️ Cadastrar Primeira Oferta
+        </a>
     </div>
 @else
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
