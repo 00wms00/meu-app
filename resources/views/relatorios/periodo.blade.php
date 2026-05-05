@@ -256,6 +256,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
+    /* ── Cores dinâmicas via data-attribute ──────────────────── */
     document.querySelectorAll('.categoria-dot').forEach(function (el) {
         el.style.backgroundColor = el.dataset.cor || '#6b7280';
     });
@@ -264,11 +265,15 @@ document.addEventListener('DOMContentLoaded', function () {
         el.style.width = (el.dataset.width || 0) + '%';
     });
 
-    const categorias = @json($gastosPorCategoria->map(fn($c) => [
-        'nome'  => $c->categoria_emoji . ' ' . $c->categoria_nome,
-        'valor' => round($c->gasto_total, 2),
-        'cor'   => $c->categoria_cor,
-    ])->values());
+    /* ── Dados para os gráficos ──────────────────────────────── */
+    @php
+        $categoriasJson = $gastosPorCategoria->map(fn($c) => [
+            'nome'  => $c->categoria_emoji . ' ' . $c->categoria_nome,
+            'valor' => round($c->gasto_total, 2),
+            'cor'   => $c->categoria_cor,
+        ])->values();
+    @endphp
+    const categorias = @json($categoriasJson);
 
     if (!categorias.length) return;
 
@@ -276,6 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const dados  = categorias.map(c => c.valor);
     const cores  = categorias.map(c => c.cor);
 
+    /* ── Pie Chart ───────────────────────────────────────────── */
     new Chart(document.getElementById('categoriaPieChart'), {
         type: 'doughnut',
         data: { labels, datasets: [{ data: dados, backgroundColor: cores, borderWidth: 2 }] },
@@ -296,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    /* ── Bar Chart ───────────────────────────────────────────── */
     new Chart(document.getElementById('categoriaBarChart'), {
         type: 'bar',
         data: {
