@@ -11,9 +11,10 @@
             <p class="mt-1 text-gray-600">Detalhes da compra #{{ $invoice->numero }}</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            {{-- btn-outline-primary: semântico, sem !important --}}
-            <a href="{{ route('invoices.edit', $invoice) }}" class="btn-outline-primary">✏️ Editar</a>
-            <a href="{{ route('invoices.index') }}" class="btn-outline-secondary">← Voltar</a>
+            <a href="{{ route('invoices.edit', $invoice) }}"
+               class="inline-flex items-center px-3 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold rounded-md transition">✏️ Editar</a>
+            <a href="{{ route('invoices.index') }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar</a>
         </div>
     </div>
 </div>
@@ -151,11 +152,12 @@
                 <h2 class="text-lg font-semibold text-gray-800">⚙️ Ações</h2>
             </div>
             <div class="p-6 space-y-3">
-                <a href="{{ route('invoices.edit', $invoice) }}" class="btn-outline-primary block text-center">✏️ Editar Nota</a>
-                {{-- type="button": abre modal de confirmação; não submete form --}}
+                <a href="{{ route('invoices.edit', $invoice) }}"
+                   class="block text-center w-full inline-flex items-center justify-center px-3 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold rounded-md transition">✏️ Editar Nota</a>
+                {{-- type="button": abre painel de confirmação; não submete form --}}
                 <button type="button"
                         id="btnAbrirExcluir"
-                        class="btn-delete w-full">
+                        class="w-full inline-flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition">
                     🗑️ Excluir Nota
                 </button>
             </div>
@@ -168,11 +170,13 @@
                 ⚠️ Tem certeza? Esta ação não pode ser desfeita.
             </p>
             <div class="flex gap-2">
-                <button type="button" id="btnCancelarExcluir" class="btn-outline-secondary text-sm">Cancelar</button>
+                <button type="button" id="btnCancelarExcluir"
+                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Cancelar</button>
                 <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="flex-1">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn-delete text-sm w-full">🗑️ Confirmar Exclusão</button>
+                    <button type="submit"
+                            class="w-full inline-flex items-center justify-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition">🗑️ Confirmar Exclusão</button>
                 </form>
             </div>
         </div>
