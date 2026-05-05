@@ -64,7 +64,7 @@
             <div class="space-y-2">
                 @foreach($lista->items->sortBy('comprado') as $item)
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3 {{ $item->comprado ? 'opacity-60' : '' }}">
-                    <form action="{{ route('shopping-list-items.toggle', $item) }}" method="POST" class="flex-shrink-0">
+                    <form action="{{ route('items.toggle', $item) }}" method="POST" class="flex-shrink-0">
                         @csrf
                         @method('PATCH')
                         <button type="submit"
@@ -88,7 +88,7 @@
                     @endif
 
                     @if($lista->ativa)
-                    <form action="{{ route('shopping-list-items.destroy', $item) }}" method="POST" class="flex-shrink-0">
+                    <form action="{{ route('items.remove', $item) }}" method="POST" class="flex-shrink-0">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="text-gray-400 hover:text-red-500 transition" aria-label="Remover item">✕</button>
@@ -103,7 +103,7 @@
         @if($lista->ativa)
         <div class="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <h3 class="text-sm font-semibold text-gray-700 mb-3">➕ Adicionar Item</h3>
-            <form action="{{ route('shopping-list-items.store', $lista) }}" method="POST">
+            <form action="{{ route('shopping-lists.items.add', $lista) }}" method="POST">
                 @csrf
                 <div class="flex flex-wrap gap-2">
                     <input type="text" name="nome"
@@ -124,18 +124,18 @@
     <!-- Painel Lateral -->
     <div class="space-y-4">
 
-        <!-- Sugestões do Histórico -->
-        @if($lista->ativa && $sugestoes->isNotEmpty())
+        <!-- Produtos Frequentes -->
+        @if($lista->ativa && $produtosFrequentes->isNotEmpty())
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-3">💡 Sugestões do Histórico</h3>
-            <form action="{{ route('shopping-list-items.storeMultiple', $lista) }}" method="POST">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">💡 Adicionar Frequentes</h3>
+            <form action="{{ route('shopping-lists.frequentes', $lista) }}" method="POST">
                 @csrf
                 <div class="space-y-2 mb-3 max-h-64 overflow-y-auto">
-                    @foreach($sugestoes as $sugestao)
+                    @foreach($produtosFrequentes as $produto)
                     <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-gray-50">
-                        <input type="checkbox" name="itens[]" value="{{ $sugestao->nome }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span class="text-sm text-gray-700">{{ $sugestao->nome }}</span>
-                        <span class="ml-auto text-xs text-gray-400">{{ $sugestao->total }}×</span>
+                        <input type="checkbox" name="produtos[]" value="{{ $produto->id }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">{{ $produto->nome }}</span>
+                        <span class="ml-auto text-xs text-gray-400">{{ $produto->invoice_items_count }}×</span>
                     </label>
                     @endforeach
                 </div>
@@ -195,7 +195,7 @@
 
             {{-- Excluir --}}
             <form action="{{ route('shopping-lists.destroy', $lista) }}" method="POST" class="mt-2"
-                  onsubmit="return confirm('Excluir esta lista permanentemente?')">
+                  data-confirm="Excluir esta lista permanentemente?">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="w-full text-left text-sm text-red-500 hover:text-red-700 py-1 transition">🗑 Excluir lista</button>
@@ -206,10 +206,10 @@
 </div>
 
 <script>
-    const btnRenomear    = document.getElementById('btnRenomear');
-    const btnFecharRen   = document.getElementById('btnFecharRenomear');
-    const formRenomear   = document.getElementById('formRenomear');
-    const inputRenomear  = document.getElementById('inputRenomear');
+    const btnRenomear   = document.getElementById('btnRenomear');
+    const btnFecharRen  = document.getElementById('btnFecharRenomear');
+    const formRenomear  = document.getElementById('formRenomear');
+    const inputRenomear = document.getElementById('inputRenomear');
 
     btnRenomear?.addEventListener('click', () => {
         formRenomear.classList.toggle('hidden');
