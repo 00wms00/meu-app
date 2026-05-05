@@ -17,16 +17,16 @@
             <div class="card-body">
                 <form action="{{ route('import.parse') }}" method="POST" enctype="multipart/form-data">
                     @csrf
-                    
+
                     <div class="mb-4">
                         <label for="html" class="block text-sm font-medium text-gray-700 mb-2">
                             Cole o HTML da consulta
                         </label>
-                        <textarea 
-                            name="html" 
-                            id="html" 
-                            rows="12" 
-                            class="form-control @error('html') border-red-500 @enderror" 
+                        <textarea
+                            name="html"
+                            id="html"
+                            rows="12"
+                            class="form-control @error('html') border-red-500 @enderror"
                             placeholder="Cole aqui o HTML salvo do site da SEFAZ-MS..."
                         >{{ old('html') }}</textarea>
                         @error('html')
@@ -38,16 +38,17 @@
                         <label for="arquivo" class="block text-sm font-medium text-gray-700 mb-2">
                             Ou faça upload do arquivo HTML
                         </label>
-                        <input 
-                            type="file" 
-                            name="arquivo" 
-                            id="arquivo" 
-                            class="form-control" 
+                        <input
+                            type="file"
+                            name="arquivo"
+                            id="arquivo"
+                            class="form-control"
                             accept=".html,.htm"
                         >
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+                    {{-- btn-primary já inclui o estilo base via @apply; sem prefixo 'btn' redundante --}}
+                    <button type="submit" class="btn-primary">
                         🔍 Processar Nota Fiscal
                     </button>
                 </form>

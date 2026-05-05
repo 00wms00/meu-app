@@ -24,7 +24,8 @@
             <input type="text" name="estabelecimento" value="{{ request('estabelecimento') }}" placeholder="Buscar..." class="form-control">
         </div>
         <div class="flex items-end">
-            <button type="submit" class="btn btn-primary w-full">
+            {{-- btn-primary já inclui estilo base; class 'btn btn-primary' era redundante --}}
+            <button type="submit" class="btn-primary w-full">
                 🔍 Filtrar
             </button>
         </div>
@@ -80,7 +81,7 @@
                         </span>
                     </td>
                     <td class="py-4 px-6 text-center">
-                        <a href="{{ route('invoices.show', $invoice) }}" 
+                        <a href="{{ route('invoices.show', $invoice) }}"
                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                             📋 Detalhes
                         </a>
@@ -97,9 +98,9 @@
     </div>
     @else
     <div class="text-center py-12">
-        <span class="text-6xl">📄</span>
+        <span class="text-6xl" aria-hidden="true">📄</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma nota fiscal encontrada.</p>
-        <a href="{{ route('import.create') }}" class="btn btn-primary mt-4 inline-block">
+        <a href="{{ route('import.create') }}" class="btn-primary mt-4 inline-block">
             📥 Importar NFC-e
         </a>
     </div>

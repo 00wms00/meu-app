@@ -131,11 +131,13 @@
             <form action="{{ route('import.store') }}" method="POST">
                 @csrf
                 <div class="space-y-3">
-                    <button type="submit" class="btn btn-success w-full text-lg py-3">
-                        ✅ Confirmar e Salvar
+                    {{-- btn-success já inclui estilo base; sem prefixo 'btn' redundante --}}
+                    <button type="submit" class="btn-success w-full text-lg py-3">
+                        ✅ Confirmar e Salvar Nota
                     </button>
-                    <a href="{{ route('import.create') }}" class="btn btn-outline-secondary w-full text-center block">
-                        ❌ Cancelar
+                    {{-- btn-outline-secondary já inclui estilo base --}}
+                    <a href="{{ route('import.create') }}" class="btn-outline-secondary w-full text-center block">
+                        ← Voltar e Corrigir
                     </a>
                 </div>
             </form>

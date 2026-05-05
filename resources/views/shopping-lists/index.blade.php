@@ -9,7 +9,8 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🛒 Listas de Compras</h1>
             <p class="mt-1 text-gray-600">Crie e gerencie suas listas</p>
         </div>
-        <button id="btnNovaLista" class="btn-primary">➕ Nova Lista</button>
+        {{-- type="button" evita submit acidental caso o botão esteja dentro de um form pai --}}
+        <button type="button" id="btnNovaLista" class="btn-primary">➕ Nova Lista</button>
     </div>
 </div>
 
@@ -17,17 +18,11 @@
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4" role="status">✅ {{ session('success') }}</div>
 @endif
 
-{{--
-    ATENÇÃO N+1: passe $listasAtivas e $listasConcluidas já separadas do controller
-    usando ->where('ativa', true/false) na query, em vez de filtrar na collection aqui.
-    Ex.: $listasAtivas = ShoppingList::where('ativa', true)->withCount([...])->get();
---}}
 @php
     $listasAtivas     = $listas->where('ativa', true);
     $listasConcluidas = $listas->where('ativa', false);
 @endphp
 
-{{-- Listas Ativas --}}
 @if($listasAtivas->isNotEmpty())
     <h2 class="text-lg font-semibold text-gray-800 mb-3">📝 Listas Ativas</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -56,7 +51,6 @@
     </div>
 @endif
 
-{{-- Listas Concluídas --}}
 @if($listasConcluidas->isNotEmpty())
     <h2 class="text-lg font-semibold text-gray-800 mb-3">✅ Listas Concluídas</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -85,7 +79,7 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <span class="text-6xl" aria-hidden="true">🛒</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma lista de compras ainda.</p>
-        <button id="btnNovaListaEmpty" class="btn-primary mt-3">➕ Criar Primeira Lista</button>
+        <button type="button" id="btnNovaListaEmpty" class="btn-primary mt-3">➕ Criar Primeira Lista</button>
     </div>
 @endif
 
@@ -104,41 +98,34 @@
                    class="form-control mb-4" placeholder="Ex: Compras da semana" required>
             <div class="flex gap-3 justify-end">
                 <button type="button" id="btnFecharNovaLista" class="btn-outline-secondary text-sm">Cancelar</button>
-                <button type="submit" class="btn-primary text-sm">Criar Lista</button>
+                <button type="submit" class="btn-primary text-sm">✅ Criar Lista</button>
             </div>
         </form>
     </div>
 </div>
-@endsection
 
-@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const modal      = document.getElementById('modalNovaLista');
-    const btnAbrir   = document.getElementById('btnNovaLista');
-    const btnAbrirE  = document.getElementById('btnNovaListaEmpty');
-    const btnFechar  = document.getElementById('btnFecharNovaLista');
-    const inputNome  = document.getElementById('inputNomeLista');
-    let ultimoFoco   = null;
+    const btnNovaLista      = document.getElementById('btnNovaLista');
+    const btnNovaListaEmpty = document.getElementById('btnNovaListaEmpty');
+    const btnFechar         = document.getElementById('btnFecharNovaLista');
+    const modal             = document.getElementById('modalNovaLista');
+    const inputNome         = document.getElementById('inputNomeLista');
 
     function abrirModal() {
-        ultimoFoco = document.activeElement;
         modal.classList.remove('hidden');
-        setTimeout(function () { inputNome.focus(); }, 50);
+        inputNome.focus();
     }
 
-    function fecharModal() {
-        modal.classList.add('hidden');
-        if (ultimoFoco) ultimoFoco.focus();
-    }
+    btnNovaLista?.addEventListener('click', abrirModal);
+    btnNovaListaEmpty?.addEventListener('click', abrirModal);
+    btnFechar?.addEventListener('click', () => modal.classList.add('hidden'));
 
-    if (btnAbrir)  btnAbrir.addEventListener('click', abrirModal);
-    if (btnAbrirE) btnAbrirE.addEventListener('click', abrirModal);
-    btnFechar.addEventListener('click', fecharModal);
-    modal.addEventListener('click', function (e) { if (e.target === modal) fecharModal(); });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
+    modal.addEventListener('click', e => {
+        if (e.target === modal) modal.classList.add('hidden');
     });
-});
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') modal.classList.add('hidden');
+    });
 </script>
-@endpush
+@endsection
