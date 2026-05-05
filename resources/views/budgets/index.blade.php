@@ -10,12 +10,12 @@
             <p class="mt-1 text-gray-600">{{ $meses[$mes] }} de {{ $ano }}</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('budgets.index', ['mes' => $mes == 1 ? 12 : $mes - 1, 'ano' => $mes == 1 ? $ano - 1 : $ano]) }}" 
-               class="btn-outline-secondary text-sm">← Mês anterior</a>
-            <a href="{{ route('budgets.index', ['mes' => now()->month, 'ano' => now()->year]) }}" 
-               class="btn-outline-secondary text-sm">📅 Hoje</a>
-            <a href="{{ route('budgets.index', ['mes' => $mes == 12 ? 1 : $mes + 1, 'ano' => $mes == 12 ? $ano + 1 : $ano]) }}" 
-               class="btn-outline-secondary text-sm">Próximo mês →</a>
+            <a href="{{ route('budgets.index', ['mes' => $mes == 1 ? 12 : $mes - 1, 'ano' => $mes == 1 ? $ano - 1 : $ano]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Mês anterior</a>
+            <a href="{{ route('budgets.index', ['mes' => now()->month, 'ano' => now()->year]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">📅 Hoje</a>
+            <a href="{{ route('budgets.index', ['mes' => $mes == 12 ? 1 : $mes + 1, 'ano' => $mes == 12 ? $ano + 1 : $ano]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Próximo mês →</a>
         </div>
     </div>
 </div>
@@ -77,7 +77,7 @@
                 @endphp
                 <span class="text-xs text-gray-500">{{ $catsComGasto }} categorias com gastos</span>
             </div>
-            
+
             @if(count($dadosCategorias) > 0)
             <div class="divide-y divide-gray-200">
                 @foreach($dadosCategorias as $cat)
@@ -124,7 +124,7 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <!-- Barra de Progresso com estilo inline -->
                     <div style="width: 100%; background-color: #e5e7eb; border-radius: 9999px; height: 10px; overflow: hidden;">
                         <div style="width: {{ $barWidth }}%; background-color: {{ $barColor }}; height: 10px; border-radius: 9999px; transition: all 0.5s ease;"></div>
@@ -171,23 +171,24 @@
                     @csrf
                     <input type="hidden" name="ano" value="{{ $ano }}">
                     <input type="hidden" name="mes" value="{{ $mes }}">
-                    
+
                     <div class="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                         <p class="text-xs text-yellow-700">
                             💡 <strong>Dica:</strong> Defina limites por categoria para acompanhar seus gastos.
                         </p>
                     </div>
-                    
+
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Orçamento Total</label>
                         <div class="flex items-center">
                             <span class="text-gray-500 mr-1 text-lg">R$</span>
-                            <input type="text" name="valor_total" 
-                                   value="{{ $budget->valor_total > 0 ? number_format($budget->valor_total, 2, ',', '.') : '' }}" 
-                                   class="form-control text-lg font-bold" placeholder="0,00">
+                            <input type="text" name="valor_total"
+                                   value="{{ $budget->valor_total > 0 ? number_format($budget->valor_total, 2, ',', '.') : '' }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-lg font-bold"
+                                   placeholder="0,00">
                         </div>
                     </div>
-                    
+
                     <div class="border-t pt-4">
                         <label class="block text-sm font-medium text-gray-700 mb-3">Limites por Categoria</label>
                         <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -201,17 +202,19 @@
                                 <span class="text-xs text-gray-600 w-24 truncate">{{ $cat->nome }}</span>
                                 <div class="flex items-center flex-1">
                                     <span class="text-gray-400 text-xs mr-1">R$</span>
-                                    <input type="text" name="categorias[{{ $cat->id }}][valor_limite]" 
+                                    <input type="text" name="categorias[{{ $cat->id }}][valor_limite]"
                                            value="{{ $valorAtual > 0 ? number_format($valorAtual, 2, ',', '.') : '' }}"
-                                           class="form-control text-xs py-1.5 w-full" placeholder="0,00">
+                                           class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs py-1.5"
+                                           placeholder="0,00">
                                     <input type="hidden" name="categorias[{{ $cat->id }}][category_id]" value="{{ $cat->id }}">
                                 </div>
                             </div>
                             @endforeach
                         </div>
                     </div>
-                    
-                    <button type="submit" class="btn-primary w-full mt-4 text-lg py-3">
+
+                    <button type="submit"
+                            class="w-full mt-4 inline-flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-md transition">
                         💾 Salvar Orçamento
                     </button>
                 </form>
