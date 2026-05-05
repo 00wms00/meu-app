@@ -9,7 +9,8 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🔔 Alertas de Preço</h1>
             <p class="mt-1 text-gray-600">Seja notificado quando produtos aumentarem de preço</p>
         </div>
-        <a href="{{ route('products.index') }}" class="btn-back">← Produtos</a>
+        <a href="{{ route('products.index') }}"
+           class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Produtos</a>
     </div>
 </div>
 

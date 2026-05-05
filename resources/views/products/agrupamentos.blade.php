@@ -12,10 +12,13 @@
         <div class="flex flex-wrap gap-2">
             <form action="{{ route('products.agrupar-automatico') }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="btn-primary text-sm">🤖 Agrupar Automático</button>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
+                    🤖 Agrupar Automático
+                </button>
             </form>
-            {{-- btn-outline-secondary sem prefixo 'btn' redundante --}}
-            <a href="{{ route('products.index') }}" class="btn-outline-secondary">← Voltar</a>
+            <a href="{{ route('products.index') }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar</a>
         </div>
     </div>
 </div>
@@ -24,10 +27,14 @@
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
     <form method="GET" class="flex gap-4">
         <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Buscar produtos..."
-               class="form-control flex-1" aria-label="Buscar produtos">
-        <button type="submit" class="btn-primary" aria-label="Buscar">🔍</button>
+               class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm flex-1"
+               aria-label="Buscar produtos">
+        <button type="submit"
+                class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition"
+                aria-label="Buscar">🔍</button>
         @if($search)
-            <a href="{{ route('products.agrupamentos') }}" class="btn-outline-secondary">Limpar</a>
+            <a href="{{ route('products.agrupamentos') }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Limpar</a>
         @endif
     </form>
 </div>
@@ -83,19 +90,20 @@
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <a href="{{ route('products.show', $grupo) }}"
-                           class="btn-outline-primary btn-sm">
+                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold rounded-md transition">
                             📈 Histórico
                         </a>
                         <button type="button"
                                 onclick="mostrarAdicionar('{{ $grupo->id }}')"
-                                class="btn-outline-secondary btn-sm"
+                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition"
                                 aria-label="Adicionar produto ao grupo {{ $grupo->nome }}">
                             ➕ Adicionar
                         </button>
                         <form action="{{ route('products.desfazer-grupo', $grupo) }}" method="POST" class="inline"
                               data-confirm="Desfazer o grupo '{{ $grupo->nome }}'? Todos os produtos ficarão soltos.">
                             @csrf
-                            <button type="submit" class="btn-outline-secondary btn-sm text-orange-600 border-orange-300 hover:bg-orange-50">
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-1.5 border border-orange-300 text-orange-600 hover:bg-orange-50 text-xs font-semibold rounded-md transition">
                                 🔓 Desfazer
                             </button>
                         </form>
@@ -114,7 +122,8 @@
                             <form action="{{ route('products.tornar-canonico', $agrupado) }}" method="POST" class="inline"
                                   data-confirm="Tornar '{{ $agrupado->nome }}' como produto PRINCIPAL do grupo?">
                                 @csrf
-                                <button type="submit" class="btn-outline-secondary btn-sm text-green-600 border-green-300 hover:bg-green-50">
+                                <button type="submit"
+                                        class="inline-flex items-center px-3 py-1.5 border border-green-300 text-green-600 hover:bg-green-50 text-xs font-semibold rounded-md transition">
                                     📌 Principal
                                 </button>
                             </form>
@@ -142,10 +151,11 @@
                             @endforeach
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="btn-primary btn-sm">Adicionar</button>
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition">Adicionar</button>
                             <button type="button"
                                     onclick="document.getElementById('adicionar-{{ $grupo->id }}').classList.add('hidden')"
-                                    class="btn-outline-secondary btn-sm">Cancelar</button>
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">Cancelar</button>
                         </div>
                     </form>
                 </div>
@@ -173,11 +183,14 @@
                 @csrf
                 <div class="px-6 py-3 bg-gray-50 border-b flex flex-wrap gap-3 items-center">
                     <input type="text" name="nome_grupo" placeholder="Nome do grupo (opcional)"
-                           class="form-control text-sm flex-1 min-w-40">
-                    <button type="submit" class="btn-primary text-sm whitespace-nowrap" id="btnCriarGrupo" disabled>
+                           class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm flex-1 min-w-40">
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition whitespace-nowrap opacity-50"
+                            id="btnCriarGrupo" disabled>
                         📁 Criar Grupo
                     </button>
-                    <a href="{{ route('products.ml-interativo') }}" class="btn-primary text-sm flex items-center gap-1">
+                    <a href="{{ route('products.ml-interativo') }}"
+                       class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
                         🧠 ML Interativo
                     </a>
                 </div>
@@ -194,7 +207,8 @@
                             <form action="{{ route('products.tornar-canonico', $prod) }}" method="POST" class="inline"
                                   data-confirm="Tornar '{{ $prod->nome }}' como produto principal (canônico)?">
                                 @csrf
-                                <button type="submit" class="btn-outline-secondary btn-sm">
+                                <button type="submit"
+                                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">
                                     📌 Tornar Principal
                                 </button>
                             </form>
@@ -222,10 +236,13 @@
             @method('PATCH')
             <label for="inputNomeGrupo" class="sr-only">Novo nome do grupo</label>
             <input type="text" name="nome" id="inputNomeGrupo"
-                   class="form-control mb-4" placeholder="Novo nome..." required>
+                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mb-4"
+                   placeholder="Novo nome..." required>
             <div class="flex gap-3 justify-end">
-                <button type="button" id="btnFecharRenomear" class="btn-outline-secondary text-sm">Cancelar</button>
-                <button type="submit" class="btn-primary text-sm">Salvar</button>
+                <button type="button" id="btnFecharRenomear"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Cancelar</button>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">Salvar</button>
             </div>
         </form>
     </div>
@@ -236,13 +253,15 @@
      class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-gray-300 shadow-lg rounded-lg px-6 py-4 flex items-center gap-4 z-50"
      role="alertdialog" aria-labelledby="bannerConfirmMsg" aria-live="assertive">
     <span id="bannerConfirmMsg" class="text-sm text-gray-700 flex-1"></span>
-    <button type="button" id="bannerConfirmCancel" class="btn-outline-secondary text-xs">Cancelar</button>
-    <button type="button" id="bannerConfirmOk" class="btn-delete text-xs">Confirmar</button>
+    <button type="button" id="bannerConfirmCancel"
+            class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">Cancelar</button>
+    <button type="button" id="bannerConfirmOk"
+            class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-md transition">Confirmar</button>
 </div>
 
 @push('scripts')
 <script>
-    // ── Abas ────────────────────────────────────────────────────────────
+    // ── Abas ───────────────────────────────────────────────────────────────────
     function mostrarAba(aba) {
         ['grupos','soltos'].forEach(id => {
             document.getElementById('aba-' + id).classList.toggle('hidden', id !== aba);
@@ -254,7 +273,7 @@
         });
     }
 
-    // ── Modal Renomear Grupo ─────────────────────────────────────────────
+    // ── Modal Renomear Grupo ─────────────────────────────────────────────────────
     function editarNomeGrupo(id, nome) {
         const form  = document.getElementById('formRenomear');
         const input = document.getElementById('inputNomeGrupo');
@@ -273,12 +292,12 @@
 
     function fecharRenomear() { modalRen.classList.add('hidden'); }
 
-    // ── Mostrar painel Adicionar ─────────────────────────────────────────
+    // ── Mostrar painel Adicionar ───────────────────────────────────────────────────
     function mostrarAdicionar(grupoId) {
         document.getElementById('adicionar-' + grupoId).classList.remove('hidden');
     }
 
-    // ── Habilitar botão Criar Grupo ao selecionar checkboxes ─────────────
+    // ── Habilitar botão Criar Grupo ao selecionar checkboxes ─────────────────────────
     document.addEventListener('change', function (e) {
         if (!e.target.classList.contains('produtoCheck')) return;
         const count = document.querySelectorAll('.produtoCheck:checked').length;
@@ -290,7 +309,7 @@
         }
     });
 
-    // ── Banner de Confirmação Inline ────────────────────────────────────
+    // ── Banner de Confirmação Inline ───────────────────────────────────────────────
     (function () {
         const banner   = document.getElementById('bannerConfirm');
         const msg      = document.getElementById('bannerConfirmMsg');

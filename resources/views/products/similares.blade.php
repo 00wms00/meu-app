@@ -25,7 +25,8 @@
         @php
             $voltarId = $product->canonical_product_id ?? $product->id;
         @endphp
-        <a href="{{ route('products.show', $voltarId) }}" class="btn-back">← Voltar</a>
+        <a href="{{ route('products.show', $voltarId) }}"
+           class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar</a>
     </div>
 </div>
 
@@ -86,7 +87,8 @@
     <span class="text-6xl" aria-hidden="true">🧠</span>
     <p class="text-gray-500 mt-4 text-lg">Nenhum produto similar encontrado.</p>
     <p class="text-sm text-gray-400 mt-1">O algoritmo não encontrou correspondências significativas.</p>
-    <a href="{{ route('products.show', $voltarId) }}" class="btn-back mt-4 inline-block">← Voltar ao produto</a>
+    <a href="{{ route('products.show', $voltarId) }}"
+       class="mt-4 inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar ao produto</a>
 </div>
 @endif
 @endsection

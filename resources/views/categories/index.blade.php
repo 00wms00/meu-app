@@ -10,7 +10,8 @@
             <p class="mt-1 text-gray-600">Gerencie suas categorias personalizadas</p>
         </div>
         {{-- type="button": abre modal, não submete form --}}
-        <button type="button" id="btnNovaCat" class="btn-primary">➕ Nova Categoria</button>
+        <button type="button" id="btnNovaCat"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">➕ Nova Categoria</button>
     </div>
 </div>
 
@@ -71,7 +72,8 @@
         <div class="col-span-full bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <span class="text-4xl" aria-hidden="true">🏷️</span>
             <p class="text-gray-500 mt-2">Nenhuma categoria criada ainda.</p>
-            <button type="button" id="btnNovaCatEmpty" class="btn-primary mt-3">➕ Criar Primeira Categoria</button>
+            <button type="button" id="btnNovaCatEmpty"
+                    class="mt-3 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">➕ Criar Primeira Categoria</button>
         </div>
     @endforelse
 </div>
@@ -97,7 +99,9 @@
                 <div class="space-y-4">
                     <div>
                         <label for="inputNome" class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                        <input type="text" name="nome" id="inputNome" class="form-control" required placeholder="Ex: Hortifruti">
+                        <input type="text" name="nome" id="inputNome"
+                               class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                               required placeholder="Ex: Hortifruti">
                     </div>
 
                     <div>
@@ -110,7 +114,8 @@
                                  aria-label="Escolher emoji"
                                  onclick="toggleEmojiPicker()"
                                  onkeydown="if(event.key==='Enter'||event.key===' ')toggleEmojiPicker()">📁</div>
-                            <input type="text" name="emoji" id="inputEmoji" class="form-control text-sm flex-1"
+                            <input type="text" name="emoji" id="inputEmoji"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm flex-1"
                                    placeholder="Ou digite o emoji" maxlength="10"
                                    oninput="document.getElementById('emojiPreview').textContent = this.value || '📁'">
                         </div>
@@ -126,7 +131,9 @@
                             <input type="color" name="cor" id="inputCor"
                                    class="w-10 h-10 rounded border cursor-pointer" value="#3b82f6"
                                    oninput="document.getElementById('inputCorTexto').value = this.value">
-                            <input type="text" id="inputCorTexto" class="form-control text-sm w-28" value="#3b82f6"
+                            <input type="text" id="inputCorTexto"
+                                   class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm w-28"
+                                   value="#3b82f6"
                                    oninput="document.getElementById('inputCor').value = this.value">
                             <div class="flex gap-1" aria-label="Cores rápidas">
                                 @foreach(['#ef4444'=>'Vermelho','#f59e0b'=>'Laranja','#22c55e'=>'Verde','#06b6d4'=>'Ciano','#3b82f6'=>'Azul','#8b5cf6'=>'Roxo','#ec4899'=>'Rosa'] as $hex => $label)
@@ -143,12 +150,16 @@
 
                     <div>
                         <label for="inputDescricao" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                        <textarea name="descricao" id="inputDescricao" rows="2" class="form-control" placeholder="Descrição opcional..."></textarea>
+                        <textarea name="descricao" id="inputDescricao" rows="2"
+                                  class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                                  placeholder="Descrição opcional..."></textarea>
                     </div>
 
                     <div>
                         <label for="inputOrdem" class="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
-                        <input type="number" name="ordem" id="inputOrdem" class="form-control w-24" value="0" min="0">
+                        <input type="number" name="ordem" id="inputOrdem"
+                               class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm w-24"
+                               value="0" min="0">
                     </div>
                 </div>
             </form>
@@ -156,9 +167,11 @@
 
         <div class="sticky bottom-0 bg-white rounded-b-lg px-6 py-4 border-t">
             <div class="flex gap-3 justify-end">
-                <button type="button" id="btnCancelarCat" class="btn-outline-secondary text-sm">Cancelar</button>
+                <button type="button" id="btnCancelarCat"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Cancelar</button>
                 {{-- type="button" explicitamente: chama submit via JS para validar o form antes --}}
-                <button type="button" onclick="document.getElementById('formCategoria').submit()" class="btn-primary text-sm">💾 Salvar</button>
+                <button type="button" onclick="document.getElementById('formCategoria').submit()"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">💾 Salvar</button>
             </div>
         </div>
     </div>
@@ -174,8 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
         '🍎','🍌','🍇','🥕','🥦','🌽','🍅','🥑','🍊',
         '🐄','🐔','🐟','🍗','🥓','🍖','🦐','🐑','🦃',
         '🥛','🍦','🍰','🥃','🍺','🍷','☕','🍵',
-        '🍩','🍪','🎂','🍫','🍬','🍯','🧂','🎵','🍕',
-        '🥜','🥖','🧅','🧄','🫙','🥫','🧻','��','🧼',
+        '🍩','🍪','🎂','🍫','🍬','🍯','🧂','🎥','🍕',
+        '🥜','🥖','🧅','🧄','🪼','🥫','🧻','🧧','🧼',
         '🛋️','📄','🛒','💰','⭐','🔥','💧','🎯','🏠',
     ];
 
@@ -203,13 +216,13 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('inputCorTexto').value = hex;
     };
 
-    const modal        = document.getElementById('modalCategoria');
-    const titulo       = document.getElementById('modalCategoriaTitulo');
-    const form         = document.getElementById('formCategoria');
-    const inputMethod  = document.getElementById('formMethod');
-    const btnNovaCat   = document.getElementById('btnNovaCat');
+    const modal           = document.getElementById('modalCategoria');
+    const titulo          = document.getElementById('modalCategoriaTitulo');
+    const form            = document.getElementById('formCategoria');
+    const inputMethod     = document.getElementById('formMethod');
+    const btnNovaCat      = document.getElementById('btnNovaCat');
     const btnNovaCatEmpty = document.getElementById('btnNovaCatEmpty');
-    const btnCancelar  = document.getElementById('btnCancelarCat');
+    const btnCancelar     = document.getElementById('btnCancelarCat');
 
     function abrirModal() {
         modal.classList.remove('hidden');
@@ -236,7 +249,52 @@ document.addEventListener('DOMContentLoaded', function () {
         inputMethod.value = 'PUT';
         titulo.textContent = '✏️ Editar Categoria';
 
-        document.getElementById('inputNome').value     = nome;
-        document.getElementById('inputEmoji').value    = emoji ?? '';
-        document.getElementById('inputCor').value      = cor ?? '#3b82f6';
-        document.getElementById('inputCorTexto
+        document.getElementById('inputNome').value      = nome;
+        document.getElementById('inputEmoji').value     = emoji ?? '';
+        document.getElementById('inputCor').value       = cor ?? '#3b82f6';
+        document.getElementById('inputCorTexto').value  = cor ?? '#3b82f6';
+        document.getElementById('inputDescricao').value = descricao ?? '';
+        document.getElementById('inputOrdem').value     = ordem ?? 0;
+        document.getElementById('emojiPreview').textContent = emoji || '📁';
+
+        abrirModal();
+    };
+
+    // ── Banner de Confirmação Inline ───────────────────────────────────────────────
+    (function () {
+        const banner   = document.getElementById('bannerConfirm');
+        const msg      = document.getElementById('bannerConfirmMsg');
+        const btnOk    = document.getElementById('bannerConfirmOk');
+        const btnCanel = document.getElementById('bannerConfirmCancel');
+        let pendingForm = null;
+
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form.dataset.confirm) return;
+            e.preventDefault();
+            pendingForm = form;
+            msg.textContent = form.dataset.confirm;
+            banner.classList.remove('hidden');
+            btnOk.focus();
+        });
+
+        btnOk.addEventListener('click', () => {
+            if (pendingForm) { pendingForm.submit(); pendingForm = null; }
+            banner.classList.add('hidden');
+        });
+
+        btnCanel.addEventListener('click', () => {
+            pendingForm = null;
+            banner.classList.add('hidden');
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && !banner.classList.contains('hidden')) {
+                pendingForm = null;
+                banner.classList.add('hidden');
+            }
+        });
+    })();
+});
+</script>
+@endpush

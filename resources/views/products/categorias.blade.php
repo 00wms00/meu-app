@@ -10,10 +10,12 @@
             <p class="mt-1 text-gray-600">Organize seus produtos por categoria</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('categories.index') }}" class="btn-outline-secondary text-sm">
+            <a href="{{ route('categories.index') }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
                 ⚙️ Gerenciar Categorias
             </a>
-            <a href="{{ route('products.index') }}" class="btn-back">← Voltar</a>
+            <a href="{{ route('products.index') }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar</a>
         </div>
     </div>
 </div>
@@ -50,24 +52,29 @@
         <!-- Busca e Ações em Lote -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
             <form method="GET" class="flex gap-2 mb-3">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Buscar produto..." class="form-control text-sm flex-1">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Buscar produto..."
+                       class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm flex-1">
                 @if($cf)
                 <input type="hidden" name="categoria" value="{{ $cf }}">
                 @endif
-                <button type="submit" class="btn-primary text-sm">🔍</button>
+                <button type="submit"
+                        class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">🔍</button>
             </form>
             
             <!-- Ações em lote -->
             <form action="{{ route('products.categorizar-lote') }}" method="POST" id="formCategorizarLote" class="flex gap-2 items-center">
                 @csrf
-                <select name="categoria" class="form-control text-sm w-56">
+                <select name="categoria"
+                        class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm w-56">
                     <option value="">Selecionar categoria...</option>
                     @foreach($categorias as $cat)
                     <option value="{{ $cat->id }}">{{ $cat->emoji }} {{ $cat->nome }}</option>
                     @endforeach
                     <option value="">📦 Sem categoria</option>
                 </select>
-                <button type="submit" class="btn-primary text-sm" id="btnCategorizarLote" disabled>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition opacity-50"
+                        id="btnCategorizarLote" disabled>
                     📁 Categorizar (0)
                 </button>
             </form>
