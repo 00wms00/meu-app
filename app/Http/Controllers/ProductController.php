@@ -33,7 +33,8 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        if ($product->user_id !== Auth::id()) abort(403);
+        $this->authorize('view', $product);
+
         $produtoExibicao = $product;
         if ($product->canonical_product_id && !$product->is_canonical) $produtoExibicao = Product::find($product->canonical_product_id);
         $produtoIds = Product::where(fn($q) => $q->where('id', $produtoExibicao->id)->orWhere('canonical_product_id', $produtoExibicao->id))->pluck('id');
@@ -46,10 +47,18 @@ class ProductController extends Controller
     }
 
     public function edit(Product $product)
-    { if ($product->user_id !== Auth::id()) abort(403); return view('products.edit', compact('product')); }
+    {
+              $this->authorize('update', $product);
+
+    
+    return view('products.edit', compact('product')); }
 
     public function update(Request $request, Product $product)
-    { if ($product->user_id !== Auth::id()) abort(403); $product->update($request->validate(['nome'=>'required|string|max:255','unidade_padrao'=>'nullable'])); return redirect()->route('products.show',$product)->with('success','Atualizado!'); }
+    { 
+        $this->authorize('update', $product);
+
+    
+    $product->update($request->validate(['nome'=>'required|string|max:255','unidade_padrao'=>'nullable'])); return redirect()->route('products.show',$product)->with('success','Atualizado!'); }
 
     // ==================== FOTO ====================
     public function uploadFoto(Request $request, Product $product)
