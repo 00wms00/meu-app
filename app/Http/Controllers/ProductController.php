@@ -10,7 +10,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -135,8 +134,8 @@ class ProductController extends Controller
             ->where('user_id', Auth::id())
             ->update(['category_id' => $request->categoria ?: null]);
 
-        // Invalida o cache imediatamente após alterar categorias em lote.
-        Cache::forget('contagem-categorias-' . Auth::id());
+        // Cache::forget removido — o ProductObserver já invalida
+        // automaticamente em todo updated() com category_id alterado.
 
         return back()->with('success', count($ids) . ' produto(s) categorizado(s)!');
     }
@@ -147,8 +146,7 @@ class ProductController extends Controller
 
         $product->update(['category_id' => $request->categoria ?: null]);
 
-        // Invalida o cache após alterar a categoria de um produto individual.
-        Cache::forget('contagem-categorias-' . Auth::id());
+        // Cache::forget removido — coberto pelo ProductObserver.
 
         return back()->with('success', 'Categoria atualizada!');
     }
@@ -157,32 +155,39 @@ class ProductController extends Controller
 
     private function contagemPorCategoria(int $userId): array
     {
-        /*
-         * ANTES: duas queries brutas (GROUP BY + COUNT sem categoria) a cada
-         * request da view de categorias.
-         *
-         * AGORA: Cache::remember() com TTL de 5 minutos (300s).
-         * - Chave inclui user_id: usuários nunca compartilham cache.
-         * - Cache é invalidado explicitamente em categorizarLote() e
-         *   atualizarCategoria() para refletir escritas imediatamente,
-         *   sem esperar o TTL expirar.
-         */
         return Cache::remember(
             'contagem-categorias-' . $userId,
             300,
             function () use ($userId): array {
-                $porCategoria = Product::where('user_id', $userId)
-                    ->whereNotNull('category_id')
-                    ->selectRaw('category_id, count(*) as total')
-                    ->groupBy('category_id')
-                    ->pluck('total', 'category_id')
+                /*
+                 * ANTES: duas queries separadas — um GROUP BY para produtos
+                 * com categoria e um COUNT() para produtos sem categoria.
+                 *
+                 * AGORA: query única com CASE WHEN que agrupa tudo de uma vez,
+                 * eliminando um roundtrip ao banco a cada miss de cache.
+                 *
+                 * A chave 'sem' é preservada para compatibilidade com a view.
+                 */
+                $rows = Product::where('user_id', $userId)
+                    ->selectRaw("
+                        CASE
+                            WHEN category_id IS NULL THEN 'sem'
+                            ELSE category_id::text
+                        END AS chave,
+                        COUNT(*) AS total
+                    ")
+                    ->groupByRaw("
+                        CASE
+                            WHEN category_id IS NULL THEN 'sem'
+                            ELSE category_id::text
+                        END
+                    ")
+                    ->pluck('total', 'chave')
                     ->toArray();
 
-                $porCategoria['sem'] = Product::where('user_id', $userId)
-                    ->whereNull('category_id')
-                    ->count();
-
-                return $porCategoria;
+                // Garante que 'sem' sempre existe, mesmo que todos
+                // os produtos tenham categoria.
+                return array_merge(['sem' => 0], $rows);
             }
         );
     }

@@ -8,18 +8,24 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Rotas registradas aqui recebem automaticamente o middleware 'api'
-| (throttle:api + bindings) e o prefixo /api via RouteServiceProvider.
+| Prefixo /api já aplicado pelo RouteServiceProvider.
+| Versionamento explícito via prefix('v1'): adicionar v2 no futuro
+| é só criar um novo grupo sem quebrar consumidores de v1.
 |
-| Autenticação: middleware 'auth:sanctum' para endpoints que exigem
-| sessão autenticada.
+| URLs: /api/v1/categories
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::prefix('v1')->group(function () {
 
-    // Retorna lista de categorias do usuário autenticado em JSON.
-    // Consumido via fetch() nos selects das views de produto/import.
-    Route::get('/categories', [CategoryController::class, 'apiIndex'])
-        ->name('categories.api');
+    Route::middleware('auth:sanctum')->group(function () {
+
+        // Retorna lista de categorias do usuário autenticado em JSON.
+        // Consumido via fetch() nos selects das views de produto/import.
+        // Atualizar chamadas JS de /api/categories para /api/v1/categories.
+        Route::get('/categories', [CategoryController::class, 'apiIndex'])
+            ->name('categories.api');
+
+    });
+
 });
