@@ -34,17 +34,19 @@ class ShoppingListController extends Controller
         return view('shopping-lists.index', compact('listas'));
     }
 
-    public function show(ShoppingList $lista): View
+    public function show(ShoppingList $shoppingList): View
     {
-        $this->authorize('view', $lista);
+        $this->authorize('view', $shoppingList);
 
-        $lista->load('items.product');
+        $shoppingList->load('items.product');
 
         $produtosFrequentes = Product::where('user_id', Auth::id())
             ->withCount('invoiceItems')
             ->orderBy('invoice_items_count', 'desc')
             ->take(20)
             ->get();
+
+        $lista = $shoppingList;
 
         return view('shopping-lists.show', compact('lista', 'produtosFrequentes'));
     }
@@ -62,34 +64,34 @@ class ShoppingListController extends Controller
         return redirect()->route('shopping-lists.show', $lista)->with('success', 'Lista criada!');
     }
 
-    public function update(Request $request, ShoppingList $lista): RedirectResponse
+    public function update(Request $request, ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
         $request->validate(['nome' => 'required|string|max:255']);
 
-        $lista->update(['nome' => $request->nome]);
+        $shoppingList->update(['nome' => $request->nome]);
 
         return back()->with('success', 'Atualizada!');
     }
 
-    public function destroy(ShoppingList $lista): RedirectResponse
+    public function destroy(ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('delete', $lista);
+        $this->authorize('delete', $shoppingList);
 
-        $lista->delete();
+        $shoppingList->delete();
 
         return redirect()->route('shopping-lists.index')->with('success', 'Excluída!');
     }
 
     // ==================== ESTADO DA LISTA ====================
 
-    public function finalizar(ShoppingList $lista): RedirectResponse
+    public function finalizar(ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
 
-        $total = $lista->items()->where('comprado', true)->sum('preco_estimado');
+        $total = $shoppingList->items()->where('comprado', true)->sum('preco_estimado');
 
-        $lista->update([
+        $shoppingList->update([
             'ativa'       => false,
             'data_compra' => now(),
             'valor_total' => $total,
@@ -98,20 +100,20 @@ class ShoppingListController extends Controller
         return back()->with('success', 'Finalizada!');
     }
 
-    public function reabrir(ShoppingList $lista): RedirectResponse
+    public function reabrir(ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
 
-        $lista->update(['ativa' => true, 'data_compra' => null]);
+        $shoppingList->update(['ativa' => true, 'data_compra' => null]);
 
         return back()->with('success', 'Reaberta!');
     }
 
     // ==================== ITENS ====================
 
-    public function addItem(Request $request, ShoppingList $lista): RedirectResponse
+    public function addItem(Request $request, ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
         $request->validate([
             'nome'       => 'required|string|max:255',
             'quantidade' => 'nullable|numeric|min:0.01',
@@ -119,7 +121,7 @@ class ShoppingListController extends Controller
         ]);
 
         $this->itemService->criarItemManual(
-            $lista,
+            $shoppingList,
             $request->nome,
             $request->quantidade ?? 1,
             $request->unidade    ?? 'UN',
@@ -128,15 +130,15 @@ class ShoppingListController extends Controller
         return back()->with('success', 'Item adicionado!');
     }
 
-    public function addFrequentes(Request $request, ShoppingList $lista): RedirectResponse
+    public function addFrequentes(Request $request, ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
 
         $count = 0;
         foreach ($request->produtos ?? [] as $id) {
             $produto = Product::find($id);
             if ($produto) {
-                $this->itemService->criarItemDeProduto($lista, $produto);
+                $this->itemService->criarItemDeProduto($shoppingList, $produto);
                 $count++;
             }
         }
@@ -144,9 +146,9 @@ class ShoppingListController extends Controller
         return back()->with('success', "{$count} adicionado(s)!");
     }
 
-    public function sugerirItens(ShoppingList $lista): RedirectResponse
+    public function sugerirItens(ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
 
         $frequentes = Product::where('user_id', Auth::id())
             ->withCount('invoiceItems')
@@ -155,8 +157,8 @@ class ShoppingListController extends Controller
             ->get();
 
         foreach ($frequentes as $produto) {
-            if (! $lista->items()->where('product_id', $produto->id)->exists()) {
-                $this->itemService->criarItemDeProduto($lista, $produto);
+            if (! $shoppingList->items()->where('product_id', $produto->id)->exists()) {
+                $this->itemService->criarItemDeProduto($shoppingList, $produto);
             }
         }
 
@@ -195,11 +197,11 @@ class ShoppingListController extends Controller
         return back();
     }
 
-    public function limparComprados(ShoppingList $lista): RedirectResponse
+    public function limparComprados(ShoppingList $shoppingList): RedirectResponse
     {
-        $this->authorize('update', $lista);
+        $this->authorize('update', $shoppingList);
 
-        $lista->items()->where('comprado', true)->delete();
+        $shoppingList->items()->where('comprado', true)->delete();
 
         return back();
     }
