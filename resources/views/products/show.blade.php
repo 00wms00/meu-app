@@ -10,6 +10,7 @@
     </div>
     <div class="flex flex-wrap gap-2">
         <button
+            id="btnAbrirAlerta"
             onclick="mostrarModalAlerta(@json($produtoExibicao->id), @json($produtoExibicao->nome))"
             class="btn-outline-secondary text-sm flex items-center gap-1">
             🔔 Alerta de Preço
@@ -36,44 +37,61 @@
         @if($produtoExibicao->foto)
             <div class="relative group">
                 <img src="{{ asset('storage/' . $produtoExibicao->foto) }}"
-                     alt="{{ $produtoExibicao->nome }}"
+                     alt="Foto de {{ $produtoExibicao->nome }}"
                      class="w-20 h-20 object-cover rounded"
-                     loading="lazy">
+                     loading="lazy"
+                     width="80" height="80">
+                {{--
+                    ANTES: onclick="return confirm('Remover foto?')" — substituído
+                    por data-confirm para usar o banner global do layout.
+                --}}
                 <form action="{{ route('products.foto.remover', $produtoExibicao) }}" method="POST"
-                      class="absolute -top-1 -right-1 hidden group-hover:block">
-                    @csrf @method('DELETE')
+                      class="absolute -top-1 -right-1 hidden group-hover:block"
+                      data-confirm="Remover a foto de '{{ $produtoExibicao->nome }}'?">
+                    @csrf
+                    @method('DELETE')
                     <button type="submit"
                             class="w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none"
-                            onclick="return confirm('Remover foto?')"
-                            title="Remover foto">
+                            title="Remover foto"
+                            aria-label="Remover foto de {{ $produtoExibicao->nome }}">
                         ✕
                     </button>
                 </form>
             </div>
         @else
-            <div class="w-20 h-20 bg-gray-100 rounded border-2 border-dashed border-gray-300 flex flex-col items-center justify-center">
-                <span class="text-2xl text-gray-400">📷</span>
+            <div class="w-20 h-20 bg-gray-100 rounded border-2 border-dashed border-gray-300 flex flex-col items-center justify-center"
+                 aria-label="Sem foto cadastrada">
+                <span class="text-2xl text-gray-400" aria-hidden="true">📷</span>
             </div>
         @endif
 
-        <form action="{{ route('products.foto', $produtoExibicao) }}" method="POST" enctype="multipart/form-data" class="mt-1">
+        <form action="{{ route('products.foto', $produtoExibicao) }}" method="POST"
+              enctype="multipart/form-data" class="mt-1">
             @csrf
-            <label class="cursor-pointer">
+            {{-- label associado ao input via for/id --}}
+            <label for="inputFotoProduto" class="cursor-pointer">
                 <span class="text-xs text-blue-600">{{ $produtoExibicao->foto ? 'Trocar' : 'Add' }}</span>
-                <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="this.form.submit()">
+                <input type="file" name="foto" id="inputFotoProduto"
+                       accept="image/jpeg,image/png,image/webp"
+                       class="hidden"
+                       onchange="this.form.submit()">
             </label>
         </form>
         @error('foto')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+            <p class="text-xs text-red-500 mt-1" role="alert">{{ $message }}</p>
         @enderror
     </div>
 
     {{-- Variação --}}
     <div class="flex-1">
-        @if($serie->count() > 0 && ! is_null($variacao))
+        {{--
+            Null-safe: $serie->first() e $serie->last() só são seguros quando
+            $serie->isNotEmpty() — a condição já inclui isso.
+        --}}
+        @if($serie->isNotEmpty() && ! is_null($variacao))
             <div class="p-4 rounded-lg {{ $variacao > 0 ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700' }}">
                 <div class="flex items-center gap-3">
-                    <span class="text-2xl">{{ $variacao > 0 ? '📈' : '📉' }}</span>
+                    <span class="text-2xl" aria-hidden="true">{{ $variacao > 0 ? '📈' : '📉' }}</span>
                     <div>
                         <p class="font-semibold">
                             Variação: <strong>{{ number_format($variacao, 2, ',', '.') }}%</strong>
@@ -90,12 +108,12 @@
     </div>
 </div>
 
-@if($serie->count() > 0)
+@if($serie->isNotEmpty())
     {{-- Gráfico --}}
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">📈 Evolução do Preço Unitário</h2>
         <div class="relative h-72">
-            <canvas id="historicoChart"></canvas>
+            <canvas id="historicoChart" role="img" aria-label="Gráfico de evolução do preço unitário de {{ $produtoExibicao->nome }}"></canvas>
         </div>
     </div>
 
@@ -105,12 +123,12 @@
             <h2 class="text-lg font-semibold text-gray-800">📋 Todas as Compras</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full">
+            <table class="w-full" aria-label="Histórico de compras de {{ $produtoExibicao->nome }}">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="text-left py-3 px-6 text-sm font-semibold text-gray-700">Data</th>
-                        <th class="text-center py-3 px-6 text-sm font-semibold text-gray-700">Unidade</th>
-                        <th class="text-right py-3 px-6 text-sm font-semibold text-gray-700">Preço Unitário</th>
+                        <th scope="col" class="text-left py-3 px-6 text-sm font-semibold text-gray-700">Data</th>
+                        <th scope="col" class="text-center py-3 px-6 text-sm font-semibold text-gray-700">Unidade</th>
+                        <th scope="col" class="text-right py-3 px-6 text-sm font-semibold text-gray-700">Preço Unitário</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -118,7 +136,7 @@
                         <tr class="border-b hover:bg-gray-50">
                             <td class="py-3 px-6 text-sm">{{ $ponto['data'] }}</td>
                             <td class="py-3 px-6 text-sm text-center">{{ $ponto['unidade'] }}</td>
-                            <td class="py-3 px-6 text-sm text-right font-semibold">
+                            <td class="py-3 px-6 text-sm text-right font-semibold tabular-nums">
                                 R$ {{ number_format($ponto['valor_unitario'], 2, ',', '.') }}
                             </td>
                         </tr>
@@ -129,13 +147,13 @@
     </div>
 @else
     <div class="bg-white rounded-lg shadow-md p-12 text-center mb-6">
-        <span class="text-6xl">📦</span>
+        <span class="text-6xl" aria-hidden="true">📦</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma compra registrada ainda.</p>
     </div>
 @endif
 
 {{-- Produtos Agrupados --}}
-@if($agrupados->count() > 0)
+@if($agrupados->isNotEmpty())
     <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">🔗 Produtos Agrupados ({{ $agrupados->count() }})</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -145,9 +163,11 @@
                     @if($agrupado->foto)
                         <img src="{{ asset('storage/' . $agrupado->foto) }}"
                              class="w-8 h-8 object-cover rounded"
-                             alt="">
+                             alt="Foto de {{ $agrupado->nome }}"
+                             width="32" height="32"
+                             loading="lazy">
                     @else
-                        <span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-xs">📷</span>
+                        <span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-xs" aria-hidden="true">📷</span>
                     @endif
                     <span class="truncate">{{ $agrupado->nome }}</span>
                 </a>
@@ -156,7 +176,7 @@
     </div>
 @endif
 
-{{-- Modal de Alerta --}}
+{{-- Modal de Alerta de Preço --}}
 <div id="modalAlerta"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
      role="dialog"
@@ -167,7 +187,9 @@
         <p class="text-sm text-gray-600 mb-4" id="modalAlertaProduto"></p>
         <form id="formAlerta" method="POST">
             @csrf
-            <label class="block text-sm font-medium text-gray-700 mb-1">Alertar quando o preço aumentar</label>
+            <label for="inputLimiteAlerta" class="block text-sm font-medium text-gray-700 mb-1">
+                Alertar quando o preço aumentar
+            </label>
             <div class="flex items-center gap-2 mb-4">
                 <input type="number" name="limite_alerta" id="inputLimiteAlerta"
                        value="10" min="1" max="100"
@@ -187,7 +209,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    @if($serie->count() > 0)
+    @if($serie->isNotEmpty())
     const serie = @json($serie);
     const ctx = document.getElementById('historicoChart');
     if (ctx) {
@@ -219,29 +241,26 @@ document.addEventListener('DOMContentLoaded', function () {
     @endif
 
     // Modal de alerta
-    const modal          = document.getElementById('modalAlerta');
-    const btnFechar      = document.getElementById('btnFecharModal');
-    const inputLimite    = document.getElementById('inputLimiteAlerta');
+    const modal       = document.getElementById('modalAlerta');
+    const btnFechar   = document.getElementById('btnFecharModal');
+    const inputLimite = document.getElementById('inputLimiteAlerta');
+    let ultimoFoco    = null;
 
     window.mostrarModalAlerta = function (produtoId, nome) {
+        ultimoFoco = document.activeElement;
         document.getElementById('modalAlertaProduto').textContent = 'Produto: ' + nome;
         document.getElementById('formAlerta').action = '/products/' + produtoId + '/alerta';
         modal.classList.remove('hidden');
-        inputLimite.focus();
+        setTimeout(function () { inputLimite.focus(); }, 50);
     };
 
     function fecharModal() {
         modal.classList.add('hidden');
+        if (ultimoFoco) ultimoFoco.focus();
     }
 
     btnFechar.addEventListener('click', fecharModal);
-
-    // Fecha ao clicar no backdrop
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) fecharModal();
-    });
-
-    // Fecha com Escape
+    modal.addEventListener('click', function (e) { if (e.target === modal) fecharModal(); });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && !modal.classList.contains('hidden')) fecharModal();
     });
