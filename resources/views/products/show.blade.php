@@ -9,9 +9,20 @@
         <p class="mt-1 text-gray-600">Histórico de preços</p>
     </div>
     <div class="flex flex-wrap gap-2">
+        {{--
+            ANTES: onclick="mostrarModalAlerta(@json($produtoExibicao->id), ...)"
+            PROBLEMA: $produtoExibicao->id é o produto canônico (agrupado),
+            mas a rota usa route model binding em $product->id.
+            Ao estar agrupado, o ID diferente causava 404 ou 403 silencioso.
+
+            AGORA: a action correta é gerada pelo Blade via route() com $product
+            (o modelo original), e passada via data-action no botão.
+            O nome do produto exibido vem de data-nome (nome canônico).
+        --}}
         <button
             id="btnAbrirAlerta"
-            onclick="mostrarModalAlerta(@json($produtoExibicao->id), @json($produtoExibicao->nome))"
+            data-action="{{ route('alertas.criar', $product) }}"
+            data-nome="{{ $produtoExibicao->nome }}"
             class="btn-outline-secondary text-sm flex items-center gap-1">
             🔔 Alerta de Preço
         </button>
@@ -41,10 +52,6 @@
                      class="w-20 h-20 object-cover rounded"
                      loading="lazy"
                      width="80" height="80">
-                {{--
-                    ANTES: onclick="return confirm('Remover foto?')" — substituído
-                    por data-confirm para usar o banner global do layout.
-                --}}
                 <form action="{{ route('products.foto.remover', $produtoExibicao) }}" method="POST"
                       class="absolute -top-1 -right-1 hidden group-hover:block"
                       data-confirm="Remover a foto de '{{ $produtoExibicao->nome }}'?">
@@ -68,7 +75,6 @@
         <form action="{{ route('products.foto', $produtoExibicao) }}" method="POST"
               enctype="multipart/form-data" class="mt-1">
             @csrf
-            {{-- label associado ao input via for/id --}}
             <label for="inputFotoProduto" class="cursor-pointer">
                 <span class="text-xs text-blue-600">{{ $produtoExibicao->foto ? 'Trocar' : 'Add' }}</span>
                 <input type="file" name="foto" id="inputFotoProduto"
@@ -84,10 +90,6 @@
 
     {{-- Variação --}}
     <div class="flex-1">
-        {{--
-            Null-safe: $serie->first() e $serie->last() só são seguros quando
-            $serie->isNotEmpty() — a condição já inclui isso.
-        --}}
         @if($serie->isNotEmpty() && ! is_null($variacao))
             <div class="p-4 rounded-lg {{ $variacao > 0 ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700' }}">
                 <div class="flex items-center gap-3">
@@ -209,6 +211,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
     @if($serie->isNotEmpty())
     const serie = @json($serie);
     const ctx = document.getElementById('historicoChart');
@@ -240,25 +243,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     @endif
 
-    // Modal de alerta
+    /* ── Modal de Alerta ─────────────────────────────────────── */
     const modal       = document.getElementById('modalAlerta');
+    const formAlerta  = document.getElementById('formAlerta');
+    const btnAbrir    = document.getElementById('btnAbrirAlerta');
     const btnFechar   = document.getElementById('btnFecharModal');
     const inputLimite = document.getElementById('inputLimiteAlerta');
     let ultimoFoco    = null;
 
-    window.mostrarModalAlerta = function (produtoId, nome) {
+    function abrirModal() {
         ultimoFoco = document.activeElement;
-        document.getElementById('modalAlertaProduto').textContent = 'Produto: ' + nome;
-        document.getElementById('formAlerta').action = '/products/' + produtoId + '/alerta';
+        // action e nome vêm dos data-attributes gerados pelo Blade com route()
+        // Isso garante que o ID correto ($product, não $produtoExibicao) seja usado.
+        formAlerta.action = btnAbrir.dataset.action;
+        document.getElementById('modalAlertaProduto').textContent =
+            'Produto: ' + btnAbrir.dataset.nome;
         modal.classList.remove('hidden');
         setTimeout(function () { inputLimite.focus(); }, 50);
-    };
+    }
 
     function fecharModal() {
         modal.classList.add('hidden');
         if (ultimoFoco) ultimoFoco.focus();
     }
 
+    btnAbrir.addEventListener('click', abrirModal);
     btnFechar.addEventListener('click', fecharModal);
     modal.addEventListener('click', function (e) { if (e.target === modal) fecharModal(); });
     document.addEventListener('keydown', function (e) {
