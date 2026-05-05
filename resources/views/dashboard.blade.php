@@ -85,7 +85,7 @@
             @else
             <div class="p-8 text-center text-gray-500">
                 <p>Nenhuma nota fiscal importada ainda.</p>
-                <a href="{{ route('import.create') }}" class="btn-primary mt-3 inline-block">📥 Importar Primeira NFC-e</a>
+                <a href="{{ route('import.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition mt-3 inline-block">📥 Importar Primeira NFC-e</a>
             </div>
             @endif
         </div>
@@ -95,11 +95,11 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">⚡ Acesso Rápido</h3>
             <div class="space-y-2">
-                <a href="{{ route('import.create') }}" class="btn-outline-primary w-full block text-center">📥 Importar NFC-e</a>
-                <a href="{{ route('lancamento.create') }}" class="btn-outline-secondary w-full block text-center">✍️ Lançamento Manual</a>
-                <a href="{{ route('invoices.index') }}" class="btn-outline-secondary w-full block text-center">📋 Ver Notas</a>
-                <a href="{{ route('relatorio.mensal') }}" class="btn-outline-secondary w-full block text-center">📊 Relatório Mensal</a>
-                <a href="{{ route('relatorio.periodo') }}" class="btn-outline-secondary w-full block text-center">📅 Por Período</a>
+                <a href="{{ route('import.create') }}" class="w-full block text-center inline-flex items-center justify-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-semibold rounded-md transition">📥 Importar NFC-e</a>
+                <a href="{{ route('lancamento.create') }}" class="w-full block text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">✍️ Lançamento Manual</a>
+                <a href="{{ route('invoices.index') }}" class="w-full block text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">📋 Ver Notas</a>
+                <a href="{{ route('relatorio.mensal') }}" class="w-full block text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">📊 Relatório Mensal</a>
+                <a href="{{ route('relatorio.periodo') }}" class="w-full block text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">📅 Por Período</a>
             </div>
         </div>
     </div>
@@ -222,18 +222,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 10,
+                            maxRotation: 0,
+                        }
+                    },
                     y: {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return 'R$ ' + value.toFixed(2).replace('.', ',');
+                                return 'R$ ' + value.toFixed(0);
                             }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            maxTicksLimit: 10,
-                            maxRotation: 45,
                         }
                     }
                 }
