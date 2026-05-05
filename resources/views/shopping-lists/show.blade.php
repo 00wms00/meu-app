@@ -1,34 +1,27 @@
 @extends('layouts.app')
 
-@section('title', $shoppingList->nome)
+@section('title', $lista->nome)
 
 @section('content')
-{{--
-    ATENÇÃO N+1: o controller deve carregar com:
-    $shoppingList->load('items');
-    Sem isso, cada referência a $shoppingList->items dispara uma nova query.
---}}
 <div class="mb-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🛒 {{ $shoppingList->nome }}</h1>
-            <p class="mt-1 text-gray-600">
-                {{ $shoppingList->items->where('comprado', true)->count() }}/{{ $shoppingList->items->count() }} comprados
-            </p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🛒 {{ $lista->nome }}</h1>
+            <p class="mt-1 text-gray-600 text-sm">Criada em {{ $lista->created_at->format('d/m/Y') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if($shoppingList->ativa)
-                <form action="{{ route('shopping-lists.finalizar', $shoppingList) }}" method="POST" class="inline">
+            @if($lista->ativa)
+                <form action="{{ route('shopping-lists.finalizar', $lista) }}" method="POST">
                     @csrf
-                    <button type="submit" class="btn-success text-sm">✅ Finalizar Compra</button>
+                    <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition">✅ Finalizar Compra</button>
                 </form>
             @else
-                <form action="{{ route('shopping-lists.reabrir', $shoppingList) }}" method="POST" class="inline">
+                <form action="{{ route('shopping-lists.reabrir', $lista) }}" method="POST">
                     @csrf
-                    <button type="submit" class="btn-outline-secondary text-sm">🔓 Reabrir</button>
+                    <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">🔓 Reabrir</button>
                 </form>
             @endif
-            <a href="{{ route('shopping-lists.index') }}" class="btn-outline-secondary">← Voltar</a>
+            <a href="{{ route('shopping-lists.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Voltar</a>
         </div>
     </div>
 </div>
@@ -36,191 +29,193 @@
 @if(session('success'))
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4" role="status">✅ {{ session('success') }}</div>
 @endif
+@if(session('error'))
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4" role="alert">❌ {{ session('error') }}</div>
+@endif
+
+<!-- Progresso -->
+@php $total = $lista->items->count(); $comprados = $lista->items->where('comprado', true)->count(); @endphp
+@if($total > 0)
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+    <div class="flex justify-between text-sm text-gray-600 mb-1">
+        <span>{{ $comprados }} de {{ $total }} itens comprados</span>
+        <span>{{ $total > 0 ? intval(($comprados / $total) * 100) : 0 }}%</span>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2" role="progressbar"
+         aria-valuenow="{{ $total > 0 ? intval(($comprados / $total) * 100) : 0 }}"
+         aria-valuemin="0" aria-valuemax="100">
+        <div class="h-2 rounded-full bg-green-500 transition-all"
+             style="width: {{ $total > 0 ? ($comprados / $total) * 100 : 0 }}%"></div>
+    </div>
+</div>
+@endif
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {{-- Itens da Lista --}}
+    <!-- Lista de Itens -->
     <div class="lg:col-span-2">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-gray-800">📋 Itens</h2>
-                <form action="{{ route('shopping-lists.limpar', $shoppingList) }}" method="POST" class="inline">
-                    @csrf
-                    <button type="submit" class="text-xs text-gray-500 hover:text-red-500"
-                            aria-label="Limpar itens já comprados">🗑️ Limpar comprados</button>
-                </form>
-            </div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">📋 Itens da Lista</h2>
 
-            @if($shoppingList->items->isNotEmpty())
-                <div class="divide-y divide-gray-200">
-                    @foreach($shoppingList->items as $item)
-                        <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50 {{ $item->comprado ? 'opacity-60' : '' }}">
-                            <div class="flex items-center gap-3 flex-1">
-                                @if($shoppingList->ativa)
-                                    <form action="{{ route('items.toggle', $item) }}" method="POST">
-                                        @csrf
-                                        <button type="submit"
-                                                aria-label="{{ $item->comprado ? 'Marcar como pendente' : 'Marcar como comprado' }}: {{ $item->nome }}"
-                                                class="text-xl {{ $item->comprado ? 'text-green-500' : 'text-gray-300 hover:text-green-400' }}">
-                                            {{ $item->comprado ? '✅' : '⬜' }}
-                                        </button>
-                                    </form>
-                                @else
-                                    <span class="text-xl" aria-hidden="true">{{ $item->comprado ? '✅' : '⬜' }}</span>
-                                @endif
-                                <div>
-                                    <span class="text-sm {{ $item->comprado ? 'line-through text-gray-400' : 'text-gray-800' }}">
-                                        {{ $item->nome }}
-                                    </span>
-                                    <span class="text-xs text-gray-400 ml-2">
-                                        {{ $item->quantidade > 0 ? number_format($item->quantidade, strtoupper($item->unidade) === 'KG' ? 3 : 0, ',', '.') : '' }}
-                                        {{ $item->unidade }}
-                                    </span>
-                                    @if($item->preco_estimado)
-                                        <span class="text-xs text-blue-500 ml-2">~R$ {{ number_format($item->preco_estimado * $item->quantidade, 2, ',', '.') }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                            @if($shoppingList->ativa)
-                                <form action="{{ route('items.remove', $item) }}" method="POST" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-400 hover:text-red-600 text-sm"
-                                            aria-label="Remover {{ $item->nome }} da lista">🗑️</button>
-                                </form>
-                            @endif
-                        </div>
+        @if($lista->items->isEmpty())
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                <p>Nenhum item adicionado ainda.</p>
+            </div>
+        @else
+            <div class="space-y-2">
+                @foreach($lista->items->sortBy('comprado') as $item)
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3 {{ $item->comprado ? 'opacity-60' : '' }}">
+                    <form action="{{ route('shopping-list-items.toggle', $item) }}" method="POST" class="flex-shrink-0">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit"
+                                class="w-6 h-6 rounded border-2 flex items-center justify-center transition
+                                       {{ $item->comprado ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-green-400' }}"
+                                aria-label="{{ $item->comprado ? 'Desmarcar' : 'Marcar como comprado' }}">
+                            @if($item->comprado)✓@endif
+                        </button>
+                    </form>
+
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-800 {{ $item->comprado ? 'line-through text-gray-400' : '' }} truncate">{{ $item->nome }}</p>
+                        <p class="text-xs text-gray-500">{{ $item->quantidade }} {{ $item->unidade }}</p>
+                    </div>
+
+                    @if($item->valor_unitario)
+                    <div class="text-right text-sm">
+                        <p class="text-gray-600">R$ {{ number_format($item->valor_unitario, 2, ',', '.') }}</p>
+                        <p class="text-xs text-gray-400">{{ number_format($item->quantidade * $item->valor_unitario, 2, ',', '.') }}</p>
+                    </div>
+                    @endif
+
+                    @if($lista->ativa)
+                    <form action="{{ route('shopping-list-items.destroy', $item) }}" method="POST" class="flex-shrink-0">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-gray-400 hover:text-red-500 transition" aria-label="Remover item">✕</button>
+                    </form>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+        @endif
+
+        <!-- Formulário Adicionar Item Manual -->
+        @if($lista->ativa)
+        <div class="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">➕ Adicionar Item</h3>
+            <form action="{{ route('shopping-list-items.store', $lista) }}" method="POST">
+                @csrf
+                <div class="flex flex-wrap gap-2">
+                    <input type="text" name="nome"
+                           placeholder="Nome do produto" class="flex-1 min-w-[150px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" required>
+                    <input type="number" name="quantidade" step="0.01"
+                           value="1" class="w-20 text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" required>
+                    <select name="unidade" id="itemUnidade" class="w-20 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                        <option>un</option><option>kg</option><option>g</option>
+                        <option>l</option><option>ml</option><option>cx</option><option>pct</option>
+                    </select>
+                    <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">Adicionar</button>
+                </div>
+            </form>
+        </div>
+        @endif
+    </div>
+
+    <!-- Painel Lateral -->
+    <div class="space-y-4">
+
+        <!-- Sugestões do Histórico -->
+        @if($lista->ativa && $sugestoes->isNotEmpty())
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">💡 Sugestões do Histórico</h3>
+            <form action="{{ route('shopping-list-items.storeMultiple', $lista) }}" method="POST">
+                @csrf
+                <div class="space-y-2 mb-3 max-h-64 overflow-y-auto">
+                    @foreach($sugestoes as $sugestao)
+                    <label class="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-gray-50">
+                        <input type="checkbox" name="itens[]" value="{{ $sugestao->nome }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">{{ $sugestao->nome }}</span>
+                        <span class="ml-auto text-xs text-gray-400">{{ $sugestao->total }}×</span>
+                    </label>
                     @endforeach
                 </div>
-            @else
-                <div class="p-8 text-center">
-                    <span class="text-5xl" aria-hidden="true">🛒</span>
-                    <p class="text-gray-500 mt-3">Nenhum item na lista ainda.</p>
-                </div>
-            @endif
-
-            @php
-                $totalEstimado = $shoppingList->items->sum(fn($i) => ($i->preco_estimado ?? 0) * $i->quantidade);
-            @endphp
-            @if($totalEstimado > 0)
-                <div class="px-6 py-3 bg-gray-50 border-t text-right">
-                    <span class="text-sm text-gray-600">Total estimado:</span>
-                    <span class="text-lg font-bold text-blue-600 ml-2">R$ {{ number_format($totalEstimado, 2, ',', '.') }}</span>
-                </div>
-            @endif
+                <button type="submit" class="w-full inline-flex items-center justify-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">Adicionar Selecionados</button>
+            </form>
         </div>
-
-        @if($shoppingList->ativa)
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-4 p-6">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">➕ Adicionar Item</h3>
-                <form action="{{ route('shopping-lists.items.add', $shoppingList) }}" method="POST"
-                      class="flex flex-wrap gap-2">
-                    @csrf
-                    <label for="itemNome" class="sr-only">Nome do produto</label>
-                    <input type="text" name="nome" id="itemNome"
-                           placeholder="Nome do produto" class="form-control text-sm flex-1 min-w-[150px]" required>
-                    <label for="itemQtd" class="sr-only">Quantidade</label>
-                    <input type="text" name="quantidade" id="itemQtd"
-                           value="1" class="form-control text-sm w-20 text-center" required>
-                    <label for="itemUnidade" class="sr-only">Unidade</label>
-                    <select name="unidade" id="itemUnidade" class="form-control text-sm w-20">
-                        <option value="UN">UN</option>
-                        <option value="KG">KG</option>
-                        <option value="L">L</option>
-                    </select>
-                    <button type="submit" class="btn-primary text-sm">Adicionar</button>
-                </form>
-            </div>
         @endif
-    </div>
 
-    {{-- Sidebar --}}
-    <div class="space-y-4">
-        @if($shoppingList->ativa)
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">💡 Sugestões</h3>
-                <form action="{{ route('shopping-lists.sugerir', $shoppingList) }}" method="POST" class="mb-3">
+        <!-- Resumo Financeiro -->
+        @if($lista->items->whereNotNull('valor_unitario')->isNotEmpty())
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">💰 Resumo Financeiro</h3>
+            <div class="space-y-1 text-sm">
+                @php
+                    $valorTotal    = $lista->items->sum(fn($i) => $i->quantidade * $i->valor_unitario);
+                    $valorComprado = $lista->items->where('comprado', true)->sum(fn($i) => $i->quantidade * $i->valor_unitario);
+                    $valorPendente = $valorTotal - $valorComprado;
+                @endphp
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Total estimado</span>
+                    <span class="font-medium">R$ {{ number_format($valorTotal, 2, ',', '.') }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Já comprado</span>
+                    <span class="text-green-600 font-medium">R$ {{ number_format($valorComprado, 2, ',', '.') }}</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-100 pt-1 mt-1">
+                    <span class="text-gray-500">Pendente</span>
+                    <span class="font-bold">R$ {{ number_format($valorPendente, 2, ',', '.') }}</span>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Ações da Lista -->
+        @if($lista->ativa)
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">⚙️ Ações da Lista</h3>
+
+            {{-- Renomear --}}
+            <button type="button" id="btnRenomear"
+                    class="w-full text-left text-sm text-gray-600 hover:text-gray-800 py-1 transition">✏️ Renomear lista</button>
+
+            <div id="formRenomear" class="hidden mt-2">
+                <form action="{{ route('shopping-lists.update', $lista) }}" method="POST">
                     @csrf
-                    <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">🤖 Sugerir itens frequentes</button>
-                </form>
-                <p class="text-xs text-gray-500 mb-2">Produtos mais comprados:</p>
-                <form action="{{ route('shopping-lists.frequentes', $shoppingList) }}" method="POST">
-                    @csrf
-                    <div class="max-h-60 overflow-y-auto space-y-2 mb-3">
-                        @foreach($produtosFrequentes->take(15) as $prod)
-                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                                <input type="checkbox" name="produtos[]" value="{{ $prod->id }}"
-                                       class="rounded border-gray-300 text-blue-600">
-                                {{ $prod->nome }}
-                                <span class="text-xs text-gray-400">({{ $prod->invoice_items_count }}x)</span>
-                            </label>
-                        @endforeach
+                    @method('PATCH')
+                    <label for="inputRenomear" class="sr-only">Novo nome</label>
+                    <input type="text" name="nome" id="inputRenomear" value="{{ $lista->nome }}"
+                           class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mb-4" placeholder="Novo nome..." required>
+                    <div class="flex gap-2">
+                        <button type="button" id="btnFecharRenomear" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Cancelar</button>
+                        <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">Salvar</button>
                     </div>
-                    <button type="submit" class="btn-primary text-sm w-full">Adicionar Selecionados</button>
                 </form>
             </div>
-        @endif
 
-        {{-- Ações --}}
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-sm font-semibold text-gray-700 mb-3">⚙️ Ações</h3>
-            <div class="space-y-2">
-                {{-- type="button": abre modal, não submete form --}}
-                <button type="button"
-                        id="btnRenomearLista"
-                        onclick="renomearLista(@json($shoppingList->id), @json($shoppingList->nome))"
-                        class="text-blue-600 hover:text-blue-800 text-sm block">✏️ Renomear</button>
-
-                <form action="{{ route('shopping-lists.destroy', $shoppingList) }}" method="POST"
-                      data-confirm="Excluir a lista '{{ $shoppingList->nome }}'? Esta ação não pode ser desfeita.">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm">🗑️ Excluir Lista</button>
-                </form>
-            </div>
+            {{-- Excluir --}}
+            <form action="{{ route('shopping-lists.destroy', $lista) }}" method="POST" class="mt-2"
+                  onsubmit="return confirm('Excluir esta lista permanentemente?')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="w-full text-left text-sm text-red-500 hover:text-red-700 py-1 transition">🗑 Excluir lista</button>
+            </form>
         </div>
+        @endif
     </div>
 </div>
 
-{{-- Modal Renomear --}}
-<div id="modalRenomear"
-     class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
-     role="dialog" aria-modal="true" aria-labelledby="modalRenomearTitulo">
-    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
-        <h3 id="modalRenomearTitulo" class="text-lg font-semibold text-gray-800 mb-4">✏️ Renomear Lista</h3>
-        <form id="formRenomear" method="POST">
-            @csrf
-            @method('PATCH')
-            <label for="inputNomeLista" class="sr-only">Novo nome da lista</label>
-            <input type="text" name="nome" id="inputNomeLista"
-                   class="form-control mb-4" placeholder="Novo nome..." required>
-            <div class="flex gap-3 justify-end">
-                <button type="button" id="btnFecharRenomear" class="btn-outline-secondary text-sm">Cancelar</button>
-                <button type="submit" class="btn-primary text-sm">Salvar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-@push('scripts')
 <script>
-function renomearLista(id, nomeAtual) {
-    const form  = document.getElementById('formRenomear');
-    const input = document.getElementById('inputNomeLista');
-    form.action = `/shopping-lists/${id}`;
-    input.value = nomeAtual;
-    document.getElementById('modalRenomear').classList.remove('hidden');
-    input.focus();
-}
+    const btnRenomear    = document.getElementById('btnRenomear');
+    const btnFecharRen   = document.getElementById('btnFecharRenomear');
+    const formRenomear   = document.getElementById('formRenomear');
+    const inputRenomear  = document.getElementById('inputRenomear');
 
-const btnFechar = document.getElementById('btnFecharRenomear');
-const modal     = document.getElementById('modalRenomear');
+    btnRenomear?.addEventListener('click', () => {
+        formRenomear.classList.toggle('hidden');
+        if (!formRenomear.classList.contains('hidden')) inputRenomear.focus();
+    });
 
-btnFechar.addEventListener('click', fecharModal);
-modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
-
-function fecharModal() { modal.classList.add('hidden'); }
+    btnFecharRen?.addEventListener('click', () => formRenomear.classList.add('hidden'));
 </script>
-@endpush
 @endsection

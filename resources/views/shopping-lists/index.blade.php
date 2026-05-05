@@ -10,7 +10,7 @@
             <p class="mt-1 text-gray-600">Crie e gerencie suas listas</p>
         </div>
         {{-- type="button" evita submit acidental caso o botão esteja dentro de um form pai --}}
-        <button type="button" id="btnNovaLista" class="btn-primary">➕ Nova Lista</button>
+        <button type="button" id="btnNovaLista" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">➕ Nova Lista</button>
     </div>
 </div>
 
@@ -79,7 +79,7 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
         <span class="text-6xl" aria-hidden="true">🛒</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma lista de compras ainda.</p>
-        <button type="button" id="btnNovaListaEmpty" class="btn-primary mt-3">➕ Criar Primeira Lista</button>
+        <button type="button" id="btnNovaListaEmpty" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition mt-3">➕ Criar Primeira Lista</button>
     </div>
 @endif
 
@@ -95,10 +95,10 @@
             @csrf
             <label for="inputNomeLista" class="sr-only">Nome da lista</label>
             <input type="text" name="nome" id="inputNomeLista"
-                   class="form-control mb-4" placeholder="Ex: Compras da semana" required>
+                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mb-4" placeholder="Ex: Compras da semana" required>
             <div class="flex gap-3 justify-end">
-                <button type="button" id="btnFecharNovaLista" class="btn-outline-secondary text-sm">Cancelar</button>
-                <button type="submit" class="btn-primary text-sm">✅ Criar Lista</button>
+                <button type="button" id="btnFecharNovaLista" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Cancelar</button>
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">✅ Criar Lista</button>
             </div>
         </form>
     </div>
