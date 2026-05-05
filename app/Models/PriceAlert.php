@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -27,6 +28,20 @@ class PriceAlert extends Model
         'variacao_percentual' => 'float',
         'ativo'               => 'boolean',
     ];
+
+    // ==================== SCOPES ====================
+
+    public function scopeAtivos(Builder $query): Builder
+    {
+        return $query->where('ativo', true);
+    }
+
+    public function scopeInativos(Builder $query): Builder
+    {
+        return $query->where('ativo', false);
+    }
+
+    // ==================== RELATIONSHIPS ====================
 
     public function user()
     {
