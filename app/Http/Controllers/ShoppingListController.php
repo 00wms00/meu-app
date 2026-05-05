@@ -34,11 +34,11 @@ class ShoppingListController extends Controller
         return view('shopping-lists.index', compact('listas'));
     }
 
-    public function show(ShoppingList $shoppingList): View
+    public function show(ShoppingList $lista): View
     {
-        $this->authorize('view', $shoppingList);
+        $this->authorize('view', $lista);
 
-        $shoppingList->load('items.product');
+        $lista->load('items.product');
 
         $produtosFrequentes = Product::where('user_id', Auth::id())
             ->withCount('invoiceItems')
@@ -46,7 +46,7 @@ class ShoppingListController extends Controller
             ->take(20)
             ->get();
 
-        return view('shopping-lists.show', compact('shoppingList', 'produtosFrequentes'));
+        return view('shopping-lists.show', compact('lista', 'produtosFrequentes'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -62,34 +62,34 @@ class ShoppingListController extends Controller
         return redirect()->route('shopping-lists.show', $lista)->with('success', 'Lista criada!');
     }
 
-    public function update(Request $request, ShoppingList $shoppingList): RedirectResponse
+    public function update(Request $request, ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
         $request->validate(['nome' => 'required|string|max:255']);
 
-        $shoppingList->update(['nome' => $request->nome]);
+        $lista->update(['nome' => $request->nome]);
 
         return back()->with('success', 'Atualizada!');
     }
 
-    public function destroy(ShoppingList $shoppingList): RedirectResponse
+    public function destroy(ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('delete', $shoppingList);
+        $this->authorize('delete', $lista);
 
-        $shoppingList->delete();
+        $lista->delete();
 
         return redirect()->route('shopping-lists.index')->with('success', 'Excluída!');
     }
 
     // ==================== ESTADO DA LISTA ====================
 
-    public function finalizar(ShoppingList $shoppingList): RedirectResponse
+    public function finalizar(ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
 
-        $total = $shoppingList->items()->where('comprado', true)->sum('preco_estimado');
+        $total = $lista->items()->where('comprado', true)->sum('preco_estimado');
 
-        $shoppingList->update([
+        $lista->update([
             'ativa'       => false,
             'data_compra' => now(),
             'valor_total' => $total,
@@ -98,28 +98,28 @@ class ShoppingListController extends Controller
         return back()->with('success', 'Finalizada!');
     }
 
-    public function reabrir(ShoppingList $shoppingList): RedirectResponse
+    public function reabrir(ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
 
-        $shoppingList->update(['ativa' => true, 'data_compra' => null]);
+        $lista->update(['ativa' => true, 'data_compra' => null]);
 
         return back()->with('success', 'Reaberta!');
     }
 
     // ==================== ITENS ====================
 
-    public function addItem(Request $request, ShoppingList $shoppingList): RedirectResponse
+    public function addItem(Request $request, ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
         $request->validate([
-            'nome'      => 'required|string|max:255',
+            'nome'       => 'required|string|max:255',
             'quantidade' => 'nullable|numeric|min:0.01',
-            'unidade'   => 'nullable|string|max:10',
+            'unidade'    => 'nullable|string|max:10',
         ]);
 
         $this->itemService->criarItemManual(
-            $shoppingList,
+            $lista,
             $request->nome,
             $request->quantidade ?? 1,
             $request->unidade    ?? 'UN',
@@ -128,15 +128,15 @@ class ShoppingListController extends Controller
         return back()->with('success', 'Item adicionado!');
     }
 
-    public function addFrequentes(Request $request, ShoppingList $shoppingList): RedirectResponse
+    public function addFrequentes(Request $request, ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
 
         $count = 0;
         foreach ($request->produtos ?? [] as $id) {
             $produto = Product::find($id);
             if ($produto) {
-                $this->itemService->criarItemDeProduto($shoppingList, $produto);
+                $this->itemService->criarItemDeProduto($lista, $produto);
                 $count++;
             }
         }
@@ -144,9 +144,9 @@ class ShoppingListController extends Controller
         return back()->with('success', "{$count} adicionado(s)!");
     }
 
-    public function sugerirItens(ShoppingList $shoppingList): RedirectResponse
+    public function sugerirItens(ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
 
         $frequentes = Product::where('user_id', Auth::id())
             ->withCount('invoiceItems')
@@ -155,8 +155,8 @@ class ShoppingListController extends Controller
             ->get();
 
         foreach ($frequentes as $produto) {
-            if (! $shoppingList->items()->where('product_id', $produto->id)->exists()) {
-                $this->itemService->criarItemDeProduto($shoppingList, $produto);
+            if (! $lista->items()->where('product_id', $produto->id)->exists()) {
+                $this->itemService->criarItemDeProduto($lista, $produto);
             }
         }
 
@@ -176,9 +176,9 @@ class ShoppingListController extends Controller
     {
         $this->authorize('update', $item->shoppingList);
         $request->validate([
-            'nome'      => 'sometimes|string|max:255',
+            'nome'       => 'sometimes|string|max:255',
             'quantidade' => 'sometimes|numeric|min:0.01',
-            'unidade'   => 'sometimes|string|max:10',
+            'unidade'    => 'sometimes|string|max:10',
         ]);
 
         $item->update($request->only(['nome', 'quantidade', 'unidade', 'preco_estimado']));
@@ -195,11 +195,11 @@ class ShoppingListController extends Controller
         return back();
     }
 
-    public function limparComprados(ShoppingList $shoppingList): RedirectResponse
+    public function limparComprados(ShoppingList $lista): RedirectResponse
     {
-        $this->authorize('update', $shoppingList);
+        $this->authorize('update', $lista);
 
-        $shoppingList->items()->where('comprado', true)->delete();
+        $lista->items()->where('comprado', true)->delete();
 
         return back();
     }
