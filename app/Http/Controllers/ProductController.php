@@ -59,11 +59,9 @@ class ProductController extends Controller
         $items = InvoiceItem::with('invoice')
             ->whereIn('product_id', $produtoIds)
             ->whereHas('invoice', fn ($q) => $q->where('user_id', Auth::id()))
-            ->orderBy('created_at')  // garante ordem cronológica consistente
+            ->orderBy('created_at')
             ->get();
 
-        // Ordena explicitamente por data_emissao para evitar gráfico torto
-        // quando compras fora de ordem cronológica existem no banco.
         $serie = $items
             ->map(fn ($i) => [
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
@@ -83,7 +81,6 @@ class ProductController extends Controller
 
         $agrupados = Product::where('canonical_product_id', $produtoExibicao->id)->get();
 
-        // Alerta existente para este produto + usuário (se houver)
         $alertaExistente = PriceAlert::where('user_id', Auth::id())
             ->where('product_id', $product->id)
             ->first();
@@ -149,7 +146,7 @@ class ProductController extends Controller
     public function categorias(Request $request): View
     {
         $userId = Auth::id();
-        $cf     = $request->input('categoria'); // $cf = "categoria filtro"
+        $cf     = $request->input('categoria');
 
         $query = Product::where('user_id', $userId)->with('category');
 
@@ -170,9 +167,6 @@ class ProductController extends Controller
         return view('products.categorias', compact('produtos', 'categorias', 'cf', 'contagemCategorias'));
     }
 
-    /**
-     * Retorna contagem de produtos por category_id + chave 'sem'.
-     */
     private function contagemPorCategoria(int $userId): array
     {
         $porCategoria = Product::where('user_id', $userId)
@@ -430,20 +424,5 @@ class ProductController extends Controller
         }
 
         return response()->json(['status' => $request->acao]);
-    }
-
-    public function mlAgrupar(): RedirectResponse
-    {
-        $resultado = $this->mlService->agruparComML(Auth::id());
-
-        return redirect()->route('products.agrupamentos')
-            ->with('success', "ML: {$resultado['agrupados']} agrupado(s)!");
-    }
-
-    public function mlSugestoes(): View
-    {
-        $sugestoes = $this->mlService->sugerirAgrupamentosML(Auth::id());
-
-        return view('products.ml-sugestoes', compact('sugestoes'));
     }
 }

@@ -46,10 +46,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/products/agrupar-automatico', [ProductController::class, 'agruparAutomatico'])->name('products.agrupar-automatico');
     Route::post('/products/criar-grupo', [ProductController::class, 'criarGrupo'])->name('products.criar-grupo');
 
-    // Machine Learning (rotas fixas antes das de parâmetro)
-    Route::post('/products/ml-agrupar', [ProductController::class, 'mlAgrupar'])->name('products.ml-agrupar');
-    Route::get('/products/ml-sugestoes', [ProductController::class, 'mlSugestoes'])->name('products.ml-sugestoes');
-
     // Produtos (rotas com parâmetro por último)
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
