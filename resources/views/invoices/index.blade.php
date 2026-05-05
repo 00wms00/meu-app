@@ -13,19 +13,23 @@
     <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
-            <input type="date" name="de" value="{{ request('de') }}" class="form-control">
+            <input type="date" name="de" value="{{ request('de') }}"
+                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
-            <input type="date" name="ate" value="{{ request('ate') }}" class="form-control">
+            <input type="date" name="ate" value="{{ request('ate') }}"
+                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
-            <input type="text" name="estabelecimento" value="{{ request('estabelecimento') }}" placeholder="Buscar..." class="form-control">
+            <input type="text" name="estabelecimento" value="{{ request('estabelecimento') }}" placeholder="Buscar..."
+                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
         </div>
         <div class="flex items-end">
-            {{-- btn-primary já inclui estilo base; class 'btn btn-primary' era redundante --}}
-            <button type="submit" class="btn-primary w-full">
+            {{-- btn-primary já incluía estilo base; class 'btn btn-primary' era redundante --}}
+            <button type="submit"
+                    class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
                 🔍 Filtrar
             </button>
         </div>
@@ -100,7 +104,8 @@
     <div class="text-center py-12">
         <span class="text-6xl" aria-hidden="true">📄</span>
         <p class="text-gray-500 mt-4 text-lg">Nenhuma nota fiscal encontrada.</p>
-        <a href="{{ route('import.create') }}" class="btn-primary mt-4 inline-block">
+        <a href="{{ route('import.create') }}"
+           class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
             📥 Importar NFC-e
         </a>
     </div>
