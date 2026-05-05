@@ -15,7 +15,7 @@
     <div class="lg:col-span-2 space-y-6">
         <!-- Estabelecimento -->
         <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">🏪 Estabelecimento</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">🏦 Estabelecimento</h2>
             <dl class="grid grid-cols-1 gap-3">
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Nome</dt>
@@ -131,12 +131,14 @@
             <form action="{{ route('import.store') }}" method="POST">
                 @csrf
                 <div class="space-y-3">
-                    {{-- btn-success já inclui estilo base; sem prefixo 'btn' redundante --}}
-                    <button type="submit" class="btn-success w-full text-lg py-3">
+                    {{-- btn-success já incluía estilo base; sem prefixo 'btn' redundante --}}
+                    <button type="submit"
+                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-md transition">
                         ✅ Confirmar e Salvar Nota
                     </button>
-                    {{-- btn-outline-secondary já inclui estilo base --}}
-                    <a href="{{ route('import.create') }}" class="btn-outline-secondary w-full text-center block">
+                    {{-- btn-outline-secondary já incluía estilo base --}}
+                    <a href="{{ route('import.create') }}"
+                       class="block w-full text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
                         ← Voltar e Corrigir
                     </a>
                 </div>
