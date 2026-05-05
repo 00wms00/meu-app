@@ -3,9 +3,45 @@
 @section('title', 'Planejamento Inteligente')
 
 @section('content')
-<div class="mb-6">
-    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🧠 Planejamento Inteligente</h1>
-    <p class="mt-1 text-gray-600">Análise avançada baseada no seu histórico de compras</p>
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">🧠 Planejamento Inteligente</h1>
+        <p class="mt-1 text-gray-600">Análise avançada baseada no seu histórico de compras</p>
+    </div>
+
+    {{--
+        Widget de Lista Rápida — único ponto de entrada explícito para POST /lista-rapida.
+        Antes: a rota existia mas só era acessível pelos cards de "Próximas Compras",
+        que dependem do algoritmo gerar sugestões. Sem sugestões, a rota era inacessível.
+        Agora: o usuário pode criar uma lista rápida a qualquer momento escolhendo
+        a categoria e o tipo diretamente.
+    --}}
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 flex flex-wrap items-end gap-3">
+        <p class="w-full text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">⚡ Nova Lista Rápida</p>
+        <form action="{{ route('shopping-lists.rapida') }}" method="POST" class="flex flex-wrap items-end gap-2">
+            @csrf
+            <div>
+                <label for="rapidaCategoriaId" class="block text-xs text-gray-600 mb-1">Categoria</label>
+                <select name="categoria_id" id="rapidaCategoriaId"
+                        class="form-control text-sm py-1.5 pr-8" required>
+                    <option value="">Selecione…</option>
+                    @foreach(\App\Models\Category::where('user_id', auth()->id())->ordenado()->get() as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->emoji }} {{ $cat->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="rapidaTipo" class="block text-xs text-gray-600 mb-1">Tipo</label>
+                <select name="tipo" id="rapidaTipo" class="form-control text-sm py-1.5">
+                    <option value="semanal">🗓 Semanal</option>
+                    <option value="mensal">📆 Mensal</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary text-sm py-1.5">
+                ➕ Criar Lista
+            </button>
+        </form>
+    </div>
 </div>
 
 <!-- Cards de Tendências -->
@@ -33,12 +69,35 @@
 <!-- Alerta de Compra Mensal -->
 @if($compraMensal['sugerir'])
 <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-    <div class="flex items-start justify-between">
+    <div class="flex items-start justify-between gap-4">
         <div>
             <h2 class="text-xl font-bold text-blue-800">📦 Hora da Compra do Mês!</h2>
-            <p class="text-blue-600 mt-1">Última compra grande: {{ $compraMensal['ultima_data'] }} ({{ $compraMensal['dias_desde_ultima'] }} dias atrás)</p>
+            <p class="text-blue-600 mt-1">
+                Última compra grande: {{ $compraMensal['ultima_data'] }}
+                ({{ $compraMensal['dias_desde_ultima'] }} dias atrás)
+            </p>
         </div>
-        <a href="{{ route('shopping-lists.index') }}" class="btn-primary">Criar Lista Mensal</a>
+        {{--
+            ANTES: <a href="{{ route('shopping-lists.index') }}"> — levava para a listagem,
+            não criava nada. O usuário precisava criar manualmente uma lista depois.
+            AGORA: form POST /lista-rapida com tipo=mensal. A categoria é opcional aqui;
+            o controller usa categoria_id, então oferecemos um select inline.
+            Se o usuário não quiser selecionar categoria, pode usar o widget do topo.
+        --}}
+        <form action="{{ route('shopping-lists.rapida') }}" method="POST" class="flex items-center gap-2 flex-shrink-0">
+            @csrf
+            <select name="categoria_id" class="form-control text-sm py-1.5 pr-6" required
+                    aria-label="Categoria para lista mensal">
+                <option value="">Categoria…</option>
+                @foreach(\App\Models\Category::where('user_id', auth()->id())->ordenado()->get() as $cat)
+                    <option value="{{ $cat->id }}">{{ $cat->emoji }} {{ $cat->nome }}</option>
+                @endforeach
+            </select>
+            <input type="hidden" name="tipo" value="mensal">
+            <button type="submit" class="btn-primary whitespace-nowrap">
+                📦 Criar Lista Mensal
+            </button>
+        </form>
     </div>
 </div>
 @endif
@@ -108,24 +167,33 @@
 <!-- Próximos Dias Sugeridos -->
 <div class="mt-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">📅 Próximas Compras Sugeridas</h2>
+    @if($sugestoesDias)
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         @foreach($sugestoesDias as $s)
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-2xl">{{ $s['categoria_emoji'] ?? '🛒' }}</span>
-                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ $s['dias_ate'] == 0 ? 'Hoje' : "{$s['dias_ate']} dia(s)" }}</span>
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                    {{ $s['dias_ate'] == 0 ? 'Hoje' : "{$s['dias_ate']} dia(s)" }}
+                </span>
             </div>
             <p class="font-semibold text-gray-800">{{ $s['categoria_nome'] }}</p>
-            <p class="text-xs text-gray-500">🗓️ {{ $s['dia_nome'] }} · {{ $s['proxima_data'] }}</p>
+            <p class="text-xs text-gray-500">🗓️ {{ $s['dia_nome'] }} &middot; {{ $s['proxima_data'] }}</p>
             <form action="{{ route('shopping-lists.rapida') }}" method="POST" class="mt-2">
                 @csrf
                 <input type="hidden" name="categoria_id" value="{{ $s['categoria_id'] }}">
                 <input type="hidden" name="tipo" value="semanal">
-                <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm font-medium">➕ Criar lista</button>
+                <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm font-medium">➕ Criar lista semanal</button>
             </form>
         </div>
         @endforeach
     </div>
+    @else
+    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
+        <span class="text-4xl" aria-hidden="true">🗓️</span>
+        <p class="text-gray-500 mt-3">Sem sugestões automáticas ainda. Use o widget acima para criar uma lista rápida.</p>
+    </div>
+    @endif
 </div>
 
 <!-- Listas Ativas -->
@@ -134,7 +202,8 @@
     <h2 class="text-lg font-semibold text-gray-800 mb-4">📝 Listas Ativas</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         @foreach($listasAtivas as $lista)
-        <a href="{{ route('shopping-lists.show', $lista) }}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition">
+        <a href="{{ route('shopping-lists.show', $lista) }}"
+           class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition">
             <h3 class="font-semibold text-sm">{{ $lista->nome }}</h3>
             <p class="text-xs text-gray-500">{{ $lista->items_comprados_count }}/{{ $lista->items_count }} comprados</p>
         </a>
