@@ -1,27 +1,31 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+@extends('layouts.app')
+
+@section('title', 'Confirmar Senha')
+
+@section('content')
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h4 class="text-lg font-semibold text-gray-800 mb-4">Área Segura</h4>
+
+        <p class="mb-6 text-sm text-gray-600">
+            Esta é uma área segura do aplicativo. Confirme sua senha antes de continuar.
+        </p>
+
+        <form method="POST" action="{{ route('password.confirm') }}">
+            @csrf
+
+            <div class="mb-4">
+                <x-input-label for="password" :value="__('Senha')" />
+                <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
+                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            </div>
+
+            <div class="flex justify-end">
+                <x-primary-button>
+                    Confirmar
+                </x-primary-button>
+            </div>
+        </form>
     </div>
-
-    <form method="POST" action="{{ route('password.confirm') }}">
-        @csrf
-
-        <!-- Password -->
-        <div>
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
-                {{ __('Confirm') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+</div>
+@endsection
