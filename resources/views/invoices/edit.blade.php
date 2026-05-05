@@ -10,10 +10,12 @@
             <p class="mt-1 text-gray-600">#{{ $invoice->numero }} - {{ $invoice->nome_estabelecimento }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button type="submit" form="formEditarNota" class="btn-primary">
+            <button type="submit" form="formEditarNota"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">
                 💾 Salvar Todas as Alterações
             </button>
-            <a href="{{ route('invoices.show', $invoice) }}" class="btn-back">
+            <a href="{{ route('invoices.show', $invoice) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
                 ← Cancelar
             </a>
         </div>
@@ -37,33 +39,33 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Estabelecimento</label>
-                            <input type="text" name="nome_estabelecimento" 
-                                   value="{{ old('nome_estabelecimento', $invoice->nome_estabelecimento) }}" 
-                                   class="form-control font-medium" required>
+                            <input type="text" name="nome_estabelecimento"
+                                   value="{{ old('nome_estabelecimento', $invoice->nome_estabelecimento) }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm font-medium" required>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">CNPJ</label>
-                            <input type="text" name="cnpj" 
-                                   value="{{ old('cnpj', $invoice->cnpj) }}" 
-                                   class="form-control">
+                            <input type="text" name="cnpj"
+                                   value="{{ old('cnpj', $invoice->cnpj) }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Número</label>
-                            <input type="text" name="numero" 
-                                   value="{{ old('numero', $invoice->numero) }}" 
-                                   class="form-control">
+                            <input type="text" name="numero"
+                                   value="{{ old('numero', $invoice->numero) }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Série</label>
-                            <input type="text" name="serie" 
-                                   value="{{ old('serie', $invoice->serie) }}" 
-                                   class="form-control">
+                            <input type="text" name="serie"
+                                   value="{{ old('serie', $invoice->serie) }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Data de Emissão</label>
-                            <input type="datetime-local" name="data_emissao" 
-                                   value="{{ old('data_emissao', $invoice->data_emissao->format('Y-m-d\TH:i')) }}" 
-                                   class="form-control" required>
+                            <input type="datetime-local" name="data_emissao"
+                                   value="{{ old('data_emissao', $invoice->data_emissao->format('Y-m-d\TH:i')) }}"
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
                         </div>
                     </div>
                 </div>
@@ -74,7 +76,7 @@
                 <div class="px-6 py-4 border-b border-gray-200 bg-green-50 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-gray-800">🛒 Itens da Compra</h2>
                 </div>
-                
+
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -91,21 +93,21 @@
                             @foreach($invoice->items as $item)
                             <tr class="hover:bg-gray-50 item-row" data-item-id="{{ $item->id }}">
                                 <td class="px-3 py-2">
-                                    <input type="text" 
-                                           name="itens[{{ $item->id }}][nome]" 
+                                    <input type="text"
+                                           name="itens[{{ $item->id }}][nome]"
                                            value="{{ $item->product->nome }}"
                                            class="w-full border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm">
                                 </td>
                                 <td class="px-3 py-2">
-                                    <input type="text" 
-                                           name="itens[{{ $item->id }}][quantidade]" 
+                                    <input type="text"
+                                           name="itens[{{ $item->id }}][quantidade]"
                                            value="{{ number_format($item->quantidade, 3, ',', '.') }}"
                                            class="w-20 text-center border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm quantidade-input"
                                            data-item-id="{{ $item->id }}"
                                            oninput="recalcularItem('{{ $item->id }}', 'quantidade')">
                                 </td>
                                 <td class="px-3 py-2">
-                                    <select name="itens[{{ $item->id }}][unidade]" 
+                                    <select name="itens[{{ $item->id }}][unidade]"
                                             class="w-20 text-center border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-1 py-1 text-xs">
                                         <option value="UN" {{ $item->unidade == 'UN' ? 'selected' : '' }}>UN</option>
                                         <option value="KG" {{ $item->unidade == 'KG' ? 'selected' : '' }}>KG</option>
@@ -119,8 +121,8 @@
                                 <td class="px-3 py-2">
                                     <div class="flex items-center justify-end">
                                         <span class="text-gray-400 text-sm mr-1">R$</span>
-                                        <input type="text" 
-                                               name="itens[{{ $item->id }}][valor_unitario]" 
+                                        <input type="text"
+                                               name="itens[{{ $item->id }}][valor_unitario]"
                                                value="{{ number_format($item->valor_unitario, 2, ',', '.') }}"
                                                class="w-24 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm unitario-input"
                                                data-item-id="{{ $item->id }}"
@@ -130,8 +132,8 @@
                                 <td class="px-3 py-2">
                                     <div class="flex items-center justify-end">
                                         <span class="text-gray-400 text-sm mr-1">R$</span>
-                                        <input type="text" 
-                                               name="itens[{{ $item->id }}][valor_total]" 
+                                        <input type="text"
+                                               name="itens[{{ $item->id }}][valor_total]"
                                                value="{{ number_format($item->valor_total, 2, ',', '.') }}"
                                                class="w-24 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm font-semibold total-input"
                                                data-item-id="{{ $item->id }}"
@@ -139,13 +141,13 @@
                                     </div>
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    <button type="button" 
+                                    <button type="button"
                                             onclick="removerItem(this, '{{ $item->id }}')"
                                             class="text-red-500 hover:text-red-700 text-lg"
                                             title="Remover item">
                                         🗑️
                                     </button>
-                                    <input type="hidden" name="itens[{{ $item->id }}][ultimo_campo]" 
+                                    <input type="hidden" name="itens[{{ $item->id }}][ultimo_campo]"
                                            value="unitario" class="ultimo-campo-input" data-item-id="{{ $item->id }}">
                                 </td>
                             </tr>
@@ -154,7 +156,7 @@
                         <tfoot>
                             <tr>
                                 <td colspan="6" class="px-4 py-3 bg-gray-50">
-                                    <button type="button" onclick="adicionarItem()" 
+                                    <button type="button" onclick="adicionarItem()"
                                             class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
                                         <span class="text-lg">➕</span> Adicionar novo item
                                     </button>
@@ -167,7 +169,8 @@
 
             <!-- Botão Salvar (dentro do form) -->
             <div class="flex justify-end">
-                <button type="submit" class="btn-primary text-lg px-8 py-3">
+                <button type="submit"
+                        class="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-md transition">
                     💾 Salvar Todas as Alterações
                 </button>
             </div>
@@ -198,7 +201,8 @@
                                 <span class="text-gray-400 mr-1">R$</span>
                                 <input type="text" name="descontos" id="descontos"
                                        value="{{ old('descontos', number_format($invoice->descontos, 2, ',', '.')) }}"
-                                       class="form-control text-sm" oninput="atualizarValorPago()">
+                                       class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm"
+                                       oninput="atualizarValorPago()">
                             </div>
                         </div>
                         <div class="border-t pt-3 mt-3">
@@ -213,7 +217,7 @@
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Forma de Pagamento</label>
                             <input type="text" name="forma_pagamento" id="forma_pagamento"
                                    value="{{ old('forma_pagamento', $invoice->forma_pagamento) }}"
-                                   class="form-control text-sm">
+                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
                         </div>
                     </div>
                 </div>
@@ -224,11 +228,12 @@
 
 <!-- Formulário SEPARADO para exclusão -->
 <div class="mt-6 max-w-lg mx-auto">
-    <form id="formExcluirNota" action="{{ route('invoices.destroy', $invoice) }}" method="POST" 
+    <form id="formExcluirNota" action="{{ route('invoices.destroy', $invoice) }}" method="POST"
           onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta nota fiscal?\n\nEsta ação NÃO PODE ser desfeita!')">
         @csrf
         @method('DELETE')
-        <button type="submit" class="btn-delete w-full">
+        <button type="submit"
+                class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition">
             🗑️ Excluir Nota Fiscal
         </button>
     </form>
@@ -256,14 +261,14 @@ function formatMoney(value) {
 function recalcularItem(itemId, campoAlterado) {
     const row = document.querySelector(`[data-item-id="${itemId}"]`);
     if (!row) return;
-    
+
     const quantidade = parseFloatBR(row.querySelector('.quantidade-input').value);
     const unitario = parseFloatBR(row.querySelector('.unitario-input').value);
     const total = parseFloatBR(row.querySelector('.total-input').value);
     const ultimoCampoInput = row.querySelector('.ultimo-campo-input');
-    
+
     if (quantidade <= 0) return;
-    
+
     if (campoAlterado === 'unitario') {
         const novoTotal = unitario * quantidade;
         row.querySelector('.total-input').value = formatMoney(novoTotal);
@@ -281,23 +286,23 @@ function recalcularItem(itemId, campoAlterado) {
             row.querySelector('.total-input').value = formatMoney(novoTotal);
         }
     }
-    
+
     atualizarTotais();
 }
 
 function atualizarTotais() {
     let valorTotal = 0;
     let qtdItens = 0;
-    
+
     document.querySelectorAll('.item-row').forEach(row => {
         const total = parseFloatBR(row.querySelector('.total-input').value);
         valorTotal += total;
         qtdItens++;
     });
-    
+
     const descontos = parseFloatBR(document.getElementById('descontos').value);
     const valorPago = valorTotal - descontos;
-    
+
     document.getElementById('totalItens').textContent = qtdItens;
     document.getElementById('valorTotalLabel').textContent = 'R$ ' + formatMoney(valorTotal);
     document.getElementById('valorPagoLabel').textContent = 'R$ ' + formatMoney(valorPago);
@@ -309,10 +314,10 @@ function atualizarValorPago() {
 
 function removerItem(btn, itemId) {
     if (!confirm('Tem certeza que deseja remover este item?')) return;
-    
+
     const row = btn.closest('tr');
     row.remove();
-    
+
     // Marcar item para remoção
     const form = document.getElementById('formEditarNota');
     const input = document.createElement('input');
@@ -320,19 +325,19 @@ function removerItem(btn, itemId) {
     input.name = 'itens_removidos[]';
     input.value = itemId;
     form.appendChild(input);
-    
+
     atualizarTotais();
 }
 
 function adicionarItem() {
     novoItemIndex++;
     const newId = 'novo_' + novoItemIndex;
-    
+
     const tbody = document.getElementById('itensTableBody');
     const newRow = document.createElement('tr');
     newRow.className = 'hover:bg-gray-50 item-row bg-yellow-50';
     newRow.setAttribute('data-item-id', newId);
-    
+
     newRow.innerHTML = `
         <td class="px-3 py-2">
             <input type="text" name="itens[${newId}][nome]" value=""
@@ -346,7 +351,7 @@ function adicionarItem() {
                    oninput="recalcularItem('${newId}', 'quantidade')">
         </td>
         <td class="px-3 py-2">
-            <select name="itens[${newId}][unidade]" 
+            <select name="itens[${newId}][unidade]"
                     class="w-20 text-center border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-1 py-1 text-xs">
                 <option value="UN">UN</option>
                 <option value="KG">KG</option>
@@ -380,12 +385,12 @@ function adicionarItem() {
                     class="text-red-500 hover:text-red-700 text-lg" title="Remover item">
                 🗑️
             </button>
-            <input type="hidden" name="itens[${newId}][ultimo_campo]" value="unitario" 
+            <input type="hidden" name="itens[${newId}][ultimo_campo]" value="unitario"
                    class="ultimo-campo-input" data-item-id="${newId}">
             <input type="hidden" name="itens[${newId}][novo]" value="1">
         </td>
     `;
-    
+
     tbody.appendChild(newRow);
     atualizarTotais();
     newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
