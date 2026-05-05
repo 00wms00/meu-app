@@ -20,7 +20,8 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">📊 Relatório Mensal</h1>
             <p class="mt-1 text-gray-600">Produtos comprados em {{ $meses[$mes] }} de {{ $ano }}</p>
         </div>
-        <a href="{{ route('dashboard') }}" class="btn-back">← Dashboard</a>
+        <a href="{{ route('dashboard') }}"
+           class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Dashboard</a>
     </div>
 </div>
 
@@ -29,7 +30,7 @@
     <form method="GET" class="flex flex-wrap items-end gap-4">
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Mês</label>
-            <select name="mes" class="form-control">
+            <select name="mes" class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                 @foreach($meses as $num => $nome)
                     <option value="{{ $num }}" {{ $mes == $num ? 'selected' : '' }}>{{ $nome }}</option>
                 @endforeach
@@ -37,13 +38,14 @@
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Ano</label>
-            <select name="ano" class="form-control">
+            <select name="ano" class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                 @foreach($anos as $anoItem)
                     <option value="{{ $anoItem }}" {{ $ano == $anoItem ? 'selected' : '' }}>{{ $anoItem }}</option>
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="btn-primary">🔍 Filtrar</button>
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition">🔍 Filtrar</button>
     </form>
 </div>
 
@@ -182,8 +184,8 @@
                             <td class="px-4 py-3 text-sm text-center">{{ $produto->num_compras }}x</td>
                             <td class="px-4 py-3 text-sm text-right">R$ {{ number_format($produto->preco_medio, 2, ',', '.') }}</td>
                             <td class="px-4 py-3 text-sm text-right text-green-600">R$ {{ number_format($produto->preco_minimo, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 text-sm text-right text-red-600">R$ {{ number_format($produto->preco_maximo, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 text-sm text-right font-bold">R$ {{ number_format($produto->gasto_total, 2, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-sm text-right text-red-500">R$ {{ number_format($produto->preco_maximo, 2, ',', '.') }}</td>
+                            <td class="px-4 py-3 text-sm text-right font-semibold">R$ {{ number_format($produto->gasto_total, 2, ',', '.') }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -191,137 +193,137 @@
         </div>
     @else
         <div class="p-12 text-center">
-            <span class="text-5xl">🛒</span>
-            <p class="mt-4 text-gray-500">Nenhum produto encontrado para {{ $meses[$mes] }}/{{ $ano }}.</p>
+            <span class="text-5xl" aria-hidden="true">📭</span>
+            <p class="text-gray-500 mt-4">Nenhum produto encontrado para este período.</p>
         </div>
     @endif
 </div>
 
 {{-- Rankings --}}
 @if($produtos->count() > 0)
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">🏆 Mais Comprados</h3>
-            <div class="space-y-3">
-                @foreach($maisComprados as $index => $produto)
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xl font-bold {{ $rankColors[$index] }}">#{{ $index + 1 }}</span>
-                            <div>
-                                <p class="text-sm font-medium">{{ Str::limit($produto->produto_nome, 25) }}</p>
-                                <p class="text-xs text-gray-500">
-                                    {{ number_format($produto->quantidade_total, 0, ',', '.') }} {{ $produto->unidade }}
-                                    &middot; R$ {{ number_format($produto->preco_medio, 2, ',', '.') }}/{{ $produto->unidade }}
-                                </p>
-                            </div>
-                        </div>
-                        <span class="text-sm font-semibold">R$ {{ number_format($produto->gasto_total, 2, ',', '.') }}</span>
-                    </div>
-                @endforeach
-            </div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">🏆 Mais Comprados (Qtde)</h2>
         </div>
-
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">💰 Maiores Gastos</h3>
-            <div class="space-y-3">
-                @foreach($maioresGastos as $index => $produto)
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xl font-bold {{ $rankColors[$index] }}">#{{ $index + 1 }}</span>
-                            <div>
-                                <p class="text-sm font-medium">{{ Str::limit($produto->produto_nome, 25) }}</p>
-                                <p class="text-xs text-gray-500">{{ $produto->num_compras }} compras</p>
-                            </div>
-                        </div>
-                        <span class="text-sm font-bold">R$ {{ number_format($produto->gasto_total, 2, ',', '.') }}</span>
-                    </div>
-                @endforeach
+        <div class="divide-y divide-gray-200">
+            @foreach($maisComprados as $i => $produto)
+            <div class="px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl {{ $rankColors[$i] ?? 'text-gray-300' }}" aria-hidden="true">{{ ['🥇','🥈','🥉','4️⃣','5️⃣'][$i] ?? ($i+1).'.' }}</span>
+                    <span class="text-sm">{{ $produto->produto_nome }}</span>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">
+                    @if(strtoupper($produto->unidade) === 'KG')
+                        {{ number_format($produto->quantidade_total, 3, ',', '.') }} KG
+                    @else
+                        {{ number_format($produto->quantidade_total, 0, ',', '.') }} {{ $produto->unidade }}
+                    @endif
+                </span>
             </div>
+            @endforeach
         </div>
     </div>
 
-    <div class="mt-6 text-center">
-        <button onclick="window.print()" class="btn-secondary">🖨️ Imprimir Relatório</button>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">💸 Maiores Gastos</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            @foreach($maioresGastos as $i => $produto)
+            <div class="px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl {{ $rankColors[$i] ?? 'text-gray-300' }}" aria-hidden="true">{{ ['🥇','🥈','🥉','4️⃣','5️⃣'][$i] ?? ($i+1).'.' }}</span>
+                    <span class="text-sm">{{ $produto->produto_nome }}</span>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">R$ {{ number_format($produto->gasto_total, 2, ',', '.') }}</span>
+            </div>
+            @endforeach
+        </div>
     </div>
+</div>
 @endif
+
+<div class="mt-6 flex justify-end">
+    <button onclick="window.print()"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-md transition">🖨️ Imprimir Relatório</button>
+</div>
 
 @endsection
 
 @push('scripts')
-@if($gastosPorCategoria->count() > 0)
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // Aplica cores dinâmicas dos dots e barras de progresso via JS
-    // (evita style= inline no Blade, que pode ser bloqueado por CSP)
-    document.querySelectorAll('.categoria-dot').forEach(el => {
+    /* ── Cores dinâmicas via data-attribute ──────────────────── */
+    document.querySelectorAll('.categoria-dot').forEach(function (el) {
         el.style.backgroundColor = el.dataset.cor || '#6b7280';
     });
-    document.querySelectorAll('.categoria-bar').forEach(el => {
+    document.querySelectorAll('.categoria-bar').forEach(function (el) {
         el.style.backgroundColor = el.dataset.cor || '#6b7280';
-        el.style.width = el.dataset.width + '%';
+        el.style.width = (el.dataset.width || 0) + '%';
     });
 
-    const categorias = @json($gastosPorCategoria);
-    const labels  = categorias.map(c => (c.categoria_emoji || '') + ' ' + c.categoria_nome);
-    const data    = categorias.map(c => parseFloat(c.gasto_total));
-    const colors  = categorias.map(c => c.categoria_cor || '#6b7280');
+    /* ── Dados para os gráficos ──────────────────────────────── */
+    const categorias = @json($gastosPorCategoria->map(fn($c) => [
+        'nome'  => $c->categoria_emoji . ' ' . $c->categoria_nome,
+        'valor' => round($c->gasto_total, 2),
+        'cor'   => $c->categoria_cor,
+    ])->values());
 
-    const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',');
+    if (!categorias.length) return;
 
-    // Gráfico de Donut
-    const ctxPie = document.getElementById('categoriaPieChart');
-    if (ctxPie) {
-        new Chart(ctxPie, {
-            type: 'doughnut',
-            data: {
-                labels,
-                datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverBorderWidth: 3 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, font: { size: 11 } } },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => {
-                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                const pct   = ((ctx.parsed / total) * 100).toFixed(1);
-                                return ' ' + fmt(ctx.parsed) + ' (' + pct + '%)';
-                            }
+    const labels = categorias.map(c => c.nome);
+    const dados  = categorias.map(c => c.valor);
+    const cores  = categorias.map(c => c.cor);
+
+    /* ── Pie Chart ───────────────────────────────────────────── */
+    new Chart(document.getElementById('categoriaPieChart'), {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: dados, backgroundColor: cores, borderWidth: 2 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct   = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ` R$ ${ctx.parsed.toFixed(2).replace('.', ',')} (${pct}%)`;
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
-    // Gráfico de Barras Horizontal
-    const ctxBar = document.getElementById('categoriaBarChart');
-    if (ctxBar) {
-        new Chart(ctxBar, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{ label: 'Gasto (R$)', data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.x) } }
-                },
-                scales: {
-                    x: { beginAtZero: true, ticks: { callback: v => 'R$ ' + v.toFixed(0) } }
+    /* ── Bar Chart ───────────────────────────────────────────── */
+    new Chart(document.getElementById('categoriaBarChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Gasto (R$)',
+                data: dados,
+                backgroundColor: cores,
+                borderWidth: 0,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    ticks: {
+                        callback: v => 'R$ ' + v.toFixed(2).replace('.', ',')
+                    }
                 }
             }
-        });
-    }
+        }
+    });
 });
 </script>
-@endif
 @endpush
