@@ -23,7 +23,7 @@
 
         <button
             id="btnAbrirAlerta"
-            data-action="{{ route('alertas.criar', $product) }}"
+            data-action="{{ route('products.alerta.criar', $product) }}"
             data-nome="{{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}"
             data-limite="{{ $alertaExistente->variacao_percentual ?? 10 }}"
             class="btn-outline-secondary text-sm flex items-center gap-1"
