@@ -21,8 +21,8 @@ class Vehicle extends Model
     ];
 
     protected $casts = [
-        'ano' => 'integer',
         'km_atual' => 'integer',
+        'ano'      => 'integer',
     ];
 
     public function user()
@@ -33,5 +33,26 @@ class Vehicle extends Model
     public function expenses()
     {
         return $this->hasMany(VehicleExpense::class);
+    }
+
+    public function fuelEntries()
+    {
+        return $this->hasMany(FuelEntry::class);
+    }
+
+    /**
+     * Soma total gasta em abastecimentos
+     */
+    public function totalCombustivel(): float
+    {
+        return (float) $this->fuelEntries()->sum('valor');
+    }
+
+    /**
+     * Soma total gasta em manutenções e outros (VehicleExpense)
+     */
+    public function totalDespesas(): float
+    {
+        return (float) $this->expenses()->sum('valor');
     }
 }
