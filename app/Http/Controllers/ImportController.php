@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FuelEntry;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Models\Vehicle;
 use App\Services\InvoiceParser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,7 +51,13 @@ class ImportController extends Controller
                 ->withErrors(['html' => 'Nenhum dado para exibir.']);
         }
 
-        return view('import.preview', ['data' => $data]);
+        // Carrega lista de veículos do usuário para o select do preview
+        $vehicles = Vehicle::where('user_id', Auth::id())->orderBy('apelido')->get(['id', 'apelido', 'marca', 'modelo']);
+
+        return view('import.preview', [
+            'data'     => $data,
+            'vehicles' => $vehicles,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -61,6 +69,51 @@ class ImportController extends Controller
                 ->withErrors(['html' => 'Sessão expirada.']);
         }
 
+        $destino = $request->input('destino', 'mercado'); // 'mercado' | 'veiculo'
+
+        // ============================================================
+        // DESTINO: VEÍCULO  —  cria FuelEntry em vez de Invoice
+        // ============================================================
+        if ($destino === 'veiculo' && ! empty($data['is_combustivel'])) {
+            $request->validate([
+                'vehicle_id' => ['required', 'integer', 'exists:vehicles,id'],
+            ]);
+
+            $vehicle = Vehicle::findOrFail($request->vehicle_id);
+
+            if ($vehicle->user_id !== Auth::id()) {
+                abort(403);
+            }
+
+            $fuel = $data['fuel'];
+
+            FuelEntry::create([
+                'user_id'          => Auth::id(),
+                'vehicle_id'       => $vehicle->id,
+                'data'             => $fuel['data'] ?? now()->toDateString(),
+                'valor'            => $fuel['valor'],
+                'litros'           => $fuel['litros'],
+                'km_abastecimento' => $fuel['km'] ?? null,
+                'tipo_combustivel' => $fuel['tipo_combustivel'],
+                'posto'            => $fuel['posto'],
+                'tanque_cheio'     => false,
+                'descricao'        => 'Importado da NFC-e ' . ($data['numero'] ?? ''),
+            ]);
+
+            // Atualiza km_atual do veículo se o km registrado na NF for maior
+            if (! empty($fuel['km']) && $fuel['km'] > $vehicle->km_atual) {
+                $vehicle->update(['km_atual' => $fuel['km']]);
+            }
+
+            session()->forget('parsed_invoice');
+
+            return redirect()->route('vehicles.show', $vehicle)
+                ->with('success', 'Abastecimento importado da NFC-e com sucesso!');
+        }
+
+        // ============================================================
+        // DESTINO: MERCADO  —  fluxo original de Invoice
+        // ============================================================
         $exists = Invoice::where('user_id', Auth::id())
             ->where('chave', $data['chave'])
             ->exists();
@@ -94,13 +147,6 @@ class ImportController extends Controller
                     ['unidade_padrao' => $item['unidade']]
                 );
 
-
-// Gerar sugestão de normalização automaticamente
-if (!$product->nome_normalizado || $product->normalizacao_status === 'pendente') {
-    $normalizationService = app(ProductNormalizationService::class);
-    $normalizationService->markForReview($product);
-}
-
                 InvoiceItem::create([
                     'invoice_id'     => $invoice->id,
                     'product_id'     => $product->id,
@@ -113,7 +159,6 @@ if (!$product->nome_normalizado || $product->normalizacao_status === 'pendente')
             }
         });
 
-        // Limpa o cache APÓS o commit da transaction
         Cache::forget('planejamento-' . Auth::id());
         session()->forget('parsed_invoice');
 
@@ -123,9 +168,6 @@ if (!$product->nome_normalizado || $product->normalizacao_status === 'pendente')
 
     // ==================== PRIVATE ====================
 
-    /**
-     * Retorna os dados da sessão de import, ou null se expirada.
-     */
     private function sessionData(): ?array
     {
         return session('parsed_invoice');

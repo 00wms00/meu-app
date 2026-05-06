@@ -8,29 +8,143 @@ use Carbon\Carbon;
 
 class InvoiceParser
 {
+    /**
+     * Palavras-chave nos nomes de produto que indicam NFC-e de combustível.
+     */
+    private const FUEL_KEYWORDS = [
+        'gasolina', 'etanol', 'diesel', 'gnv', 'alcool',
+        'combustivel', 'combustível', 'flex',
+    ];
+
+    /**
+     * Mapeamento de palavra-chave para o valor padronizado de tipo_combustivel.
+     */
+    private const FUEL_TYPE_MAP = [
+        'gasolina'    => 'gasolina',
+        'etanol'      => 'etanol',
+        'alcool'      => 'etanol',
+        'álcool'      => 'etanol',
+        'diesel'      => 'diesel',
+        'gnv'         => 'gnv',
+    ];
+
     public function parse(string $html): array
     {
         $dom = new DOMDocument();
         $html = preg_replace('/<!DOCTYPE[^>]+>/', '', $html);
         $html = '<?xml encoding="utf-8" ?>' . $html;
-        
+
         libxml_use_internal_errors(true);
         $dom->loadHTML($html, LIBXML_NOWARNING | LIBXML_NOERROR);
         libxml_clear_errors();
-        
+
         $xpath = new DOMXPath($dom);
 
         $estabelecimento = $this->parseEstabelecimento($xpath);
-        $itens = $this->parseItens($xpath);
-        $totais = $this->parseTotais($xpath);
-        $dadosNota = $this->parseDadosNota($xpath, $dom);
-        $consumidor = $this->parseConsumidor($xpath);
+        $itens           = $this->parseItens($xpath);
+        $totais          = $this->parseTotais($xpath);
+        $dadosNota       = $this->parseDadosNota($xpath, $dom);
+        $consumidor      = $this->parseConsumidor($xpath);
 
-        return array_merge($estabelecimento, $dadosNota, $totais, [
-            'itens' => $itens,
+        $data = array_merge($estabelecimento, $dadosNota, $totais, [
+            'itens'      => $itens,
             'consumidor' => $consumidor,
         ]);
+
+        // ---------- detecção de NFC-e de combustível ----------
+        $data = $this->detectFuel($data, $xpath, $dom);
+
+        return $data;
     }
+
+    // ============================================================
+    // DETECÇÃO DE COMBUSTÍVEL
+    // ============================================================
+
+    private function detectFuel(array $data, DOMXPath $xpath, DOMDocument $dom): array
+    {
+        $data['is_combustivel'] = false;
+        $data['fuel'] = null;
+
+        if (empty($data['itens'])) {
+            return $data;
+        }
+
+        // Verifica se algum item é combustível
+        $fuelItem = null;
+        foreach ($data['itens'] as $item) {
+            $nomeLower = mb_strtolower($item['nome'] ?? '');
+            foreach (self::FUEL_KEYWORDS as $kw) {
+                if (str_contains($nomeLower, $kw)) {
+                    $fuelItem = $item;
+                    break 2;
+                }
+            }
+        }
+
+        if (! $fuelItem) {
+            return $data;
+        }
+
+        $data['is_combustivel'] = true;
+
+        // Determina tipo de combustível
+        $nomeLower = mb_strtolower($fuelItem['nome']);
+        $tipoComb  = null;
+        foreach (self::FUEL_TYPE_MAP as $kw => $tipo) {
+            if (str_contains($nomeLower, $kw)) {
+                $tipoComb = $tipo;
+                break;
+            }
+        }
+        if (! $tipoComb) {
+            // Tenta inferir por "aditivada" => ainda gasolina
+            $tipoComb = str_contains($nomeLower, 'aditivada') ? 'gasolina_aditivada' : 'gasolina';
+        }
+        // "v power", "aditivada", etc. — mantém gasolina_aditivada
+        if ($tipoComb === 'gasolina' && (
+            str_contains($nomeLower, 'power') ||
+            str_contains($nomeLower, 'aditivada') ||
+            str_contains($nomeLower, 'premium')
+        )) {
+            $tipoComb = 'gasolina_aditivada';
+        }
+
+        // Litros: unidade LT  => quantidade já é os litros
+        $litros = null;
+        if (strtoupper(trim($fuelItem['unidade'] ?? '')) === 'LT') {
+            $litros = (float) $fuelItem['quantidade'];
+        }
+
+        // Tenta extrair KM das informações de interesse do contribuinte
+        $km = null;
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if ($body) {
+            $texto = $body->textContent;
+            // Formato na NFC-e MS: "Placa: / KM: 0" ou "Placa: AAA-0000 / KM: 12345"
+            if (preg_match('/KM:\s*(\d+)/', $texto, $m) && (int) $m[1] > 0) {
+                $km = (int) $m[1];
+            }
+        }
+
+        $data['fuel'] = [
+            'nome_produto'    => $fuelItem['nome'],
+            'tipo_combustivel' => $tipoComb,
+            'litros'          => $litros,
+            'valor'           => (float) $data['valor_pago'],
+            'data'            => $data['data_emissao'] instanceof Carbon
+                ? $data['data_emissao']->toDateString()
+                : null,
+            'posto'           => $data['nome_estabelecimento'],
+            'km'              => $km,
+        ];
+
+        return $data;
+    }
+
+    // ============================================================
+    // PARSERS ORIGINAIS (sem alteração)
+    // ============================================================
 
     private function parseEstabelecimento(DOMXPath $xpath): array
     {
@@ -38,13 +152,13 @@ class InvoiceParser
         $nome = $nomeNode->length > 0 ? trim($nomeNode->item(0)->nodeValue) : '';
 
         $textDivs = $xpath->query("//div[contains(@class, 'txtCenter')]//div[contains(@class, 'text')]");
-        
-        $cnpj = '';
+
+        $cnpj    = '';
         $endereco = '';
-        
+
         foreach ($textDivs as $div) {
             $txt = trim(preg_replace('/\s+/', ' ', $div->nodeValue));
-            
+
             if (strpos($txt, 'CNPJ:') !== false || preg_match('/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/', $txt)) {
                 $cnpj = trim(str_replace('CNPJ:', '', $txt));
                 $cnpj = preg_replace('/\s+/', '', $cnpj);
@@ -54,8 +168,8 @@ class InvoiceParser
         }
 
         return [
-            'nome_estabelecimento' => $nome ?: 'Não encontrado',
-            'cnpj' => $cnpj ?: 'Não encontrado',
+            'nome_estabelecimento'     => $nome ?: 'Não encontrado',
+            'cnpj'                     => $cnpj ?: 'Não encontrado',
             'endereco_estabelecimento' => $endereco ?: 'Não encontrado',
         ];
     }
@@ -63,16 +177,16 @@ class InvoiceParser
     private function parseItens(DOMXPath $xpath): array
     {
         $itens = [];
-        
+
         $rows = $xpath->query("//table[@id='tabResult']//tr[contains(@id, 'Item')]");
-        
+
         if ($rows->length === 0) {
             $rows = $xpath->query("//tr[starts-with(@id, 'Item')]");
         }
 
         foreach ($rows as $row) {
             $item = $this->parseItemRow($xpath, $row);
-            if ($item && !empty($item['nome'])) {
+            if ($item && ! empty($item['nome'])) {
                 $itens[] = $item;
             }
         }
@@ -88,14 +202,12 @@ class InvoiceParser
         $td1 = $tds->item(0);
         $td2 = $tds->item(1);
 
-        // Nome
         $nome = '';
         $spanTit = $xpath->query(".//span[contains(@class, 'txtTit')]", $td1);
         if ($spanTit->length > 0) {
             $nome = trim($spanTit->item(0)->nodeValue);
         }
 
-        // Código
         $codigo = '';
         $spanCod = $xpath->query(".//span[contains(@class, 'RCod')]", $td1);
         if ($spanCod->length > 0) {
@@ -104,34 +216,30 @@ class InvoiceParser
             }
         }
 
-        // Quantidade
         $quantidade = 0.0;
         $spanQtde = $xpath->query(".//span[contains(@class, 'Rqtd')]", $td1);
         if ($spanQtde->length > 0) {
-            $txt = strip_tags($spanQtde->item(0)->nodeValue);
-            $parts = explode(':', $txt);
+            $txt    = strip_tags($spanQtde->item(0)->nodeValue);
+            $parts  = explode(':', $txt);
             $quantidade = isset($parts[1]) ? $this->parseFloat($parts[1]) : 0;
         }
 
-        // Unidade
         $unidade = '';
         $spanUN = $xpath->query(".//span[contains(@class, 'RUN')]", $td1);
         if ($spanUN->length > 0) {
-            $txt = strip_tags($spanUN->item(0)->nodeValue);
+            $txt   = strip_tags($spanUN->item(0)->nodeValue);
             $parts = explode(':', $txt);
             $unidade = isset($parts[1]) ? trim($parts[1]) : '';
         }
 
-        // Valor unitário
         $valorUnitario = 0.0;
         $spanVlUnit = $xpath->query(".//span[contains(@class, 'RvlUnit')]", $td1);
         if ($spanVlUnit->length > 0) {
-            $txt = strip_tags($spanVlUnit->item(0)->nodeValue);
+            $txt   = strip_tags($spanVlUnit->item(0)->nodeValue);
             $parts = explode(':', $txt);
             $valorUnitario = isset($parts[1]) ? $this->parseFloat($parts[1]) : 0;
         }
 
-        // Valor total (da segunda célula)
         $valorTotal = 0.0;
         $spanValor = $xpath->query(".//span[contains(@class, 'valor')]", $td2);
         if ($spanValor->length > 0) {
@@ -139,45 +247,42 @@ class InvoiceParser
         }
 
         return [
-            'nome' => $nome,
-            'codigo' => $codigo,
-            'quantidade' => $quantidade,
-            'unidade' => $unidade,
+            'nome'           => $nome,
+            'codigo'         => $codigo,
+            'quantidade'     => $quantidade,
+            'unidade'        => $unidade,
             'valor_unitario' => $valorUnitario,
-            'valor_total' => $valorTotal,
+            'valor_total'    => $valorTotal,
         ];
     }
 
     private function parseTotais(DOMXPath $xpath): array
     {
         $totais = [
-            'total_itens' => 0,
-            'valor_total' => 0.0,
-            'descontos' => 0.0,
-            'valor_pago' => 0.0,
+            'total_itens'     => 0,
+            'valor_total'     => 0.0,
+            'descontos'       => 0.0,
+            'valor_pago'      => 0.0,
             'forma_pagamento' => '',
         ];
 
-        // Buscar div totalNota
         $divTotal = $xpath->query("//div[@id='totalNota']")->item(0);
-        if (!$divTotal) {
-            // Tentar achar de outra forma
+        if (! $divTotal) {
             $divTotal = $xpath->query("//div[contains(@class, 'txtRight')]")->item(0);
         }
-        if (!$divTotal) return $totais;
+        if (! $divTotal) return $totais;
 
-        // Percorrer todas as divs linhaTotal
         $linhas = $xpath->query(".//div[@id='linhaTotal']", $divTotal);
-        
+
         foreach ($linhas as $linha) {
             $labelNode = $xpath->query(".//label", $linha)->item(0);
-            if (!$labelNode) continue;
-            
+            if (! $labelNode) continue;
+
             $labelText = trim($labelNode->nodeValue);
-            
+
             $spanNode = $xpath->query(".//span[contains(@class, 'totalNumb')]", $linha)->item(0);
-            if (!$spanNode) continue;
-            
+            if (! $spanNode) continue;
+
             $valor = $this->parseFloat(trim($spanNode->nodeValue));
 
             if (stripos($labelText, 'Qtd. total de itens') !== false) {
@@ -191,13 +296,11 @@ class InvoiceParser
             }
         }
 
-        // Buscar forma de pagamento
         $linhaForma = $xpath->query(".//div[@id='linhaForma']", $divTotal)->item(0);
         if ($linhaForma) {
-            // Procurar a div linhaTotal seguinte que tem label.tx
-            $todasLinhas = $xpath->query(".//div[@id='linhaTotal']", $divTotal);
+            $todasLinhas  = $xpath->query(".//div[@id='linhaTotal']", $divTotal);
             $encontrouForma = false;
-            
+
             foreach ($todasLinhas as $linha) {
                 if ($linha->isSameNode($linhaForma)) {
                     $encontrouForma = true;
@@ -219,29 +322,25 @@ class InvoiceParser
     private function parseDadosNota(DOMXPath $xpath, DOMDocument $dom): array
     {
         $dados = [
-            'numero' => '',
-            'serie' => '',
+            'numero'      => '',
+            'serie'       => '',
             'data_emissao' => null,
-            'chave' => '',
+            'chave'       => '',
         ];
 
-        // Buscar todo o texto visível para extrair os dados
-        $body = $dom->getElementsByTagName('body')->item(0);
-        if (!$body) return $dados;
-        
+        $body  = $dom->getElementsByTagName('body')->item(0);
+        if (! $body) return $dados;
+
         $texto = $body->textContent;
-        
-        // Extrair número
+
         if (preg_match('/Número:\s*(\d+)/', $texto, $m)) {
             $dados['numero'] = $m[1];
         }
-        
-        // Extrair série
+
         if (preg_match('/Série:\s*(\d+)/', $texto, $m)) {
             $dados['serie'] = $m[1];
         }
-        
-        // Extrair data
+
         if (preg_match('/Emissão:\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/', $texto, $m)) {
             try {
                 $dados['data_emissao'] = Carbon::createFromFormat('d/m/Y H:i:s', $m[1]);
@@ -249,8 +348,7 @@ class InvoiceParser
                 $dados['data_emissao'] = $m[1];
             }
         }
-        
-        // Extrair chave
+
         $spanChave = $xpath->query("//span[contains(@class, 'chave')]")->item(0);
         if ($spanChave) {
             $chave = preg_replace('/\s+/', '', $spanChave->nodeValue);
@@ -264,7 +362,7 @@ class InvoiceParser
     {
         $consumidor = ['cpf' => '', 'nome' => ''];
         $lis = $xpath->query("//li");
-        
+
         foreach ($lis as $li) {
             $texto = $li->nodeValue;
             if (preg_match('/CPF:\s*([\d.]+-?\d*)/', $texto, $m)) {
@@ -272,29 +370,26 @@ class InvoiceParser
             }
             if (preg_match('/Nome:\s*(.+)/', $texto, $m)) {
                 $nome = trim($m[1]);
-                if (!empty($nome)) $consumidor['nome'] = $nome;
+                if (! empty($nome)) $consumidor['nome'] = $nome;
             }
         }
-        
+
         return $consumidor;
     }
 
     private function parseFloat(string $value): float
     {
         $value = trim($value);
-        // Remover tudo exceto números, vírgula, ponto e sinal negativo
         $value = preg_replace('/[^\d,.\-]/', '', $value);
-        
+
         if (empty($value)) return 0.0;
-        
-        // Se tem vírgula e ponto, remove os pontos (separador de milhar)
+
         if (str_contains($value, ',') && str_contains($value, '.')) {
             $value = str_replace('.', '', $value);
         }
-        
-        // Substitui vírgula por ponto
+
         $value = str_replace(',', '.', $value);
-        
+
         return (float) $value;
     }
 }

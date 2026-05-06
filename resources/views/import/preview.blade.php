@@ -10,6 +10,22 @@
     </div>
 </div>
 
+{{-- Banner de detecção de combustível --}}
+@if(!empty($data['is_combustivel']))
+<div class="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg">
+    <span class="text-xl">⛽</span>
+    <div>
+        <p class="font-semibold">NFC-e de combustível detectada!</p>
+        <p class="text-sm">Detectamos <strong>{{ $data['fuel']['nome_produto'] }}</strong>
+            ({{ number_format($data['fuel']['litros'] ?? 0, 3, ',', '.') }} L
+            &bull; R$ {{ number_format($data['fuel']['valor'], 2, ',', '.') }})
+            no posto <strong>{{ $data['fuel']['posto'] }}</strong>.
+            Escolha abaixo se quer salvar como compra de mercado ou como abastecimento de veículo.
+        </p>
+    </div>
+</div>
+@endif
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Coluna Principal -->
     <div class="lg:col-span-2 space-y-6">
@@ -128,15 +144,62 @@
 
         <!-- Ações -->
         <div class="bg-white rounded-lg shadow-md p-6">
-            <form action="{{ route('import.store') }}" method="POST">
+            <form action="{{ route('import.store') }}" method="POST" id="form-import">
                 @csrf
-                <div class="space-y-3">
-                    {{-- btn-success já incluía estilo base; sem prefixo 'btn' redundante --}}
+
+                {{-- SELECT: destino da nota --}}
+                <div class="mb-4">
+                    <label for="destino" class="block text-sm font-medium text-gray-700 mb-1">Destino da nota</label>
+                    <select name="destino" id="destino" class="form-control"
+                        onchange="toggleVehicleSelect(this.value)">
+                        <option value="mercado" {{ empty($data['is_combustivel']) ? '' : '' }}>&#127978; Mercado / Supermercado</option>
+                        @if(!empty($data['is_combustivel']))
+                        <option value="veiculo" selected>&#9981; Veículo (abastecimento)</option>
+                        @else
+                        <option value="veiculo">&#9981; Veículo (abastecimento)</option>
+                        @endif
+                    </select>
+                </div>
+
+                {{-- SELECT: qual veículo (só aparece quando destino=veiculo) --}}
+                <div id="vehicle-select-wrap" class="mb-4 {{ empty($data['is_combustivel']) ? 'hidden' : '' }}">
+                    <label for="vehicle_id" class="block text-sm font-medium text-gray-700 mb-1">Veículo</label>
+                    @if($vehicles->isEmpty())
+                        <p class="text-sm text-red-600">
+                            Nenhum veículo cadastrado.
+                            <a href="{{ route('vehicles.create') }}" class="underline">Cadastrar agora</a>
+                        </p>
+                    @else
+                        <select name="vehicle_id" id="vehicle_id" class="form-control">
+                            <option value="">Selecione o veículo...</option>
+                            @foreach($vehicles as $v)
+                                <option value="{{ $v->id }}">
+                                    {{ $v->apelido }}{{ $v->marca ? ' — ' . $v->marca : '' }}{{ $v->modelo ? ' ' . $v->modelo : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @endif
+
+                    {{-- Resumo do abastecimento que será salvo --}}
+                    @if(!empty($data['fuel']))
+                    <div class="mt-3 bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800 space-y-1">
+                        <p><strong>Combustível:</strong> {{ $data['fuel']['nome_produto'] }}</p>
+                        <p><strong>Litros:</strong> {{ number_format($data['fuel']['litros'] ?? 0, 3, ',', '.') }} L</p>
+                        <p><strong>Valor:</strong> R$ {{ number_format($data['fuel']['valor'], 2, ',', '.') }}</p>
+                        @if($data['fuel']['litros'] > 0)
+                        <p><strong>Preço/L:</strong> R$ {{ number_format($data['fuel']['valor'] / $data['fuel']['litros'], 3, ',', '.') }}</p>
+                        @endif
+                        <p><strong>Posto:</strong> {{ $data['fuel']['posto'] }}</p>
+                        <p><strong>Data:</strong> {{ $data['fuel']['data'] ? \Carbon\Carbon::parse($data['fuel']['data'])->format('d/m/Y') : 'N/A' }}</p>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="space-y-3 mt-4">
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-md transition">
-                        ✅ Confirmar e Salvar Nota
+                        ✅ Confirmar e Salvar
                     </button>
-                    {{-- btn-outline-secondary já incluía estilo base --}}
                     <a href="{{ route('import.create') }}"
                        class="block w-full text-center inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">
                         ← Voltar e Corrigir
@@ -146,4 +209,20 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleVehicleSelect(value) {
+    const wrap = document.getElementById('vehicle-select-wrap');
+    if (value === 'veiculo') {
+        wrap.classList.remove('hidden');
+    } else {
+        wrap.classList.add('hidden');
+    }
+}
+// Garante estado inicial correto
+document.addEventListener('DOMContentLoaded', function () {
+    const sel = document.getElementById('destino');
+    if (sel) toggleVehicleSelect(sel.value);
+});
+</script>
 @endsection
