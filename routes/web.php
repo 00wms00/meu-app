@@ -10,6 +10,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ShoppingListController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\LancamentoManualController;
+use App\Http\Controllers\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -125,6 +126,9 @@ Route::middleware(['auth'])->group(function () {
     // Lançamento Manual
     Route::get('/lancamento-manual', [LancamentoManualController::class, 'create'])->name('lancamento.create');
     Route::post('/lancamento-manual', [LancamentoManualController::class, 'store'])->name('lancamento.store');
+
+    // Veículos
+    Route::resource('vehicles', VehicleController::class)->except(['show']);
 });
 
 require __DIR__.'/auth.php';
