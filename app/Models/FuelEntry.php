@@ -55,7 +55,6 @@ class FuelEntry extends Model
         }
 
         if ($allEntries) {
-            // Usa a collection em memória — sem query extra
             $anterior = $allEntries
                 ->filter(fn($e) => $e->id < $this->id && $e->km_abastecimento)
                 ->sortByDesc('km_abastecimento')
@@ -78,29 +77,46 @@ class FuelEntry extends Model
     }
 
     /**
-     * Retorna array de pontos para o gráfico de consumo:
-     * [['label' => '12/05/2026', 'consumo' => 12.5], ...]
-     * Apenas entradas com km e litros informados, em ordem cronológica.
+     * Retorna array de pontos para os gráficos de consumo e custo:
+     * [
+     *   [
+     *     'entry_id'   => 42,
+     *     'label'      => '12/05/2025',
+     *     'consumo'    => 12.5,   // km/L
+     *     'custo_km'   => 0.285,  // R$/km
+     *     'km_rodados' => 450,    // km entre abastecimentos
+     *     'km'         => 45230,  // hodômetro
+     *     'litros'     => 36.000,
+     *     'valor'      => 200.00,
+     *   ],
+     *   ...
+     * ]
+     * Apenas entradas com km e litros informados, ordem cronológica.
      */
     public static function historicoConsumo(Collection $entries): array
     {
-        // Ordena do mais antigo para o mais novo para calcular corretamente
         $sorted = $entries
             ->filter(fn($e) => $e->km_abastecimento && $e->litros)
             ->sortBy(['data', 'id']);
 
         $pontos = [];
-        $prev = null;
+        $prev   = null;
 
         foreach ($sorted as $entry) {
             if ($prev && $entry->km_abastecimento > $prev->km_abastecimento) {
-                $km = $entry->km_abastecimento - $prev->km_abastecimento;
+                $kmRodados = $entry->km_abastecimento - $prev->km_abastecimento;
+                $consumo   = round($kmRodados / $entry->litros, 2);
+                $custoKm   = $kmRodados > 0 ? round($entry->valor / $kmRodados, 4) : null;
+
                 $pontos[] = [
-                    'label'   => $entry->data->format('d/m/Y'),
-                    'consumo' => round($km / $entry->litros, 2),
-                    'km'      => $entry->km_abastecimento,
-                    'litros'  => round($entry->litros, 3),
-                    'valor'   => round($entry->valor, 2),
+                    'entry_id'   => $entry->id,
+                    'label'      => $entry->data->format('d/m/Y'),
+                    'consumo'    => $consumo,
+                    'custo_km'   => $custoKm,
+                    'km_rodados' => $kmRodados,
+                    'km'         => $entry->km_abastecimento,
+                    'litros'     => round($entry->litros, 3),
+                    'valor'      => round($entry->valor, 2),
                 ];
             }
             $prev = $entry;
