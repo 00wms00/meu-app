@@ -11,6 +11,7 @@ use App\Http\Controllers\ShoppingListController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\LancamentoManualController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\VehicleExpenseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -128,7 +129,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lancamento-manual', [LancamentoManualController::class, 'store'])->name('lancamento.store');
 
     // Veículos
-    Route::resource('vehicles', VehicleController::class)->except(['show']);
+    Route::resource('vehicles', VehicleController::class);
+    Route::post('/vehicles/{vehicle}/expenses', [VehicleExpenseController::class, 'store'])->name('vehicles.expenses.store');
+    Route::delete('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'destroy'])->name('vehicles.expenses.destroy');
 });
 
 require __DIR__.'/auth.php';
