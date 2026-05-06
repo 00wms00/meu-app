@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FuelEntry;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,12 @@ class VehicleController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('vehicles.show', compact('vehicle', 'expenses'));
+        $fuelEntries = FuelEntry::where('vehicle_id', $vehicle->id)
+            ->orderByDesc('data')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('vehicles.show', compact('vehicle', 'expenses', 'fuelEntries'));
     }
 
     public function create(): View
@@ -42,13 +48,13 @@ class VehicleController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'apelido' => ['required', 'string', 'max:100'],
-            'marca' => ['nullable', 'string', 'max:100'],
-            'modelo' => ['nullable', 'string', 'max:100'],
-            'ano' => ['nullable', 'integer', 'min:1950', 'max:' . now()->year],
-            'placa' => ['nullable', 'string', 'max:10'],
+            'apelido'          => ['required', 'string', 'max:100'],
+            'marca'            => ['nullable', 'string', 'max:100'],
+            'modelo'           => ['nullable', 'string', 'max:100'],
+            'ano'              => ['nullable', 'integer', 'min:1950', 'max:' . now()->year],
+            'placa'            => ['nullable', 'string', 'max:10'],
             'tipo_combustivel' => ['nullable', 'string', 'max:20'],
-            'km_atual' => ['nullable', 'integer', 'min:0'],
+            'km_atual'         => ['nullable', 'integer', 'min:0'],
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -72,13 +78,13 @@ class VehicleController extends Controller
         $this->authorize('update', $vehicle);
 
         $validated = $request->validate([
-            'apelido' => ['required', 'string', 'max:100'],
-            'marca' => ['nullable', 'string', 'max:100'],
-            'modelo' => ['nullable', 'string', 'max:100'],
-            'ano' => ['nullable', 'integer', 'min:1950', 'max:' . now()->year],
-            'placa' => ['nullable', 'string', 'max:10'],
+            'apelido'          => ['required', 'string', 'max:100'],
+            'marca'            => ['nullable', 'string', 'max:100'],
+            'modelo'           => ['nullable', 'string', 'max:100'],
+            'ano'              => ['nullable', 'integer', 'min:1950', 'max:' . now()->year],
+            'placa'            => ['nullable', 'string', 'max:10'],
             'tipo_combustivel' => ['nullable', 'string', 'max:20'],
-            'km_atual' => ['nullable', 'integer', 'min:0'],
+            'km_atual'         => ['nullable', 'integer', 'min:0'],
         ]);
 
         $vehicle->update($validated);
