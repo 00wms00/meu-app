@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\VehicleExpense;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,20 @@ class VehicleController extends Controller
             ->get();
 
         return view('vehicles.index', compact('vehicles'));
+    }
+
+    public function show(Vehicle $vehicle): View
+    {
+        if ($vehicle->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $expenses = VehicleExpense::where('vehicle_id', $vehicle->id)
+            ->orderByDesc('data')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('vehicles.show', compact('vehicle', 'expenses'));
     }
 
     public function create(): View
