@@ -36,44 +36,45 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/invoices/{invoice}/items/{item}', [InvoiceController::class, 'updateItem'])->name('invoices.items.update');
     Route::delete('/invoices/{invoice}/items/{item}', [InvoiceController::class, 'destroyItem'])->name('invoices.items.destroy');
     
-    // ==================== PRODUTOS - ROTAS FIXAS PRIMEIRO ====================
-    
-    // Normalização
-    Route::get('/products/normalizacao', [ProductController::class, 'normalizacao'])->name('products.normalizacao');
-    Route::post('/products/{product}/normalizar', [ProductController::class, 'aprovarNormalizacao'])->name('products.normalizar');
-    Route::post('/products/normalizar-todos', [ProductController::class, 'aprovarTodasNormalizacoes'])->name('products.normalizar-todos');
-    
-    // Categorias
-    Route::get('/products/categorias', [ProductController::class, 'categorias'])->name('products.categorias');
-    Route::post('/products/categorizar-lote', [ProductController::class, 'categorizarLote'])->name('products.categorizar-lote');
-    
-    // Agrupamentos
-    Route::get('/products/agrupamentos', [ProductController::class, 'agrupamentos'])->name('products.agrupamentos');
-    Route::post('/products/agrupar-automatico', [ProductController::class, 'agruparAutomatico'])->name('products.agrupar-automatico');
-    Route::post('/products/criar-grupo', [ProductController::class, 'criarGrupo'])->name('products.criar-grupo');
-    
-    // ML
-    Route::get('/products/ml-sugestoes', [ProductController::class, 'mlSugestoes'])->name('products.ml-sugestoes');
-    Route::post('/products/ml-agrupar', [ProductController::class, 'mlAgrupar'])->name('products.ml-agrupar');
-    
-    // Ações em produtos específicos
-    Route::post('/products/{product}/agrupar', [ProductController::class, 'agrupar'])->name('products.agrupar');
-    Route::post('/products/{product}/desagrupar', [ProductController::class, 'desagrupar'])->name('products.desagrupar');
-    Route::post('/products/{product}/tornar-canonico', [ProductController::class, 'tornarCanonico'])->name('products.tornar-canonico');
-    Route::post('/products/{product}/renomear-grupo', [ProductController::class, 'renomearGrupo'])->name('products.renomear-grupo');
-    Route::post('/products/{product}/desfazer-grupo', [ProductController::class, 'desfazerGrupo'])->name('products.desfazer-grupo');
-    Route::post('/products/{product}/adicionar-ao-grupo', [ProductController::class, 'adicionarAoGrupo'])->name('products.adicionar-ao-grupo');
-    Route::post('/products/{product}/categoria', [ProductController::class, 'atualizarCategoria'])->name('products.atualizar-categoria');
-    Route::post('/products/{product}/foto', [ProductController::class, 'uploadFoto'])->name('products.foto');
-    Route::delete('/products/{product}/foto', [ProductController::class, 'removerFoto'])->name('products.foto.remover');
-    Route::post('/products/{product}/alerta', [ProductController::class, 'criarAlerta'])->name('alertas.criar');
-    Route::get('/products/{product}/similares', [ProductController::class, 'similares'])->name('products.similares');
-    
-    // Produtos - CRUD (por último)
-    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
-    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
-    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    // ==================== PRODUTOS ====================
+    Route::prefix('products')->name('products.')->group(function () {
+        // Normalização
+        Route::get('/normalizacao', [ProductController::class, 'normalizacao'])->name('normalizacao');
+        Route::post('/{product}/normalizar', [ProductController::class, 'aprovarNormalizacao'])->name('normalizar');
+        Route::post('/normalizar-todos', [ProductController::class, 'aprovarTodasNormalizacoes'])->name('normalizar-todos');
+        
+        // Categorias
+        Route::get('/categorias', [ProductController::class, 'categorias'])->name('categorias');
+        Route::post('/categorizar-lote', [ProductController::class, 'categorizarLote'])->name('categorizar-lote');
+        
+        // Agrupamentos
+        Route::get('/agrupamentos', [ProductController::class, 'agrupamentos'])->name('agrupamentos');
+        Route::post('/agrupar-automatico', [ProductController::class, 'agruparAutomatico'])->name('agrupar-automatico');
+        Route::post('/criar-grupo', [ProductController::class, 'criarGrupo'])->name('criar-grupo');
+        
+        // ML
+        Route::get('/ml-sugestoes', [ProductController::class, 'mlSugestoes'])->name('ml-sugestoes');
+        Route::post('/ml-agrupar', [ProductController::class, 'mlAgrupar'])->name('ml-agrupar');
+        
+        // Ações em produtos específicos
+        Route::post('/{product}/agrupar', [ProductController::class, 'agrupar'])->name('agrupar');
+        Route::post('/{product}/desagrupar', [ProductController::class, 'desagrupar'])->name('desagrupar');
+        Route::post('/{product}/tornar-canonico', [ProductController::class, 'tornarCanonico'])->name('tornar-canonico');
+        Route::post('/{product}/renomear-grupo', [ProductController::class, 'renomearGrupo'])->name('renomear-grupo');
+        Route::post('/{product}/desfazer-grupo', [ProductController::class, 'desfazerGrupo'])->name('desfazer-grupo');
+        Route::post('/{product}/adicionar-ao-grupo', [ProductController::class, 'adicionarAoGrupo'])->name('adicionar-ao-grupo');
+        Route::post('/{product}/categoria', [ProductController::class, 'atualizarCategoria'])->name('atualizar-categoria');
+        Route::post('/{product}/foto', [ProductController::class, 'uploadFoto'])->name('foto');
+        Route::delete('/{product}/foto', [ProductController::class, 'removerFoto'])->name('foto.remover');
+        Route::post('/{product}/alerta', [ProductController::class, 'criarAlerta'])->name('alerta.criar');
+        Route::get('/{product}/similares', [ProductController::class, 'similares'])->name('similares');
+        
+        // Produtos - CRUD (por último)
+        Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/{product}', [ProductController::class, 'show'])->name('show');
+        Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
+        Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+    });
     
     // Alertas
     Route::get('/alertas', [ProductController::class, 'alertas'])->name('alertas.index');
