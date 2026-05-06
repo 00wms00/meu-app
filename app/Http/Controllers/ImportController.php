@@ -51,8 +51,9 @@ class ImportController extends Controller
                 ->withErrors(['html' => 'Nenhum dado para exibir.']);
         }
 
-        // Carrega lista de veículos do usuário para o select do preview
-        $vehicles = Vehicle::where('user_id', Auth::id())->orderBy('apelido')->get(['id', 'apelido', 'marca', 'modelo']);
+        $vehicles = Vehicle::where('user_id', Auth::id())
+            ->orderBy('apelido')
+            ->get(['id', 'apelido', 'marca', 'modelo']);
 
         return view('import.preview', [
             'data'     => $data,
@@ -69,14 +70,15 @@ class ImportController extends Controller
                 ->withErrors(['html' => 'Sessão expirada.']);
         }
 
-        $destino = $request->input('destino', 'mercado'); // 'mercado' | 'veiculo'
+        $destino = $request->input('destino', 'mercado');
 
         // ============================================================
-        // DESTINO: VEÍCULO  —  cria FuelEntry em vez de Invoice
+        // DESTINO: VEÍCULO  —  cria FuelEntry
         // ============================================================
         if ($destino === 'veiculo' && ! empty($data['is_combustivel'])) {
             $request->validate([
-                'vehicle_id' => ['required', 'integer', 'exists:vehicles,id'],
+                'vehicle_id'       => ['required', 'integer', 'exists:vehicles,id'],
+                'km_abastecimento' => ['nullable', 'integer', 'min:0'],
             ]);
 
             $vehicle = Vehicle::findOrFail($request->vehicle_id);
@@ -87,22 +89,28 @@ class ImportController extends Controller
 
             $fuel = $data['fuel'];
 
+            // O KM vem do campo editável do formulário (pode ter sido ajustado pelo usuário)
+            // Se o campo foi enviado em branco, usa null
+            $km = $request->filled('km_abastecimento')
+                ? (int) $request->km_abastecimento
+                : null;
+
             FuelEntry::create([
                 'user_id'          => Auth::id(),
                 'vehicle_id'       => $vehicle->id,
                 'data'             => $fuel['data'] ?? now()->toDateString(),
                 'valor'            => $fuel['valor'],
                 'litros'           => $fuel['litros'],
-                'km_abastecimento' => $fuel['km'] ?? null,
+                'km_abastecimento' => $km,
                 'tipo_combustivel' => $fuel['tipo_combustivel'],
                 'posto'            => $fuel['posto'],
                 'tanque_cheio'     => false,
                 'descricao'        => 'Importado da NFC-e ' . ($data['numero'] ?? ''),
             ]);
 
-            // Atualiza km_atual do veículo se o km registrado na NF for maior
-            if (! empty($fuel['km']) && $fuel['km'] > $vehicle->km_atual) {
-                $vehicle->update(['km_atual' => $fuel['km']]);
+            // Atualiza km_atual do veículo apenas se km foi informado e é maior que o atual
+            if ($km && $km > $vehicle->km_atual) {
+                $vehicle->update(['km_atual' => $km]);
             }
 
             session()->forget('parsed_invoice');
@@ -165,8 +173,6 @@ class ImportController extends Controller
         return redirect()->route('dashboard')
             ->with('success', 'Nota fiscal importada com sucesso!');
     }
-
-    // ==================== PRIVATE ====================
 
     private function sessionData(): ?array
     {

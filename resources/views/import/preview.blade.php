@@ -5,7 +5,7 @@
 @section('content')
 <div class="mb-6 flex items-center justify-between">
     <div>
-        <h1 class="text-3xl font-bold text-gray-900">📋 Confirmar Dados da Nota</h1>
+        <h1 class="text-3xl font-bold text-gray-900">📋Confirmar Dados da Nota</h1>
         <p class="mt-1 text-gray-600">Revise os dados antes de salvar</p>
     </div>
 </div>
@@ -152,7 +152,7 @@
                     <label for="destino" class="block text-sm font-medium text-gray-700 mb-1">Destino da nota</label>
                     <select name="destino" id="destino" class="form-control"
                         onchange="toggleVehicleSelect(this.value)">
-                        <option value="mercado" {{ empty($data['is_combustivel']) ? '' : '' }}>&#127978; Mercado / Supermercado</option>
+                        <option value="mercado">&#127978; Mercado / Supermercado</option>
                         @if(!empty($data['is_combustivel']))
                         <option value="veiculo" selected>&#9981; Veículo (abastecimento)</option>
                         @else
@@ -161,32 +161,61 @@
                     </select>
                 </div>
 
-                {{-- SELECT: qual veículo (só aparece quando destino=veiculo) --}}
-                <div id="vehicle-select-wrap" class="mb-4 {{ empty($data['is_combustivel']) ? 'hidden' : '' }}">
-                    <label for="vehicle_id" class="block text-sm font-medium text-gray-700 mb-1">Veículo</label>
-                    @if($vehicles->isEmpty())
-                        <p class="text-sm text-red-600">
-                            Nenhum veículo cadastrado.
-                            <a href="{{ route('vehicles.create') }}" class="underline">Cadastrar agora</a>
-                        </p>
-                    @else
-                        <select name="vehicle_id" id="vehicle_id" class="form-control">
-                            <option value="">Selecione o veículo...</option>
-                            @foreach($vehicles as $v)
-                                <option value="{{ $v->id }}">
-                                    {{ $v->apelido }}{{ $v->marca ? ' — ' . $v->marca : '' }}{{ $v->modelo ? ' ' . $v->modelo : '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                {{-- Bloco veículo: só aparece quando destino=veiculo --}}
+                <div id="vehicle-select-wrap" class="space-y-4 mb-4 {{ empty($data['is_combustivel']) ? 'hidden' : '' }}">
+
+                    {{-- Select de veículo --}}
+                    <div>
+                        <label for="vehicle_id" class="block text-sm font-medium text-gray-700 mb-1">Veículo</label>
+                        @if($vehicles->isEmpty())
+                            <p class="text-sm text-red-600">
+                                Nenhum veículo cadastrado.
+                                <a href="{{ route('vehicles.create') }}" class="underline">Cadastrar agora</a>
+                            </p>
+                        @else
+                            <select name="vehicle_id" id="vehicle_id" class="form-control">
+                                <option value="">Selecione o veículo...</option>
+                                @foreach($vehicles as $v)
+                                    <option value="{{ $v->id }}">
+                                        {{ $v->apelido }}{{ $v->marca ? ' — ' . $v->marca : '' }}{{ $v->modelo ? ' ' . $v->modelo : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
+                    </div>
+
+                    {{-- Campo KM --}}
+                    @if(!empty($data['is_combustivel']))
+                    <div>
+                        <label for="km_abastecimento" class="block text-sm font-medium text-gray-700 mb-1">
+                            KM no abastecimento
+                            @if(!empty($data['fuel']['km']))
+                                <span class="ml-1 text-xs font-normal text-amber-600">(lido da NFC-e)</span>
+                            @else
+                                <span class="ml-1 text-xs font-normal text-gray-400">(opcional)</span>
+                            @endif
+                        </label>
+                        <input
+                            type="number"
+                            name="km_abastecimento"
+                            id="km_abastecimento"
+                            class="form-control"
+                            min="0"
+                            step="1"
+                            placeholder="Ex: 45230"
+                            value="{{ !empty($data['fuel']['km']) ? $data['fuel']['km'] : '' }}"
+                        >
+                        <p class="mt-1 text-xs text-gray-400">Deixe em branco para preencher depois no histórico do veículo.</p>
+                    </div>
                     @endif
 
                     {{-- Resumo do abastecimento que será salvo --}}
                     @if(!empty($data['fuel']))
-                    <div class="mt-3 bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800 space-y-1">
+                    <div class="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800 space-y-1">
                         <p><strong>Combustível:</strong> {{ $data['fuel']['nome_produto'] }}</p>
                         <p><strong>Litros:</strong> {{ number_format($data['fuel']['litros'] ?? 0, 3, ',', '.') }} L</p>
                         <p><strong>Valor:</strong> R$ {{ number_format($data['fuel']['valor'], 2, ',', '.') }}</p>
-                        @if($data['fuel']['litros'] > 0)
+                        @if(!empty($data['fuel']['litros']))
                         <p><strong>Preço/L:</strong> R$ {{ number_format($data['fuel']['valor'] / $data['fuel']['litros'], 3, ',', '.') }}</p>
                         @endif
                         <p><strong>Posto:</strong> {{ $data['fuel']['posto'] }}</p>
@@ -219,7 +248,6 @@ function toggleVehicleSelect(value) {
         wrap.classList.add('hidden');
     }
 }
-// Garante estado inicial correto
 document.addEventListener('DOMContentLoaded', function () {
     const sel = document.getElementById('destino');
     if (sel) toggleVehicleSelect(sel.value);
