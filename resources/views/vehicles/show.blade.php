@@ -39,10 +39,13 @@
     $totalDespesas = $expenses->sum('valor');
     $totalLitros   = $fuelEntries->whereNotNull('litros')->sum('litros');
     $mediaPreco    = $totalLitros > 0 ? $totalCombust / $totalLitros : null;
-    // custo/km médio geral: soma de (valor/km_rodado) de cada ponto
     $mediaCustoKm  = count($chartConsumo)
         ? round(array_sum(array_column($chartConsumo, 'custo_km')) / count($chartConsumo), 3)
         : null;
+
+    // Badge de alertas para o título da aba
+    $temVencido = $reminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'vencido');
+    $temProximo = $reminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'proximo');
 @endphp
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4">
@@ -81,7 +84,7 @@
 @endif
 
 {{-- Tabs --}}
-<div x-data="{ tab: 'fuel' }">
+<div x-data="{ tab: '{{ (session('_fragment') === 'reminders' || $errors->isNotEmpty()) ? 'reminders' : 'fuel' }}' }">
     <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex gap-6">
             <button @click="tab = 'fuel'" :class="tab === 'fuel' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
@@ -93,6 +96,16 @@
                 class="border-b-2 pb-3 text-sm font-medium">
                 🔧 Manutenção e Despesas
                 <span class="ml-1 text-xs bg-gray-100 rounded-full px-2">{{ $expenses->count() }}</span>
+            </button>
+            <button @click="tab = 'reminders'" :class="tab === 'reminders' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                class="border-b-2 pb-3 text-sm font-medium flex items-center gap-1">
+                🔔 Lembretes
+                <span class="ml-1 text-xs bg-gray-100 rounded-full px-2">{{ $reminders->count() }}</span>
+                @if($temVencido)
+                    <span class="inline-block w-2 h-2 rounded-full bg-red-600 ml-1" title="Lembrete vencido"></span>
+                @elseif($temProximo)
+                    <span class="inline-block w-2 h-2 rounded-full bg-yellow-400 ml-1" title="Lembrete próximo"></span>
+                @endif
             </button>
         </nav>
     </div>
@@ -203,7 +216,6 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @php
                                         $allFuelAsc = $fuelEntries->sortBy('id');
-                                        // Monta lookup de custo_km por entry_id a partir do chartConsumo
                                         $custoKmPorId = collect($chartConsumo)->keyBy('entry_id');
                                     @endphp
                                     @foreach($fuelEntries as $entry)
@@ -256,7 +268,6 @@
                                                 {{ $consumo ? number_format($consumo, 1, ',', '.') : '-' }}
                                             </td>
 
-                                            {{-- R$/km --}}
                                             <td class="px-3 py-2 text-sm text-right {{ $custoKm ? 'text-purple-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $custoKm ? number_format($custoKm, 3, ',', '.') : '-' }}
                                             </td>
@@ -362,6 +373,12 @@
             </div>
         </div>
     </div>
+
+    {{-- TAB: LEMBRETES DE MANUTENÇÃO --}}
+    <div x-show="tab === 'reminders'" id="reminders">
+        @include('vehicles._reminders_tab')
+    </div>
+
 </div>
 
 {{-- Chart.js: dois gráficos --}}
@@ -372,7 +389,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const pontos  = @json($chartConsumo);
     const labels  = pontos.map(p => p.label);
 
-    // ---------- helpers ----------
     function mediaLinha(arr) {
         const m = arr.reduce((a, b) => a + b, 0) / arr.length;
         return arr.map(() => parseFloat(m.toFixed(3)));
@@ -381,7 +397,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return n.toFixed(decimais).replace('.', ',');
     }
 
-    // ---------- Gráfico 1: km/L ----------
     const consumos = pontos.map(p => p.consumo);
     new Chart(document.getElementById('chartConsumo').getContext('2d'), {
         type: 'line',
@@ -440,7 +455,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ---------- Gráfico 2: R$/km ----------
     const custos = pontos.map(p => p.custo_km);
     new Chart(document.getElementById('chartCusto').getContext('2d'), {
         type: 'line',
