@@ -39,6 +39,10 @@
     $totalDespesas = $expenses->sum('valor');
     $totalLitros   = $fuelEntries->whereNotNull('litros')->sum('litros');
     $mediaPreco    = $totalLitros > 0 ? $totalCombust / $totalLitros : null;
+    // custo/km médio geral: soma de (valor/km_rodado) de cada ponto
+    $mediaCustoKm  = count($chartConsumo)
+        ? round(array_sum(array_column($chartConsumo, 'custo_km')) / count($chartConsumo), 3)
+        : null;
 @endphp
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4">
@@ -65,6 +69,17 @@
     </div>
 </div>
 
+{{-- KPI extra: custo/km --}}
+@if($mediaCustoKm)
+<div class="mb-6">
+    <div class="inline-flex items-center gap-3 bg-white rounded-lg shadow px-5 py-3">
+        <span class="text-xs text-gray-500 uppercase tracking-wide">Custo médio por km</span>
+        <span class="text-xl font-bold text-purple-700">R$ {{ number_format($mediaCustoKm, 3, ',', '.') }}/km</span>
+        <span class="text-xs text-gray-400">(só combustível)</span>
+    </div>
+</div>
+@endif
+
 {{-- Tabs --}}
 <div x-data="{ tab: 'fuel' }">
     <div class="border-b border-gray-200 mb-6">
@@ -85,17 +100,27 @@
     {{-- TAB: ABASTECIMENTOS --}}
     <div x-show="tab === 'fuel'" id="fuel">
 
-        {{-- Gráfico de consumo --}}
+        {{-- Gráficos lado a lado --}}
         @if(count($chartConsumo) >= 2)
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-base font-semibold text-gray-800 mb-4">📈 Evolução do consumo (km/L)</h2>
-            <div style="position:relative; height:220px">
-                <canvas id="chartConsumo"></canvas>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {{-- Gráfico 1: km/L --}}
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-sm font-semibold text-gray-700 mb-3">📈 Consumo (km/L)</h2>
+                <div style="position:relative; height:200px">
+                    <canvas id="chartConsumo"></canvas>
+                </div>
+            </div>
+            {{-- Gráfico 2: R$/km --}}
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-sm font-semibold text-gray-700 mb-3">💰 Custo por km (R$/km)</h2>
+                <div style="position:relative; height:200px">
+                    <canvas id="chartCusto"></canvas>
+                </div>
             </div>
         </div>
         @elseif(count($chartConsumo) === 1)
         <div class="mb-4 text-sm text-gray-500 bg-gray-50 border rounded px-4 py-3">
-            📊 Registre mais 1 abastecimento com KM para ver o gráfico de consumo.
+            📊 Registre mais 1 abastecimento com KM para ver os gráficos de consumo e custo.
         </div>
         @endif
 
@@ -170,17 +195,22 @@
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">KM</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">km/L</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">R$/km</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                                         <th class="px-3 py-2"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @php
-                                        // Mantém a collection completa (em ordem crescente) para consumoMedio()
                                         $allFuelAsc = $fuelEntries->sortBy('id');
+                                        // Monta lookup de custo_km por entry_id a partir do chartConsumo
+                                        $custoKmPorId = collect($chartConsumo)->keyBy('entry_id');
                                     @endphp
                                     @foreach($fuelEntries as $entry)
-                                        @php $consumo = $entry->consumoMedio($allFuelAsc); @endphp
+                                        @php
+                                            $consumo  = $entry->consumoMedio($allFuelAsc);
+                                            $custoKm  = $custoKmPorId->get($entry->id)['custo_km'] ?? null;
+                                        @endphp
                                         <tr>
                                             <td class="px-3 py-2 text-sm text-gray-700">{{ $entry->data->format('d/m/Y') }}</td>
                                             <td class="px-3 py-2 text-sm text-gray-700 text-right">{{ $entry->litros ? number_format($entry->litros, 3, ',', '.') : '-' }}</td>
@@ -225,9 +255,16 @@
                                             <td class="px-3 py-2 text-sm text-right {{ $consumo ? 'text-green-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $consumo ? number_format($consumo, 1, ',', '.') : '-' }}
                                             </td>
+
+                                            {{-- R$/km --}}
+                                            <td class="px-3 py-2 text-sm text-right {{ $custoKm ? 'text-purple-700 font-semibold' : 'text-gray-400' }}">
+                                                {{ $custoKm ? number_format($custoKm, 3, ',', '.') : '-' }}
+                                            </td>
+
                                             <td class="px-3 py-2 text-sm text-gray-600">
                                                 {{ $tiposComb[$entry->tipo_combustivel] ?? ($entry->tipo_combustivel ? ucfirst($entry->tipo_combustivel) : '-') }}
-                                                @if($entry->tanque_cheio) <span class="text-xs text-blue-600">• cheio</span> @endif
+                                                @if($entry->tanque_cheio) <span class="text-xs text-blue-600">&bull; cheio</span> @endif
+                                                @if($entry->posto) <span class="text-xs text-gray-400 block">{{ $entry->posto }}</span> @endif
                                             </td>
                                             <td class="px-3 py-2 text-right text-sm">
                                                 <form action="{{ route('vehicles.fuel.destroy', [$vehicle, $entry]) }}" method="POST" class="inline" onsubmit="return confirm('Remover este abastecimento?')">
@@ -327,18 +364,26 @@
     </div>
 </div>
 
-{{-- Chart.js: gráfico de consumo --}}
+{{-- Chart.js: dois gráficos --}}
 @if(count($chartConsumo) >= 2)
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const pontos = @json($chartConsumo);
+    const pontos  = @json($chartConsumo);
     const labels  = pontos.map(p => p.label);
-    const consumos = pontos.map(p => p.consumo);
-    const media = consumos.reduce((a, b) => a + b, 0) / consumos.length;
 
-    const ctx = document.getElementById('chartConsumo').getContext('2d');
-    new Chart(ctx, {
+    // ---------- helpers ----------
+    function mediaLinha(arr) {
+        const m = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return arr.map(() => parseFloat(m.toFixed(3)));
+    }
+    function formatBR(n, decimais) {
+        return n.toFixed(decimais).replace('.', ',');
+    }
+
+    // ---------- Gráfico 1: km/L ----------
+    const consumos = pontos.map(p => p.consumo);
+    new Chart(document.getElementById('chartConsumo').getContext('2d'), {
         type: 'line',
         data: {
             labels,
@@ -355,8 +400,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     fill: true,
                 },
                 {
-                    label: 'Média (' + media.toFixed(1) + ' km/L)',
-                    data: consumos.map(() => parseFloat(media.toFixed(2))),
+                    label: 'Média (' + formatBR(consumos.reduce((a,b)=>a+b,0)/consumos.length, 1) + ' km/L)',
+                    data: mediaLinha(consumos),
                     borderColor: '#f59e0b',
                     borderWidth: 1.5,
                     borderDash: [6, 3],
@@ -370,15 +415,14 @@ document.addEventListener('DOMContentLoaded', function () {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
                 tooltip: {
                     callbacks: {
-                        afterBody: function(items) {
-                            const idx = items[0].dataIndex;
-                            const p = pontos[idx];
+                        afterBody(items) {
+                            const p = pontos[items[0].dataIndex];
                             return [
-                                'Litros: ' + p.litros.toFixed(3).replace('.', ','),
-                                'Valor: R$ ' + p.valor.toFixed(2).replace('.', ','),
+                                'Litros: ' + formatBR(p.litros, 3),
+                                'Valor: R$ ' + formatBR(p.valor, 2),
                                 'KM: ' + p.km.toLocaleString('pt-BR'),
                             ];
                         }
@@ -388,6 +432,65 @@ document.addEventListener('DOMContentLoaded', function () {
             scales: {
                 y: {
                     title: { display: true, text: 'km/L', font: { size: 11 } },
+                    ticks: { font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+
+    // ---------- Gráfico 2: R$/km ----------
+    const custos = pontos.map(p => p.custo_km);
+    new Chart(document.getElementById('chartCusto').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'R$/km',
+                    data: custos,
+                    borderColor: '#7c3aed',
+                    backgroundColor: 'rgba(124,58,237,0.08)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#7c3aed',
+                    pointRadius: 5,
+                    tension: 0.3,
+                    fill: true,
+                },
+                {
+                    label: 'Média (R$ ' + formatBR(custos.reduce((a,b)=>a+b,0)/custos.length, 3) + '/km)',
+                    data: mediaLinha(custos),
+                    borderColor: '#f59e0b',
+                    borderWidth: 1.5,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    fill: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        afterBody(items) {
+                            const p = pontos[items[0].dataIndex];
+                            return [
+                                'Valor: R$ ' + formatBR(p.valor, 2),
+                                'km rodados: ' + (p.km_rodados ?? '-'),
+                                'km/L: ' + formatBR(p.consumo, 1),
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    title: { display: true, text: 'R$/km', font: { size: 11 } },
                     ticks: { font: { size: 11 } },
                     grid: { color: 'rgba(0,0,0,0.05)' }
                 },
