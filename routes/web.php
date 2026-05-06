@@ -107,6 +107,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('items/{item}/toggle', [ShoppingListController::class, 'toggleItem'])->name('items.toggle');
     Route::put('items/{item}', [ShoppingListController::class, 'updateItem'])->name('items.update');
     Route::delete('items/{item}', [ShoppingListController::class, 'removeItem'])->name('items.remove');
+
+    // Lista Rápida (planejamento)
+    Route::post('/lista-rapida', [ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');
     
     // Ofertas
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
@@ -124,6 +127,3 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
-// Lista Rápida (planejamento)
-Route::post('/lista-rapida', [App\Http\Controllers\ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');
