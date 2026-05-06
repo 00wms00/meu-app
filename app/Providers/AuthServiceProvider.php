@@ -9,6 +9,7 @@ use App\Models\Offer;
 use App\Models\PriceAlert;
 use App\Models\Product;
 use App\Models\ShoppingList;
+use App\Models\Vehicle;
 use App\Policies\BudgetPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\InvoicePolicy;
@@ -16,6 +17,7 @@ use App\Policies\OfferPolicy;
 use App\Policies\PriceAlertPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ShoppingListPolicy;
+use App\Policies\VehiclePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -36,6 +38,7 @@ class AuthServiceProvider extends ServiceProvider
         PriceAlert::class   => PriceAlertPolicy::class,
         Product::class      => ProductPolicy::class,
         ShoppingList::class => ShoppingListPolicy::class,
+        Vehicle::class      => VehiclePolicy::class,
     ];
 
     public function boot(): void
