@@ -33,17 +33,17 @@
     </div>
 @endif
 
-{{-- KPIs rápidos --}}
+{{-- KPIs --}}
 @php
-    $totalCombust = $fuelEntries->sum('valor');
+    $totalCombust  = $fuelEntries->sum('valor');
     $totalDespesas = $expenses->sum('valor');
-    $totalLitros = $fuelEntries->whereNotNull('litros')->sum('litros');
-    $mediaPreco = $totalLitros > 0 ? $totalCombust / $totalLitros : null;
+    $totalLitros   = $fuelEntries->whereNotNull('litros')->sum('litros');
+    $mediaPreco    = $totalLitros > 0 ? $totalCombust / $totalLitros : null;
 @endphp
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Km atual</p>
-        <p class="text-xl font-bold text-gray-900">{{ number_format($vehicle->km_atual, 0, ',', '.') }}</p>
+        <p class="text-xl font-bold text-gray-900">{{ number_format($vehicle->km_atual ?? 0, 0, ',', '.') }}</p>
     </div>
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Total combustível</p>
@@ -54,13 +54,19 @@
         <p class="text-xl font-bold text-orange-700">R$ {{ number_format($totalDespesas, 2, ',', '.') }}</p>
     </div>
     <div class="bg-white rounded-lg shadow p-4">
-        <p class="text-xs text-gray-500 uppercase tracking-wide">Preço médio/l</p>
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Preço médio/L</p>
         <p class="text-xl font-bold text-gray-900">{{ $mediaPreco ? 'R$ ' . number_format($mediaPreco, 3, ',', '.') : '-' }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Consumo médio</p>
+        <p class="text-xl font-bold {{ $consumoMedioGeral ? 'text-green-700' : 'text-gray-400' }}">
+            {{ $consumoMedioGeral ? number_format($consumoMedioGeral, 1, ',', '.') . ' km/L' : '-' }}
+        </p>
     </div>
 </div>
 
 {{-- Tabs --}}
-<div x-data="{ tab: '{{ session('_tab', 'fuel') }}' }">
+<div x-data="{ tab: 'fuel' }">
     <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex gap-6">
             <button @click="tab = 'fuel'" :class="tab === 'fuel' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
@@ -77,7 +83,22 @@
     </div>
 
     {{-- TAB: ABASTECIMENTOS --}}
-    <div x-show="tab === 'fuel'">
+    <div x-show="tab === 'fuel'" id="fuel">
+
+        {{-- Gráfico de consumo --}}
+        @if(count($chartConsumo) >= 2)
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-base font-semibold text-gray-800 mb-4">📈 Evolução do consumo (km/L)</h2>
+            <div style="position:relative; height:220px">
+                <canvas id="chartConsumo"></canvas>
+            </div>
+        </div>
+        @elseif(count($chartConsumo) === 1)
+        <div class="mb-4 text-sm text-gray-500 bg-gray-50 border rounded px-4 py-3">
+            📊 Registre mais 1 abastecimento com KM para ver o gráfico de consumo.
+        </div>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Formulário --}}
             <div class="lg:col-span-1">
@@ -100,14 +121,14 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Km no abastecimento</label>
-                            <input type="number" name="km_abastecimento" value="{{ old('km_abastecimento', $vehicle->km_atual ?: '') }}" class="form-control mt-1" min="0">
+                            <label class="block text-sm font-medium text-gray-700">KM no abastecimento</label>
+                            <input type="number" name="km_abastecimento" value="{{ old('km_abastecimento', $vehicle->km_atual ?: '') }}" class="form-control mt-1" min="0" placeholder="Ex: 45230">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Tipo de combustível</label>
                             <select name="tipo_combustivel" class="form-control mt-1">
                                 <option value="">Selecione...</option>
-                                @php $tiposComb = ['gasolina'=>'Gasolina', 'gasolina_aditivada'=>'Gasolina Aditivada', 'etanol'=>'Etanol', 'diesel'=>'Diesel', 'gnv'=>'GNV', 'eletrico'=>'Elétrico']; @endphp
+                                @php $tiposComb = ['gasolina'=>'Gasolina','gasolina_aditivada'=>'Gasolina Aditivada','etanol'=>'Etanol','diesel'=>'Diesel','gnv'=>'GNV','eletrico'=>'Elétrico']; @endphp
                                 @foreach($tiposComb as $v => $l)
                                     <option value="{{ $v }}" {{ old('tipo_combustivel', $vehicle->tipo_combustivel) === $v ? 'selected' : '' }}>{{ $l }}</option>
                                 @endforeach
@@ -130,7 +151,7 @@
                 </div>
             </div>
 
-            {{-- Lista --}}
+            {{-- Histórico --}}
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b">
@@ -147,15 +168,19 @@
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Litros</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">R$/L</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
-                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Km</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">KM</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">km/L</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                                         <th class="px-3 py-2"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
+                                    @php
+                                        // Mantém a collection completa (em ordem crescente) para consumoMedio()
+                                        $allFuelAsc = $fuelEntries->sortBy('id');
+                                    @endphp
                                     @foreach($fuelEntries as $entry)
-                                        @php $consumo = $entry->consumoMedio(); @endphp
+                                        @php $consumo = $entry->consumoMedio($allFuelAsc); @endphp
                                         <tr>
                                             <td class="px-3 py-2 text-sm text-gray-700">{{ $entry->data->format('d/m/Y') }}</td>
                                             <td class="px-3 py-2 text-sm text-gray-700 text-right">{{ $entry->litros ? number_format($entry->litros, 3, ',', '.') : '-' }}</td>
@@ -166,8 +191,38 @@
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($entry->valor, 2, ',', '.') }}</td>
-                                            <td class="px-3 py-2 text-sm text-gray-700 text-right">{{ $entry->km_abastecimento ? number_format($entry->km_abastecimento, 0, ',', '.') : '-' }}</td>
-                                            <td class="px-3 py-2 text-sm text-right {{ $consumo ? 'text-green-700 font-medium' : 'text-gray-400' }}">
+
+                                            {{-- KM editável inline --}}
+                                            <td class="px-3 py-2 text-sm text-right" x-data="{ editing: false }">
+                                                <span x-show="!editing" class="cursor-pointer group">
+                                                    <span @click="editing = true"
+                                                          class="tabular-nums {{ $entry->km_abastecimento ? '' : 'text-gray-400 italic' }}"
+                                                          title="Clique para editar">
+                                                        {{ $entry->km_abastecimento ? number_format($entry->km_abastecimento, 0, ',', '.') : '—' }}
+                                                    </span>
+                                                    <span @click="editing = true" class="ml-1 text-gray-300 group-hover:text-blue-400 text-xs" title="Editar KM">✏️</span>
+                                                </span>
+                                                <form x-show="editing"
+                                                      action="{{ route('vehicles.fuel.updateKm', [$vehicle, $entry]) }}"
+                                                      method="POST"
+                                                      class="inline-flex items-center gap-1">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="number"
+                                                           name="km_abastecimento"
+                                                           value="{{ $entry->km_abastecimento }}"
+                                                           min="0"
+                                                           class="w-24 border border-blue-400 rounded px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                                           @keydown.escape="editing = false"
+                                                           x-ref="kmInput"
+                                                           x-init="$watch('editing', v => v && $nextTick(() => $refs.kmInput.focus()))"
+                                                    >
+                                                    <button type="submit" class="text-green-600 hover:text-green-800 text-sm" title="Salvar">✔</button>
+                                                    <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600 text-sm" title="Cancelar">✕</button>
+                                                </form>
+                                            </td>
+
+                                            <td class="px-3 py-2 text-sm text-right {{ $consumo ? 'text-green-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $consumo ? number_format($consumo, 1, ',', '.') : '-' }}
                                             </td>
                                             <td class="px-3 py-2 text-sm text-gray-600">
@@ -178,7 +233,7 @@
                                                 <form action="{{ route('vehicles.fuel.destroy', [$vehicle, $entry]) }}" method="POST" class="inline" onsubmit="return confirm('Remover este abastecimento?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:underline">Remover</button>
+                                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Remover</button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -207,7 +262,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Tipo</label>
                             <select name="tipo" class="form-control mt-1" required>
-                                @php $tipos = ['manutencao'=>'Manutenção', 'seguro'=>'Seguro', 'impostos'=>'Impostos/IPVA', 'pedagio'=>'Pedágio/Estacionamento', 'outros'=>'Outros']; @endphp
+                                @php $tipos = ['manutencao'=>'Manutenção','seguro'=>'Seguro','impostos'=>'Impostos/IPVA','pedagio'=>'Pedágio/Estacionamento','outros'=>'Outros']; @endphp
                                 <option value="" disabled selected>Selecione...</option>
                                 @foreach($tipos as $v => $l)
                                     <option value="{{ $v }}" {{ old('tipo') === $v ? 'selected' : '' }}>{{ $l }}</option>
@@ -226,7 +281,6 @@
                     </form>
                 </div>
             </div>
-
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b">
@@ -258,7 +312,7 @@
                                                 <form action="{{ route('vehicles.expenses.destroy', [$vehicle, $exp]) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta despesa?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:underline">Remover</button>
+                                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Remover</button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -272,4 +326,76 @@
         </div>
     </div>
 </div>
+
+{{-- Chart.js: gráfico de consumo --}}
+@if(count($chartConsumo) >= 2)
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const pontos = @json($chartConsumo);
+    const labels  = pontos.map(p => p.label);
+    const consumos = pontos.map(p => p.consumo);
+    const media = consumos.reduce((a, b) => a + b, 0) / consumos.length;
+
+    const ctx = document.getElementById('chartConsumo').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'km/L',
+                    data: consumos,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22,163,74,0.08)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#16a34a',
+                    pointRadius: 5,
+                    tension: 0.3,
+                    fill: true,
+                },
+                {
+                    label: 'Média (' + media.toFixed(1) + ' km/L)',
+                    data: consumos.map(() => parseFloat(media.toFixed(2))),
+                    borderColor: '#f59e0b',
+                    borderWidth: 1.5,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    fill: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function(items) {
+                            const idx = items[0].dataIndex;
+                            const p = pontos[idx];
+                            return [
+                                'Litros: ' + p.litros.toFixed(3).replace('.', ','),
+                                'Valor: R$ ' + p.valor.toFixed(2).replace('.', ','),
+                                'KM: ' + p.km.toLocaleString('pt-BR'),
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    title: { display: true, text: 'km/L', font: { size: 11 } },
+                    ticks: { font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+});
+</script>
+@endif
 @endsection

@@ -16,43 +16,68 @@ class FuelEntryController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
+        $data = $request->validate([
             'data'             => ['required', 'date'],
             'valor'            => ['required', 'numeric', 'min:0'],
             'litros'           => ['nullable', 'numeric', 'min:0'],
             'km_abastecimento' => ['nullable', 'integer', 'min:0'],
             'tipo_combustivel' => ['nullable', 'string', 'max:30'],
-            'posto'            => ['nullable', 'string', 'max:100'],
+            'posto'            => ['nullable', 'string', 'max:150'],
             'tanque_cheio'     => ['nullable', 'boolean'],
             'descricao'        => ['nullable', 'string', 'max:255'],
         ]);
 
-        $entry = FuelEntry::create([
-            'user_id'          => Auth::id(),
-            'vehicle_id'       => $vehicle->id,
-            'data'             => $validated['data'],
-            'valor'            => $validated['valor'],
-            'litros'           => $validated['litros'] ?? null,
-            'km_abastecimento' => $validated['km_abastecimento'] ?? null,
-            'tipo_combustivel' => $validated['tipo_combustivel'] ?? null,
-            'posto'            => $validated['posto'] ?? null,
-            'tanque_cheio'     => isset($validated['tanque_cheio']) ? (bool) $validated['tanque_cheio'] : false,
-            'descricao'        => $validated['descricao'] ?? null,
-        ]);
+        $data['user_id']    = Auth::id();
+        $data['vehicle_id'] = $vehicle->id;
+        $data['tanque_cheio'] = $request->boolean('tanque_cheio');
 
-        // Atualiza km_atual do veículo se o abastecimento registrou km maior
-        if ($validated['km_abastecimento'] && $validated['km_abastecimento'] > $vehicle->km_atual) {
-            $vehicle->update(['km_atual' => $validated['km_abastecimento']]);
+        FuelEntry::create($data);
+
+        // Atualiza km_atual do veículo se o km informado for maior
+        $km = $data['km_abastecimento'] ?? null;
+        if ($km && $km > $vehicle->km_atual) {
+            $vehicle->update(['km_atual' => $km]);
         }
 
         return redirect()
             ->route('vehicles.show', $vehicle)
-            ->with('success', 'Abastecimento registrado com sucesso!');
+            ->with('success', 'Abastecimento registrado!')
+            ->withFragment('fuel');
+    }
+
+    /**
+     * Atualiza apenas o KM de um abastecimento existente.
+     */
+    public function updateKm(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
+    {
+        if ($vehicle->user_id !== Auth::id() || $fuelEntry->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'km_abastecimento' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $km = $validated['km_abastecimento'] ?? null;
+
+        $fuelEntry->update(['km_abastecimento' => $km]);
+
+        // Atualiza km_atual do veículo se necessário
+        if ($km && $km > $vehicle->km_atual) {
+            $vehicle->update(['km_atual' => $km]);
+        }
+
+        return redirect()
+            ->route('vehicles.show', $vehicle)
+            ->with('success', 'KM atualizado!')
+            ->withFragment('fuel');
     }
 
     public function destroy(Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
     {
-        if ($vehicle->user_id !== Auth::id() || $fuelEntry->user_id !== Auth::id() || $fuelEntry->vehicle_id !== $vehicle->id) {
+        if ($vehicle->user_id !== Auth::id()
+            || $fuelEntry->user_id !== Auth::id()
+            || $fuelEntry->vehicle_id !== $vehicle->id) {
             abort(403);
         }
 
@@ -60,6 +85,7 @@ class FuelEntryController extends Controller
 
         return redirect()
             ->route('vehicles.show', $vehicle)
-            ->with('success', 'Abastecimento removido com sucesso!');
+            ->with('success', 'Abastecimento removido.')
+            ->withFragment('fuel');
     }
 }

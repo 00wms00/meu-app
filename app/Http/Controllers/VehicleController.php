@@ -32,12 +32,30 @@ class VehicleController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        // Carrega em ordem crescente para calcular consumo corretamente na view
         $fuelEntries = FuelEntry::where('vehicle_id', $vehicle->id)
-            ->orderByDesc('data')
-            ->orderByDesc('id')
+            ->orderBy('data')
+            ->orderBy('id')
             ->get();
 
-        return view('vehicles.show', compact('vehicle', 'expenses', 'fuelEntries'));
+        // Dados para o gráfico de consumo
+        $chartConsumo = FuelEntry::historicoConsumo($fuelEntries);
+
+        // Consumo médio geral (média de todos os pontos calculados)
+        $consumoMedioGeral = count($chartConsumo)
+            ? round(array_sum(array_column($chartConsumo, 'consumo')) / count($chartConsumo), 2)
+            : null;
+
+        // Reverte para exibição na tabela (mais recente primeiro)
+        $fuelEntries = $fuelEntries->sortByDesc('data')->sortByDesc('id');
+
+        return view('vehicles.show', compact(
+            'vehicle',
+            'expenses',
+            'fuelEntries',
+            'chartConsumo',
+            'consumoMedioGeral'
+        ));
     }
 
     public function create(): View
