@@ -88,18 +88,16 @@ class ProductController extends Controller
         return view('products.edit', compact('product'));
     }
 
-    public function update(Request $request, Product $product): RedirectResponse
-    {
-        $this->authorize('update', $product);
-
-        $product->update($request->validate([
-            'nome'           => 'required|string|max:255',
-            'unidade_padrao' => 'nullable|string|max:10',
-        ]));
-
-        return redirect()->route('products.show', $product)
-            ->with('success', 'Produto atualizado!');
-    }
+    public function update(Request $request, Product $product)
+{ 
+    if ($product->user_id !== Auth::id()) abort(403); 
+    $product->update($request->validate([
+        'nome_exibicao' => 'nullable|string|max:255',
+        'normalizacao_status' => 'nullable|string',
+        'unidade_padrao' => 'nullable',
+    ])); 
+    return redirect()->route('products.show', $product)->with('success', 'Produto atualizado!'); 
+}
 
     // ==================== CATEGORIAS ====================
 
@@ -284,4 +282,37 @@ public function aprovarTodasNormalizacoes(ProductNormalizationService $service)
         if($p->canonical_product_id||$p->is_canonical)continue; $c=$this->grouperService->encontrarCanonico($p,$userId);
         if($c)$this->grouperService->agrupar($p,$c); else $this->grouperService->tornarCanonico($p);}
       return back()->with('success','Agrupamento automático concluído!'); }
+
+    // ==================== ALERTAS ====================
+    public function alertas()
+    { 
+        $alertas = \App\Models\PriceAlert::where('user_id', Auth::id())
+            ->with('product')
+            ->orderBy('variacao_percentual', 'desc')
+            ->get();
+        $s = app(\App\Services\PriceAlertService::class);
+        $disparados = $s->verificarTodos(Auth::id());
+        return view('products.alertas', compact('alertas', 'disparados')); 
+    }
+
+    public function criarAlerta(Request $request, Product $product)
+    { 
+        $s = app(\App\Services\PriceAlertService::class);
+        $s->criarOuAtualizar(Auth::id(), $product->id, $request->limite_alerta);
+        return back()->with('success', 'Alerta criado!'); 
+    }
+
+    public function removerAlerta(\App\Models\PriceAlert $alerta)
+    { 
+        if ($alerta->user_id !== Auth::id()) abort(403);
+        $alerta->delete();
+        return back()->with('success', 'Removido!'); 
+    }
+
+    public function toggleAlerta(\App\Models\PriceAlert $alerta)
+    { 
+        if ($alerta->user_id !== Auth::id()) abort(403);
+        $alerta->update(['ativo' => !$alerta->ativo]);
+        return back()->with('success', 'Alternado!'); 
+    }
 }

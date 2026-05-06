@@ -124,3 +124,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// Lista Rápida (planejamento)
+Route::post('/lista-rapida', [App\Http\Controllers\ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');

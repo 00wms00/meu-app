@@ -5,7 +5,7 @@
 @section('content')
 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{ $produtoExibicao->nome }}</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}</h1>
         <p class="mt-1 text-gray-600">Histórico de preços</p>
     </div>
     <div class="flex flex-wrap gap-2 items-center">
@@ -24,7 +24,7 @@
         <button
             id="btnAbrirAlerta"
             data-action="{{ route('alertas.criar', $product) }}"
-            data-nome="{{ $produtoExibicao->nome }}"
+            data-nome="{{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}"
             data-limite="{{ $alertaExistente->variacao_percentual ?? 10 }}"
             class="btn-outline-secondary text-sm flex items-center gap-1"
             aria-label="{{ $alertaExistente ? 'Editar alerta de preço' : 'Criar alerta de preço' }}">
@@ -66,7 +66,7 @@
 
 @if($product->id !== $produtoExibicao->id)
     <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4" role="status">
-        📎 Este produto está agrupado como <strong>{{ $produtoExibicao->nome }}</strong>
+        📎 Este produto está agrupado como <strong>{{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}</strong>
     </div>
 @endif
 
@@ -78,19 +78,19 @@
         @if($produtoExibicao->foto)
             <div class="relative group">
                 <img src="{{ asset('storage/' . $produtoExibicao->foto) }}"
-                     alt="Foto de {{ $produtoExibicao->nome }}"
+                     alt="Foto de {{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}"
                      class="w-20 h-20 object-cover rounded"
                      loading="lazy"
                      width="80" height="80">
                 <form action="{{ route('products.foto.remover', $produtoExibicao) }}" method="POST"
                       class="absolute -top-1 -right-1 hidden group-hover:block"
-                      data-confirm="Remover a foto de '{{ $produtoExibicao->nome }}'?">
+                      data-confirm="Remover a foto de '{{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}'?">
                     @csrf
                     @method('DELETE')
                     <button type="submit"
                             class="w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none"
                             title="Remover foto"
-                            aria-label="Remover foto de {{ $produtoExibicao->nome }}">
+                            aria-label="Remover foto de {{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}">
                         ✕
                     </button>
                 </form>
@@ -145,7 +145,7 @@
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">📈 Evolução do Preço Unitário</h2>
         <div class="relative h-72">
-            <canvas id="historicoChart" role="img" aria-label="Gráfico de evolução do preço unitário de {{ $produtoExibicao->nome }}"></canvas>
+            <canvas id="historicoChart" role="img" aria-label="Gráfico de evolução do preço unitário de {{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}"></canvas>
         </div>
     </div>
 
@@ -155,7 +155,7 @@
             <h2 class="text-lg font-semibold text-gray-800">📋 Todas as Compras</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full" aria-label="Histórico de compras de {{ $produtoExibicao->nome }}">
+            <table class="w-full" aria-label="Histórico de compras de {{ \App\Helpers\ProductHelper::displayName($produtoExibicao) }}">
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="text-left py-3 px-6 text-sm font-semibold text-gray-700">Data</th>
