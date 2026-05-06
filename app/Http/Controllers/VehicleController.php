@@ -32,29 +32,37 @@ class VehicleController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // Carrega em ordem crescente para calcular consumo corretamente na view
-        $fuelEntries = FuelEntry::where('vehicle_id', $vehicle->id)
+        // Carrega em ordem crescente — necessário para calcular consumo/custo
+        $allFuelAsc = FuelEntry::where('vehicle_id', $vehicle->id)
             ->orderBy('data')
             ->orderBy('id')
             ->get();
 
-        // Dados para o gráfico de consumo
-        $chartConsumo = FuelEntry::historicoConsumo($fuelEntries);
+        // Dados para os dois gráficos (consumo km/L e custo R$/km)
+        $chartConsumo = FuelEntry::historicoConsumo($allFuelAsc);
 
-        // Consumo médio geral (média de todos os pontos calculados)
+        // Consumo médio geral (km/L)
         $consumoMedioGeral = count($chartConsumo)
             ? round(array_sum(array_column($chartConsumo, 'consumo')) / count($chartConsumo), 2)
             : null;
 
+        // Custo médio por km (R$/km) — filtra pontos sem custo_km
+        $custoKmValidos = array_filter(array_column($chartConsumo, 'custo_km'));
+        $custoKmMedio   = count($custoKmValidos)
+            ? round(array_sum($custoKmValidos) / count($custoKmValidos), 4)
+            : null;
+
         // Reverte para exibição na tabela (mais recente primeiro)
-        $fuelEntries = $fuelEntries->sortByDesc('data')->sortByDesc('id');
+        $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
 
         return view('vehicles.show', compact(
             'vehicle',
             'expenses',
             'fuelEntries',
+            'allFuelAsc',
             'chartConsumo',
-            'consumoMedioGeral'
+            'consumoMedioGeral',
+            'custoKmMedio',
         ));
     }
 
