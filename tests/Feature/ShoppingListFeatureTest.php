@@ -11,8 +11,7 @@ class ShoppingListFeatureTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function usuario_autenticado_consegue_criar_lista_de_compras()
+    public function test_usuario_autenticado_consegue_criar_lista_de_compras()
     {
         $user = User::factory()->create();
 
@@ -28,8 +27,7 @@ class ShoppingListFeatureTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function visitante_nao_consegue_criar_lista_de_compras()
+    public function test_visitante_nao_consegue_criar_lista_de_compras()
     {
         $this->post(route('shopping-lists.store'), [
                 'nome' => 'Compras do mês',
