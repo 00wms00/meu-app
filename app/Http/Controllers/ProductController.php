@@ -237,4 +237,51 @@ public function aprovarTodasNormalizacoes(ProductNormalizationService $service)
     
     return back()->with('success', "{$count} produtos aprovados automaticamente!");
 }
+    
+
+    // ==================== AGRUPAMENTOS ====================
+    public function agrupamentos(Request $request)
+    { 
+        $userId=Auth::id(); 
+        $grupos=Product::where('user_id',$userId)->where('is_canonical',true)->with(['groupedProducts'=>fn($q)=>$q->orderBy('nome')])->orderBy('nome')->get();
+        $naoAgrupados=Product::where('user_id',$userId)->where('is_canonical',false)->whereNull('canonical_product_id')->orderBy('nome')->get();
+        $search = $request->input('search');
+        if ($search) {
+            $grupos = $grupos->filter(fn($g) => stripos($g->nome, $search) !== false || $g->groupedProducts->contains(fn($p) => stripos($p->nome, $search) !== false));
+            $naoAgrupados = $naoAgrupados->filter(fn($p) => stripos($p->nome, $search) !== false);
+        }
+        return view('products.agrupamentos',compact('grupos','naoAgrupados','search')); 
     }
+
+    public function agrupar(Request $request, Product $product)
+    { if($product->user_id!==Auth::id())abort(403); $c=Product::findOrFail($request->canonical_id);
+      if(!$c->is_canonical)$this->grouperService->tornarCanonico($c); $this->grouperService->agrupar($product,$c); return back()->with('success','Agrupado!'); }
+
+    public function desagrupar(Product $product)
+    { if($product->user_id!==Auth::id())abort(403); $this->grouperService->desagrupar($product); return back()->with('success','Desagrupado!'); }
+
+    public function tornarCanonico(Product $product)
+    { if($product->user_id!==Auth::id())abort(403); $this->grouperService->tornarCanonico($product); return back()->with('success','Principal!'); }
+
+    public function criarGrupo(Request $request)
+    { $request->validate(['produto_ids'=>'required|array|min:2']); $prods=Product::whereIn('id',$request->produto_ids)->where('user_id',Auth::id())->get();
+      $c=$prods->first(); $this->grouperService->tornarCanonico($c); if($request->nome_grupo)$c->update(['nome'=>$request->nome_grupo]);
+      foreach($prods as $i=>$p){if($i===0)continue; $this->grouperService->agrupar($p,$c);} return back()->with('success','Grupo criado!'); }
+
+    public function renomearGrupo(Request $request, Product $product)
+    { if($product->user_id!==Auth::id())abort(403); $product->update(['nome'=>$request->nome]); return back()->with('success','Renomeado!'); }
+
+    public function desfazerGrupo(Product $product)
+    { if($product->user_id!==Auth::id())abort(403); Product::where('canonical_product_id',$product->id)->update(['canonical_product_id'=>null]);
+      $product->update(['is_canonical'=>false]); return back()->with('success','Desfeito!'); }
+
+    public function adicionarAoGrupo(Request $request, Product $product)
+    { if($product->user_id!==Auth::id())abort(403); $c=0; foreach($request->produto_ids??[] as $id){$p=Product::find($id); if($p){$this->grouperService->agrupar($p,$product);$c++;}}
+      return back()->with('success',"$c adicionado(s)!"); }
+
+    public function agruparAutomatico()
+    { $userId=Auth::id(); foreach(Product::where('user_id',$userId)->get() as $p){
+        if($p->canonical_product_id||$p->is_canonical)continue; $c=$this->grouperService->encontrarCanonico($p,$userId);
+        if($c)$this->grouperService->agrupar($p,$c); else $this->grouperService->tornarCanonico($p);}
+      return back()->with('success','Agrupamento automático concluído!'); }
+}

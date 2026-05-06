@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Product;
-use App\Services\ProductNameNormalizer;
 use Illuminate\Support\Facades\Auth;
 
 class ProductNormalizationService
@@ -15,15 +14,10 @@ class ProductNormalizationService
         $this->normalizer = new ProductNameNormalizer();
     }
 
-    /**
-     * Analisa um produto e retorna a sugestão de normalização
-     */
     public function analyze(Product $product): array
     {
         $assinatura = $this->normalizer->extractSignature($product->nome);
         $componentes = $this->parseSignature($assinatura);
-        
-        // Gerar nome amigável sugerido
         $nomeExibicao = $this->generateDisplayName($componentes, $product->nome);
         
         return [
@@ -34,9 +28,6 @@ class ProductNormalizationService
         ];
     }
 
-    /**
-     * Aplica a normalização aprovada
-     */
     public function approve(Product $product, ?string $nomeExibicao = null): void
     {
         $analise = $this->analyze($product);
@@ -51,9 +42,6 @@ class ProductNormalizationService
         ]);
     }
 
-    /**
-     * Marca para revisão manual
-     */
     public function markForReview(Product $product): void
     {
         $analise = $this->analyze($product);
@@ -65,9 +53,6 @@ class ProductNormalizationService
         ]);
     }
 
-    /**
-     * Rejeita a normalização automática (mantém como pendente)
-     */
     public function reject(Product $product): void
     {
         $product->update([
@@ -78,9 +63,6 @@ class ProductNormalizationService
         ]);
     }
 
-    /**
-     * Atualiza manualmente o nome de exibição
-     */
     public function updateDisplayName(Product $product, string $nomeExibicao): void
     {
         $assinatura = $this->normalizer->extractSignature($product->nome);
@@ -94,9 +76,6 @@ class ProductNormalizationService
         ]);
     }
 
-    /**
-     * Processa TODOS os produtos pendentes e gera sugestões
-     */
     public function processAllPending(int $userId): array
     {
         $produtos = Product::where('user_id', $userId)
@@ -114,9 +93,6 @@ class ProductNormalizationService
         return $analises;
     }
 
-    /**
-     * Aprova todos os pendentes automaticamente
-     */
     public function approveAllPending(int $userId): int
     {
         $produtos = Product::where('user_id', $userId)
@@ -132,16 +108,13 @@ class ProductNormalizationService
                 $this->approve($produto);
                 $count++;
             } catch (\Exception $e) {
-                // Pular produtos com erro
+                // Pular
             }
         }
 
         return $count;
     }
 
-    /**
-     * Analisa a assinatura em componentes
-     */
     private function parseSignature(string $assinatura): array
     {
         $parts = explode('|', $assinatura);
@@ -154,38 +127,40 @@ class ProductNormalizationService
         ];
     }
 
-    /**
-     * Gera nome amigável baseado nos componentes
-     */
     private function generateDisplayName(array $componentes, string $nomeOriginal): string
     {
         $parts = [];
-        
-        // Se tem tipo, capitalizar
+
+        // Tipo - CAIXA ALTA
         if (!empty($componentes['tipo']) && $componentes['tipo'] !== 'outro') {
-            $parts[] = ucfirst($componentes['tipo']);
+            $parts[] = strtoupper($componentes['tipo']);
         }
-        
-        // Se tem marca, capitalizar
+
+        // Marca - CAIXA ALTA
         if (!empty($componentes['marca'])) {
             $parts[] = strtoupper($componentes['marca']);
         }
-        
-        // Se tem característica
+
+        // Caracteristica (sem repetir palavras do tipo) - CAIXA ALTA
         if (!empty($componentes['caracteristica'])) {
-            $parts[] = ucfirst($componentes['caracteristica']);
+            $caract = $componentes['caracteristica'];
+            $tipoWords = explode(' ', strtolower($componentes['tipo'] ?? ''));
+            $caractWords = explode(' ', strtolower($caract));
+            $filtered = array_diff($caractWords, $tipoWords);
+            if (!empty($filtered)) {
+                $parts[] = strtoupper(implode(' ', $filtered));
+            }
         }
-        
-        // Se tem quantidade
+
+        // Quantidade - CAIXA ALTA
         if (!empty($componentes['quantidade'])) {
-            $parts[] = $componentes['quantidade'];
+            $parts[] = strtoupper($componentes['quantidade']);
         }
 
         $sugerido = implode(' ', $parts);
 
-        // Se a sugestão ficou muito curta, usar nome original
         if (strlen($sugerido) < 10) {
-            return $nomeOriginal;
+            return strtoupper($nomeOriginal);
         }
 
         return $sugerido;

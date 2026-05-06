@@ -6,21 +6,35 @@ use Illuminate\Support\Str;
 
 class ProductNameNormalizer
 {
+    private array $abreviacoes = [
+        'far' => 'farinha', 'trig' => 'trigo', 'fub' => 'fuba',
+        'acuc' => 'acucar', 'caf' => 'cafe', 'leit' => 'leite',
+        'queij' => 'queijo', 'marg' => 'margarina', 'sab' => 'sabao',
+        'bisc' => 'biscoito', 'bol' => 'bolo', 'refr' => 'refrigerante',
+        'cer' => 'cerveja', 'ag' => 'agua', 'frang' => 'frango',
+        'carn' => 'carne', 'peix' => 'peixe', 'suc' => 'suco',
+        'temp' => 'tempero', 'molh' => 'molho', 'det' => 'detergente',
+        'shamp' => 'shampoo', 'cond' => 'condicionador', 'crem' => 'creme',
+        'dent' => 'dental', 'choc' => 'chocolate', 'limp' => 'limpeza',
+        'amac' => 'amaciante', 'hig' => 'higiene', 'cd' => 'creme dental',
+        'pct' => 'pacote', 'cx' => 'caixa', 'fd' => 'fardo',
+    ];
+
     private array $brandMap = [
         'tixan' => ['tixan', 'tixam', 'tix'],
-        'ype' => ['ype', 'ipe', 'ypê'],
+        'ype' => ['ype', 'ipe'],
         'omo' => ['omo'],
         'confort' => ['confort', 'conforto'],
         'downy' => ['downy', 'dawny'],
         'veja' => ['veja'],
         'coca' => ['coca', 'cola', 'cocacola'],
         'pepsi' => ['pepsi', 'peps'],
-        'nestle' => ['nestle', 'nestlé', 'nest'],
+        'nestle' => ['nestle', 'nest'],
         'parmalat' => ['parmalat', 'parmalate'],
         'piracanjuba' => ['piracanjuba', 'piracan'],
-        'italac' => ['italac', 'italaque'],
+        'italac' => ['italac', 'italic'],
         'sadia' => ['sadia'],
-        'perdigao' => ['perdigao', 'perdig', 'perdigão'],
+        'perdigao' => ['perdigao', 'perdig'],
         'friboi' => ['friboi', 'fribo'],
         'swift' => ['swift'],
         'aurora' => ['aurora'],
@@ -29,13 +43,10 @@ class ProductNameNormalizer
         'bombril' => ['bombril', 'bombr'],
         'hellmanns' => ['hellmanns', 'hellmans', 'helmans'],
         'renata' => ['renata'],
-        'dona' => ['dona', 'donana'],
+        'dona' => ['dona', 'donana', 'don'],
         'camil' => ['camil'],
-        'prato fino' => ['prato fino', 'pratofino'],
-        'tio joão' => ['tio joao', 'tio joão', 'tiojoao'],
         'gallo' => ['gallo', 'galo'],
         'barilla' => ['barilla'],
-        'piraque' => ['piraque', 'piraquê'],
         'bauducco' => ['bauducco', 'bauduco'],
         'visconti' => ['visconti', 'viscositi'],
         'marilan' => ['marilan'],
@@ -43,75 +54,82 @@ class ProductNameNormalizer
         'fanta' => ['fanta'],
         'sprite' => ['sprite'],
         'kuat' => ['kuat'],
-        'guarana' => ['guarana', 'guaraná'],
-        'elege' => ['elege'],
-        'batavo' => ['batavo'],
-        'del monte' => ['del monte', 'delmonte'],
-        'dalia' => ['dalia', 'dália'],
+        'guarana' => ['guarana'],
+        'anniela' => ['anniela', 'aniela', 'ann'],
+        'dona benta' => ['dona benta', 'donabenta'],
+        'dalia' => ['dalia'],
         'yoki' => ['yoki'],
-        'italac' => ['italac', 'italic'],
-        'queiro' => ['queiro', 'queiró'],
-        'renata' => ['renata'],
-        'macarrao galo' => ['macarrao galo', 'macarrão galo', 'galo semola'],
+        'qualy' => ['qualy'],
+        'doriana' => ['doriana'],
+        'knorr' => ['knorr'],
+        'maggi' => ['maggi', 'mag'],
+        'sazon' => ['sazon'],
+        'arisco' => ['arisco'],
+        'kitano' => ['kitano'],
+        'ajinomoto' => ['ajinomoto', 'ajin'],
+        'sol' => ['sol'],
+        'cristal' => ['cristal'],
     ];
 
     private array $productTypeMap = [
-        'lava roupas' => ['lav', 'lava', 'roupas', 'roupa', 'sabao em po', 'sabão em pó', 'sabao po', 'sab em po', 'sab po'],
-        'amaciante' => ['amac', 'amaciante', 'amaciant', 'confort', 'downy'],
-        'detergente' => ['detergente', 'deterg', 'limpol', 'lava loucas', 'lava louça', 'loucas'],
-        'sabonete' => ['sabonete', 'sabonet'],
-        'shampoo' => ['shampoo', 'shampo', 'xampu'],
-        'creme dental' => ['creme dental', 'creme dent', 'cd ', 'pasta dental', 'pasta de dente'],
-        'arroz' => ['arroz', 'arrozagulinha', 'agulinha', 'parboilizado', 'parboil'],
-        'feijao' => ['feijao', 'feijão', 'feija', 'carioca', 'preto'],
-        'macarrao' => ['macarrao', 'macarrão', 'espaguete', 'penne', 'fusilli', 'parafuso', 'semola'],
-        'cafe' => ['cafe', 'café', 'caf', 'almofada', 'almof'],
-        'leite' => ['leite', 'leit', 'liquido', 'po', 'condensado'],
+        'farinha de trigo' => ['farinha', 'trigo', 'far trigo'],
+        'fuba' => ['fuba', 'farinha milho'],
+        'lava roupas' => ['sabao em po', 'sabao po', 'sab em po', 'sab po', 'sabao liquido'],
+        'amaciante' => ['amac', 'amaciante'],
+        'detergente' => ['detergente', 'deterg', 'lava loucas'],
+        'sabonete' => ['sabonete'],
+        'shampoo' => ['shampoo', 'shampo'],
+        'creme dental' => ['creme dental', 'creme dent', 'cd ', 'pasta dental', 'pasta dente'],
+        'arroz' => ['arroz', 'agulinha', 'parboilizado'],
+        'feijao' => ['feijao', 'feija', 'carioca', 'preto'],
+        'macarrao' => ['macarrao', 'espaguete', 'penne', 'fusilli', 'parafuso', 'semola'],
+        'cafe' => ['cafe', 'caf', 'almofada', 'almof'],
+        'leite' => ['leite', 'leit', 'condensado'],
         'refrigerante' => ['refri', 'refrigerante', 'refrig'],
         'cerveja' => ['cerveja', 'cervej', 'chopp'],
-        'agua' => ['agua', 'água', 'mineral'],
-        'carne' => ['carne', 'bovina', 'bovino', 'contrafile', 'picanha', 'alcatra', 'costela'],
-        'frango' => ['frango', 'frang', 'sobrecoxa', 'coxinha', 'peito', 'file'],
-        'suina' => ['suina', 'suíno', 'pernil', 'paleta'],
-        'peixe' => ['peixe', 'tilapia', 'tilápia'],
+        'agua' => ['agua', 'mineral'],
+        'carne' => ['carne', 'bovina', 'contrafile', 'picanha', 'alcatra', 'costela'],
+        'frango' => ['frango', 'frang', 'sobrecoxa', 'coxinha', 'peito'],
+        'suina' => ['suina', 'pernil', 'paleta'],
+        'peixe' => ['peixe', 'tilapia'],
         'queijo' => ['queijo', 'queij', 'mussarela', 'mozarela'],
         'presunto' => ['presunto', 'presunt', 'apresuntado', 'mortadela'],
-        'pao' => ['pao', 'pão', 'frances', 'integral', 'forma'],
-        'bolo' => ['bolo', 'mistura bolo', 'mistura'],
+        'pao' => ['pao', 'frances', 'integral', 'forma'],
+        'bolo' => ['bolo', 'mistura bolo'],
         'biscoito' => ['biscoito', 'bisc', 'rosquinha'],
         'margarina' => ['margarina', 'marg'],
         'maionese' => ['maionese', 'maion'],
-        'molho' => ['molho', 'tomate', 'molho tomate'],
-        'farinha' => ['farinha', 'trigo', 'farinha trigo'],
-        'acucar' => ['acucar', 'açúcar'],
-        'sal' => ['sal'],
-        'oleo' => ['oleo', 'óleo'],
-        'vinagre' => ['vinagre'],
+        'molho' => ['molho', 'molho tomate'],
+        'acucar' => ['acucar', 'acuc'],
+        'oleo' => ['oleo'],
         'tempero' => ['tempero', 'temper'],
-    ];
-
-    private array $unitPatterns = [
-        '/(\d+[.,]?\d*)\s*(kg|quilo|kilo|quilos|kilos)/i',
-        '/(\d+[.,]?\d*)\s*(g|gr|grama|gramas)/i',
-        '/(\d+[.,]?\d*)\s*(l|lt|ltr|litro|litros)/i',
-        '/(\d+[.,]?\d*)\s*(ml|mililitro)/i',
-        '/(\d+[.,]?\d*)\s*(un|und|unid|unidade)/i',
-        '/(\d+[.,]?\d*)\s*(cx|caixa)/i',
-        '/(\d+[.,]?\d*)\s*(pct|pacote|pac)/i',
-        '/(\d+[.,]?\d*)\s*(fd|fardo)/i',
     ];
 
     public function normalize(string $nome): string
     {
         $nome = Str::upper(trim($nome));
         $nome = $this->removeAccents($nome);
-        $nome = preg_replace('/[^A-Z0-9\s]/', ' ', $nome);
+        $nome = preg_replace('/[^A-Za-z0-9\s]/', ' ', $nome);
         $nome = preg_replace('/\s+/', ' ', trim($nome));
         return $nome;
     }
 
+    public function expandAbbreviations(string $nome): string
+    {
+        $tokens = explode(' ', $nome);
+        $expanded = [];
+        foreach ($tokens as $token) {
+            $lower = strtolower($token);
+            $expanded[] = $this->abreviacoes[$lower] ?? $token;
+        }
+        return implode(' ', $expanded);
+    }
+
     public function extractSignature(string $nome): string
     {
+        // 1. Expandir abreviações PRIMEIRO
+        $nome = $this->expandAbbreviations($nome);
+        // 2. Depois normalizar
         $nome = $this->normalize($nome);
         $tokens = explode(' ', $nome);
         $tipo = $this->detectProductType($tokens);
@@ -123,15 +141,13 @@ class ProductNameNormalizer
 
     private function detectProductType(array $tokens): string
     {
-        $bestMatch = ''; $bestScore = 0;
+        $text = implode(' ', $tokens);
         foreach ($this->productTypeMap as $tipo => $keywords) {
-            $score = 0;
-            foreach ($keywords as $keyword) { if (in_array($keyword, $tokens)) $score += 3; }
-            $text = implode(' ', $tokens);
-            foreach ($keywords as $keyword) { if (stripos($text, $keyword) !== false) $score += 1; }
-            if ($score > $bestScore) { $bestScore = $score; $bestMatch = $tipo; }
+            foreach ($keywords as $keyword) {
+                if (stripos($text, $keyword) !== false) return $tipo;
+            }
         }
-        return $bestMatch ?: 'outro';
+        return 'outro';
     }
 
     private function detectBrand(array $tokens): string
@@ -155,7 +171,7 @@ class ProductNameNormalizer
             if (strlen($token) <= 2 || is_numeric($token) || in_array(strtolower($token), $stopWords) || in_array(strtolower($token), $brandTokens)) continue;
             $features[] = $token;
         }
-        $featureWords = ['maciez','neutro','tradicional','lavagem','perfeita','conforto','suave','intenso','original','clean','fresh','floral','citrus','limpeza','profunda','extraforte','forte'];
+        $featureWords = ['maciez','neutro','tradicional','lavagem','perfeita','conforto','suave','intenso','original','clean','fresh','floral','citrus','limpeza','profunda','extraforte','forte','integral','especial','premium'];
         $foundFeatures = array_intersect(array_map('strtolower', $features), $featureWords);
         if (!empty($foundFeatures)) return implode(' ', $foundFeatures);
         return $features ? implode(' ', array_slice($features, 0, 2)) : '';
@@ -163,8 +179,24 @@ class ProductNameNormalizer
 
     private function extractQuantity(string $nome): string
     {
-        foreach ($this->unitPatterns as $pattern) {
-            if (preg_match($pattern, $nome, $matches)) return str_replace(',', '.', $matches[1]) . strtoupper(substr($matches[2], 0, 2));
+        // Corrigir espaços em números (ex: "2 6KG" → "2.6KG")
+        $nome = preg_replace('/(\d+)\s+(\d+)\s*(kg|g|l|ml)/i', '$1.$2$3', $nome);
+        
+        $patterns = [
+            '/(\d+[.,]?\d*)\s*(kg|quilo|kilo)/i',
+            '/(\d+[.,]?\d*)\s*(g|gr|grama)/i',
+            '/(\d+[.,]?\d*)\s*(l|lt|ltr|litro)/i',
+            '/(\d+[.,]?\d*)\s*(ml|mililitro)/i',
+            '/(\d+[.,]?\d*)\s*(un|und|unid)/i',
+            '/(\d+[.,]?\d*)\s*(cx|caixa)/i',
+            '/(\d+[.,]?\d*)\s*(pct|pacote|pac)/i',
+            '/(\d+[.,]?\d*)\s*(fd|fardo)/i',
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $nome, $matches)) {
+                return str_replace(',', '.', $matches[1]) . strtoupper(substr($matches[2], 0, 2));
+            }
         }
         return '';
     }

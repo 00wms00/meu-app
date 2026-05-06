@@ -9,17 +9,31 @@ class Product extends Model
 {
     use HasFactory;
 
-protected $fillable = [
-    'user_id', 'nome', 'unidade_padrao', 'foto', 'categoria', 'category_id',
-    'canonical_product_id', 'nome_normalizado', 'keywords', 'is_canonical',
-];
+    protected $fillable = [
+        'user_id',
+        'nome',
+        'unidade_padrao',
+        'foto',
+        'categoria',
+        'category_id',
+        'canonical_product_id',
+        'nome_normalizado',
+        'nome_exibicao',
+        'normalizacao_status',
+        'assinatura_componentes',
+        'normalizado_por',
+        'normalizado_em',
+        'keywords',
+        'is_canonical',
+    ];
 
     protected $casts = [
         'keywords' => 'array',
         'is_canonical' => 'boolean',
+        'assinatura_componentes' => 'array',
+        'normalizado_em' => 'datetime',
     ];
 
-    // Categorias padrão (fallback)
     const CATEGORIAS_PADRAO = [
         'hortifruti' => '🥬 Hortifrúti',
         'acougue' => '🥩 Açougue e Peixaria',
@@ -92,12 +106,11 @@ protected $fillable = [
         return '#6b7280';
     }
 
-    // Acessor para URL da foto
-public function getFotoUrlAttribute()
-{
-    if ($this->foto) {
-        return asset('storage/' . $this->foto);
+    public function getFotoUrlAttribute()
+    {
+        if ($this->foto) {
+            return asset('storage/' . $this->foto);
+        }
+        return null;
     }
-    return null;
-}
 }
