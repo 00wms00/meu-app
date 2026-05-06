@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FuelEntryController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MaintenanceReminderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\BudgetController;
@@ -22,13 +23,13 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // Importação
     Route::get('/import/create', [ImportController::class, 'create'])->name('import.create');
     Route::post('/import/parse', [ImportController::class, 'parse'])->name('import.parse');
     Route::get('/import/preview', [ImportController::class, 'preview'])->name('import.preview');
     Route::post('/import/store', [ImportController::class, 'store'])->name('import.store');
-    
+
     // Notas
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
@@ -38,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/invoices/{invoice}/items/{item}/edit', [InvoiceController::class, 'editItem'])->name('invoices.items.edit');
     Route::put('/invoices/{invoice}/items/{item}', [InvoiceController::class, 'updateItem'])->name('invoices.items.update');
     Route::delete('/invoices/{invoice}/items/{item}', [InvoiceController::class, 'destroyItem'])->name('invoices.items.destroy');
-    
+
     // ==================== PRODUTOS ====================
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/normalizacao', [ProductController::class, 'normalizacao'])->name('normalizacao');
@@ -67,27 +68,27 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
     });
-    
-    // Alertas
+
+    // Alertas de preço
     Route::get('/alertas', [ProductController::class, 'alertas'])->name('alertas.index');
     Route::delete('/alertas/{alerta}', [ProductController::class, 'removerAlerta'])->name('alertas.remover');
     Route::post('/alertas/{alerta}/toggle', [ProductController::class, 'toggleAlerta'])->name('alertas.toggle');
-    
+
     // ML Interativo
     Route::get('/ml-interativo', [ProductController::class, 'mlSugestoesInterativo'])->name('products.ml-interativo');
     Route::post('/ml-confirmar', [ProductController::class, 'mlConfirmarAgrupamento'])->name('products.ml-confirmar');
-    
+
     // Relatórios
     Route::get('/relatorio-mensal', [RelatorioController::class, 'mensal'])->name('relatorio.mensal');
     Route::get('/relatorio-periodo', [RelatorioController::class, 'periodo'])->name('relatorio.periodo');
-    
+
     // Orçamento
     Route::get('/orcamento', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('/orcamento', [BudgetController::class, 'store'])->name('budgets.store');
-    
+
     // Categorias
     Route::resource('categories', CategoryController::class)->except(['show', 'create']);
-    
+
     // Listas de Compras
     Route::get('/planejamento-compras', [ShoppingListController::class, 'planejamento'])->name('shopping-lists.planejamento');
     Route::resource('shopping-lists', ShoppingListController::class);
@@ -101,7 +102,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('items/{item}', [ShoppingListController::class, 'updateItem'])->name('items.update');
     Route::delete('items/{item}', [ShoppingListController::class, 'removeItem'])->name('items.remove');
     Route::post('/lista-rapida', [ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');
-    
+
     // Ofertas
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
     Route::get('/offers/create', [OfferController::class, 'create'])->name('offers.create');
@@ -111,20 +112,27 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/offers/save-preview', [OfferController::class, 'savePreview'])->name('offers.save-preview');
     Route::delete('/offers/{offer}', [OfferController::class, 'destroy'])->name('offers.destroy');
     Route::post('/offers/{offer}/toggle', [OfferController::class, 'toggle'])->name('offers.toggle');
-    
+
     // Lançamento Manual
     Route::get('/lancamento-manual', [LancamentoManualController::class, 'create'])->name('lancamento.create');
     Route::post('/lancamento-manual', [LancamentoManualController::class, 'store'])->name('lancamento.store');
 
-    // Veículos
+    // ==================== VEÍCULOS ====================
     Route::resource('vehicles', VehicleController::class);
-    // Despesas gerais do veículo
+
+    // Despesas do veículo
     Route::post('/vehicles/{vehicle}/expenses', [VehicleExpenseController::class, 'store'])->name('vehicles.expenses.store');
     Route::delete('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'destroy'])->name('vehicles.expenses.destroy');
+
     // Abastecimentos
     Route::post('/vehicles/{vehicle}/fuel', [FuelEntryController::class, 'store'])->name('vehicles.fuel.store');
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/km', [FuelEntryController::class, 'updateKm'])->name('vehicles.fuel.updateKm');
     Route::delete('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'destroy'])->name('vehicles.fuel.destroy');
+
+    // Lembretes de manutenção (Fase 3)
+    Route::post('/vehicles/{vehicle}/reminders', [MaintenanceReminderController::class, 'store'])->name('vehicles.reminders.store');
+    Route::post('/vehicles/{vehicle}/reminders/{reminder}/feito', [MaintenanceReminderController::class, 'feito'])->name('vehicles.reminders.feito');
+    Route::delete('/vehicles/{vehicle}/reminders/{reminder}', [MaintenanceReminderController::class, 'destroy'])->name('vehicles.reminders.destroy');
 });
 
 require __DIR__.'/auth.php';
