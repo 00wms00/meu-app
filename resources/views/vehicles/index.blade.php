@@ -15,36 +15,50 @@
 @endif
 
 @if($vehicles->isEmpty())
-    <div class="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-        Nenhum veículo cadastrado ainda.
+    <div class="bg-white rounded-lg shadow p-8 text-center">
+        <p class="text-gray-500 mb-4">Nenhum veículo cadastrado ainda.</p>
+        <a href="{{ route('vehicles.create') }}" class="btn-primary">Cadastrar primeiro veículo</a>
     </div>
 @else
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apelido</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ano</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Km atual</th>
-                    <th class="px-4 py-2"></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Veículo</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ano</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Combustível</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Km atual</th>
+                    <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($vehicles as $vehicle)
-                    <tr>
-                        <td class="px-4 py-2 text-sm text-gray-900">{{ $vehicle->apelido }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">
-                            {{ trim(($vehicle->marca . ' ' . $vehicle->modelo)) ?: '-' }}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <a href="{{ route('vehicles.show', $vehicle) }}"
+                               class="text-sm font-semibold text-blue-700 hover:underline">
+                                {{ $vehicle->apelido }}
+                            </a>
+                            @if($vehicle->marca || $vehicle->modelo)
+                                <p class="text-xs text-gray-400">
+                                    {{ trim($vehicle->marca . ' ' . $vehicle->modelo) }}
+                                </p>
+                            @endif
                         </td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ $vehicle->ano ?? '-' }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ $vehicle->placa ?? '-' }}</td>
-                        <td class="px-4 py-2 text-sm text-gray-700">{{ number_format($vehicle->km_atual, 0, ',', '.') }} km</td>
-                        <td class="px-4 py-2 text-right text-sm">
-                            <a href="{{ route('vehicles.edit', $vehicle) }}" class="text-blue-600 hover:underline mr-3">Editar</a>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ $vehicle->ano ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ $vehicle->placa ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ ucfirst($vehicle->tipo_combustivel ?? '-') }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 text-right tabular-nums">
+                            {{ number_format($vehicle->km_atual ?? 0, 0, ',', '.') }} km
+                        </td>
+                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                            <a href="{{ route('vehicles.show', $vehicle) }}"
+                               class="text-blue-600 hover:underline mr-3">Painel</a>
+                            <a href="{{ route('vehicles.edit', $vehicle) }}"
+                               class="text-gray-500 hover:underline mr-3">Editar</a>
                             <form action="{{ route('vehicles.destroy', $vehicle) }}" method="POST" class="inline"
-                                  onsubmit="return confirm('Remover o veículo {{ $vehicle->apelido }}?');">
+                                  onsubmit="return confirm('Remover o veículo {{ addslashes($vehicle->apelido) }}? Esta ação também apaga todos os abastecimentos e despesas vinculados.')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-600 hover:underline">Remover</button>
