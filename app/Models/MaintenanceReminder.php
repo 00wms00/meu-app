@@ -10,70 +10,83 @@ class MaintenanceReminder extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
         'vehicle_id',
         'descricao',
         'km_ultimo_servico',
         'intervalo_km',
         'data_ultimo_servico',
-        'observacao',
         'ativo',
     ];
 
     protected $casts = [
-        'km_ultimo_servico' => 'integer',
-        'intervalo_km'      => 'integer',
-        'km_alerta'         => 'integer',
         'data_ultimo_servico' => 'date',
-        'ativo'             => 'boolean',
+        'ativo'               => 'boolean',
+        'km_ultimo_servico'   => 'integer',
+        'intervalo_km'        => 'integer',
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    // ----------------------------------------------------------------
+    // Relações
+    // ----------------------------------------------------------------
 
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
     }
 
+    // ----------------------------------------------------------------
+    // Helpers calculados
+    // ----------------------------------------------------------------
+
     /**
-     * Status do alerta comparando km_alerta com km atual do veiculo.
-     * Retorna: 'vencido' | 'proximo' | 'ok'
-     *
-     * @param int $kmAtual   km atual do veiculo
-     * @param int $margem    km de antecedencia para alertar (padrao 500)
+     * Km no qual o alerta dispara.
+     * Usa o atributo virtual do banco quando disponível,
+     * ou calcula em PHP como fallback.
      */
-    public function statusAlerta(int $kmAtual, int $margem = 500): string
+    public function getKmAlertaAttribute(): ?int
     {
-        if ($kmAtual >= $this->km_alerta) {
+        if (! $this->km_ultimo_servico) {
+            return null;
+        }
+        return $this->km_ultimo_servico + $this->intervalo_km;
+    }
+
+    /**
+     * Quantos km faltam (ou passaram) para o próximo serviço.
+     * Positivo = faltam; Negativo = já passou.
+     */
+    public function kmRestantes(?int $kmAtual): ?int
+    {
+        $alerta = $this->km_alerta;
+        if ($alerta === null || $kmAtual === null) {
+            return null;
+        }
+        return $alerta - $kmAtual;
+    }
+
+    /**
+     * Retorna o status do lembrete.
+     * 'ok'      => verde  (✅ Em dia)
+     * 'proximo' => amarelo (⚠️ Próximo)
+     * 'vencido' => vermelho (🔴 Vencido)
+     * 'sem_km'  => cinza   (sem dados de km)
+     */
+    public function statusAlerta(?int $kmAtual): string
+    {
+        $restantes = $this->kmRestantes($kmAtual);
+
+        if ($restantes === null) {
+            return 'sem_km';
+        }
+
+        if ($restantes <= 0) {
             return 'vencido';
         }
 
-        if ($kmAtual >= ($this->km_alerta - $margem)) {
+        if ($restantes <= 500) {
             return 'proximo';
         }
 
         return 'ok';
-    }
-
-    /**
-     * Km restantes ate o proximo servico (negativo = ja passou).
-     */
-    public function kmRestantes(int $kmAtual): int
-    {
-        return $this->km_alerta - $kmAtual;
-    }
-
-    /**
-     * Registra que o servico foi feito agora (atualiza km_ultimo_servico).
-     */
-    public function marcarFeito(int $kmAtual, ?string $data = null): void
-    {
-        $this->update([
-            'km_ultimo_servico'   => $kmAtual,
-            'data_ultimo_servico' => $data ?? now()->toDateString(),
-        ]);
     }
 }

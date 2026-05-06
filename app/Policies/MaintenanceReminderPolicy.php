@@ -9,11 +9,11 @@ class MaintenanceReminderPolicy
 {
     public function update(User $user, MaintenanceReminder $reminder): bool
     {
-        return $reminder->user_id === $user->id;
+        return $reminder->vehicle->user_id === $user->id;
     }
 
     public function delete(User $user, MaintenanceReminder $reminder): bool
     {
-        return $reminder->user_id === $user->id;
+        return $reminder->vehicle->user_id === $user->id;
     }
 }

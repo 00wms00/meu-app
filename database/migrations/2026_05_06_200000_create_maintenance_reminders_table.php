@@ -10,15 +10,14 @@ return new class extends Migration
     {
         Schema::create('maintenance_reminders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
-            $table->string('descricao', 150);
-            $table->unsignedInteger('km_ultimo_servico');
+            $table->string('descricao', 120);
+            $table->unsignedInteger('km_ultimo_servico')->nullable();
             $table->unsignedInteger('intervalo_km');
-            // km_alerta = km_ultimo_servico + intervalo_km (coluna gerada)
-            $table->unsignedInteger('km_alerta')->storedAs('km_ultimo_servico + intervalo_km');
+            // km_alerta é calculado: km_ultimo_servico + intervalo_km
+            // guardamos também na tabela para facilitar queries/ordenação
+            $table->unsignedInteger('km_alerta')->virtualAs('km_ultimo_servico + intervalo_km')->nullable();
             $table->date('data_ultimo_servico')->nullable();
-            $table->string('observacao', 255)->nullable();
             $table->boolean('ativo')->default(true);
             $table->timestamps();
         });

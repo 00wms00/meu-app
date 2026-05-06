@@ -10,21 +10,20 @@ use Illuminate\Support\Facades\Auth;
 
 class MaintenanceReminderController extends Controller
 {
+    /**
+     * Cria um novo lembrete de manutenção para o veículo.
+     */
     public function store(Request $request, Vehicle $vehicle): RedirectResponse
     {
-        if ($vehicle->user_id !== Auth::id()) {
-            abort(403);
-        }
+        abort_if($vehicle->user_id !== Auth::id(), 403);
 
         $validated = $request->validate([
-            'descricao'           => ['required', 'string', 'max:150'],
-            'km_ultimo_servico'   => ['required', 'integer', 'min:0'],
-            'intervalo_km'        => ['required', 'integer', 'min:100'],
+            'descricao'           => ['required', 'string', 'max:120'],
+            'km_ultimo_servico'   => ['nullable', 'integer', 'min:0'],
+            'intervalo_km'        => ['required', 'integer', 'min:100', 'max:200000'],
             'data_ultimo_servico' => ['nullable', 'date'],
-            'observacao'          => ['nullable', 'string', 'max:255'],
         ]);
 
-        $validated['user_id']    = Auth::id();
         $validated['vehicle_id'] = $vehicle->id;
 
         MaintenanceReminder::create($validated);
@@ -32,39 +31,51 @@ class MaintenanceReminderController extends Controller
         return redirect()
             ->route('vehicles.show', $vehicle)
             ->with('success', 'Lembrete de manutenção criado!')
-            ->withFragment('lembretes');
+            ->withFragment('reminders');
     }
 
+    /**
+     * Marca o serviço como feito: atualiza km_ultimo_servico e data.
+     */
     public function feito(Request $request, Vehicle $vehicle, MaintenanceReminder $reminder): RedirectResponse
     {
-        if ($reminder->vehicle_id !== $vehicle->id || $vehicle->user_id !== Auth::id()) {
-            abort(403);
-        }
+        abort_if($vehicle->user_id !== Auth::id(), 403);
+        abort_if($reminder->vehicle_id !== $vehicle->id, 403);
 
         $validated = $request->validate([
-            'km_feito' => ['required', 'integer', 'min:0'],
-            'data_feito' => ['nullable', 'date'],
+            'km_realizado'   => ['required', 'integer', 'min:0'],
+            'data_realizado' => ['nullable', 'date'],
         ]);
 
-        $reminder->marcarFeito($validated['km_feito'], $validated['data_feito'] ?? null);
+        $reminder->update([
+            'km_ultimo_servico'   => $validated['km_realizado'],
+            'data_ultimo_servico' => $validated['data_realizado'] ?? now()->toDateString(),
+        ]);
+
+        // Atualiza km_atual do veículo se o km informado for maior
+        if ($validated['km_realizado'] > ($vehicle->km_atual ?? 0)) {
+            $vehicle->update(['km_atual' => $validated['km_realizado']]);
+        }
 
         return redirect()
             ->route('vehicles.show', $vehicle)
-            ->with('success', 'Serviço registrado! Próximo em ' . number_format($validated['km_feito'] + $reminder->intervalo_km, 0, ',', '.') . ' km.')
-            ->withFragment('lembretes');
+            ->with('success', 'Serviço marcado como feito! Lembrete reiniciado.')
+            ->withFragment('reminders');
     }
 
+    /**
+     * Remove o lembrete.
+     */
     public function destroy(Vehicle $vehicle, MaintenanceReminder $reminder): RedirectResponse
     {
-        if ($reminder->vehicle_id !== $vehicle->id || $vehicle->user_id !== Auth::id()) {
-            abort(403);
-        }
+        abort_if($vehicle->user_id !== Auth::id(), 403);
+        abort_if($reminder->vehicle_id !== $vehicle->id, 403);
 
         $reminder->delete();
 
         return redirect()
             ->route('vehicles.show', $vehicle)
             ->with('success', 'Lembrete removido.')
-            ->withFragment('lembretes');
+            ->withFragment('reminders');
     }
 }
