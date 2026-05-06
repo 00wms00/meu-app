@@ -43,7 +43,6 @@
         ? round(array_sum(array_column($chartConsumo, 'custo_km')) / count($chartConsumo), 3)
         : null;
 
-    // Badge de alertas para o título da aba
     $temVencido = $reminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'vencido');
     $temProximo = $reminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'proximo');
 @endphp
@@ -72,7 +71,6 @@
     </div>
 </div>
 
-{{-- KPI extra: custo/km --}}
 @if($mediaCustoKm)
 <div class="mb-6">
     <div class="inline-flex items-center gap-3 bg-white rounded-lg shadow px-5 py-3">
@@ -113,17 +111,14 @@
     {{-- TAB: ABASTECIMENTOS --}}
     <div x-show="tab === 'fuel'" id="fuel">
 
-        {{-- Gráficos lado a lado --}}
         @if(count($chartConsumo) >= 2)
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {{-- Gráfico 1: km/L --}}
             <div class="bg-white rounded-lg shadow p-5">
                 <h2 class="text-sm font-semibold text-gray-700 mb-3">📈 Consumo (km/L)</h2>
                 <div style="position:relative; height:200px">
                     <canvas id="chartConsumo"></canvas>
                 </div>
             </div>
-            {{-- Gráfico 2: R$/km --}}
             <div class="bg-white rounded-lg shadow p-5">
                 <h2 class="text-sm font-semibold text-gray-700 mb-3">💰 Custo por km (R$/km)</h2>
                 <div style="position:relative; height:200px">
@@ -138,7 +133,6 @@
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {{-- Formulário --}}
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow p-6">
                     <h2 class="text-base font-semibold text-gray-800 mb-4">Registrar abastecimento</h2>
@@ -189,7 +183,6 @@
                 </div>
             </div>
 
-            {{-- Histórico --}}
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b">
@@ -233,8 +226,6 @@
                                                 @endif
                                             </td>
                                             <td class="px-3 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($entry->valor, 2, ',', '.') }}</td>
-
-                                            {{-- KM editável inline --}}
                                             <td class="px-3 py-2 text-sm text-right" x-data="{ editing: false }">
                                                 <span x-show="!editing" class="cursor-pointer group">
                                                     <span @click="editing = true"
@@ -263,15 +254,12 @@
                                                     <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600 text-sm" title="Cancelar">✕</button>
                                                 </form>
                                             </td>
-
                                             <td class="px-3 py-2 text-sm text-right {{ $consumo ? 'text-green-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $consumo ? number_format($consumo, 1, ',', '.') : '-' }}
                                             </td>
-
                                             <td class="px-3 py-2 text-sm text-right {{ $custoKm ? 'text-purple-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $custoKm ? number_format($custoKm, 3, ',', '.') : '-' }}
                                             </td>
-
                                             <td class="px-3 py-2 text-sm text-gray-600">
                                                 {{ $tiposComb[$entry->tipo_combustivel] ?? ($entry->tipo_combustivel ? ucfirst($entry->tipo_combustivel) : '-') }}
                                                 @if($entry->tanque_cheio) <span class="text-xs text-blue-600">&bull; cheio</span> @endif
@@ -298,37 +286,112 @@
     {{-- TAB: DESPESAS --}}
     <div x-show="tab === 'expenses'">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1">
+
+            {{-- Formulário com km_servico + lembrete integrado --}}
+            <div class="lg:col-span-1"
+                 x-data="{
+                     tipo: '{{ old('tipo', '') }}',
+                     criarLembrete: {{ old('criar_lembrete') ? 'true' : 'false' }},
+                 }">
                 <div class="bg-white rounded-lg shadow p-6">
                     <h2 class="text-base font-semibold text-gray-800 mb-4">Nova despesa</h2>
+
                     <form action="{{ route('vehicles.expenses.store', $vehicle) }}" method="POST" class="space-y-3">
                         @csrf
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Data</label>
-                            <input type="date" name="data" value="{{ old('data', now()->toDateString()) }}" class="form-control mt-1" required>
+                            <input type="date" name="data"
+                                   value="{{ old('data', now()->toDateString()) }}"
+                                   class="form-control mt-1" required>
                         </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Tipo</label>
-                            <select name="tipo" class="form-control mt-1" required>
+                            <select name="tipo" class="form-control mt-1" required x-model="tipo">
                                 @php $tipos = ['manutencao'=>'Manutenção','seguro'=>'Seguro','impostos'=>'Impostos/IPVA','pedagio'=>'Pedágio/Estacionamento','outros'=>'Outros']; @endphp
-                                <option value="" disabled selected>Selecione...</option>
+                                <option value="" disabled>Selecione...</option>
                                 @foreach($tipos as $v => $l)
                                     <option value="{{ $v }}" {{ old('tipo') === $v ? 'selected' : '' }}>{{ $l }}</option>
                                 @endforeach
                             </select>
                         </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Valor (R$)</label>
-                            <input type="number" step="0.01" name="valor" value="{{ old('valor') }}" class="form-control mt-1" min="0" required>
+                            <input type="number" step="0.01" name="valor"
+                                   value="{{ old('valor') }}"
+                                   class="form-control mt-1" min="0" required>
                         </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Descrição</label>
-                            <input type="text" name="descricao" value="{{ old('descricao') }}" class="form-control mt-1" placeholder="Ex: Troca de óleo, Seguro anual...">
+                            <input type="text" name="descricao"
+                                   value="{{ old('descricao') }}"
+                                   class="form-control mt-1"
+                                   placeholder="Ex: Troca de óleo, Seguro anual...">
                         </div>
+
+                        {{-- KM do serviço — só aparece para manutenção --}}
+                        <div x-show="tipo === 'manutencao'" x-cloak>
+                            <label class="block text-sm font-medium text-gray-700">KM no serviço</label>
+                            <input type="number" name="km_servico"
+                                   value="{{ old('km_servico', $vehicle->km_atual ?: '') }}"
+                                   class="form-control mt-1" min="0"
+                                   placeholder="Ex: 45.000">
+                            <p class="text-xs text-gray-400 mt-1">Atualiza o hodômetro do veículo automaticamente.</p>
+                        </div>
+
+                        {{-- Toggle lembrete — só para manutenção --}}
+                        <div x-show="tipo === 'manutencao'" x-cloak>
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" name="criar_lembrete" value="1"
+                                       x-model="criarLembrete"
+                                       class="rounded text-blue-600">
+                                <span class="text-sm font-medium text-gray-700">🔔 Criar lembrete para este serviço</span>
+                            </label>
+                        </div>
+
+                        {{-- Painel do lembrete embutido --}}
+                        <div x-show="tipo === 'manutencao' && criarLembrete" x-cloak
+                             class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+
+                            <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">🔔 Lembrete integrado</p>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Descrição do lembrete</label>
+                                <input type="text" name="lembrete_descricao"
+                                       value="{{ old('lembrete_descricao') }}"
+                                       class="form-control mt-1" maxlength="120"
+                                       placeholder="Deixe em branco para usar a descrição da despesa">
+                            </div>
+
+                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Alertar novamente a cada…</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Km</label>
+                                    <input type="number" name="lembrete_intervalo_km"
+                                           value="{{ old('lembrete_intervalo_km') }}"
+                                           class="form-control mt-1" min="100" max="200000"
+                                           placeholder="Ex: 10000">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Meses</label>
+                                    <input type="number" name="lembrete_intervalo_meses"
+                                           value="{{ old('lembrete_intervalo_meses') }}"
+                                           class="form-control mt-1" min="1" max="120"
+                                           placeholder="Ex: 12">
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400">Preencha ao menos um. Ambos podem ser usados juntos.</p>
+                        </div>
+
                         <button type="submit" class="btn-primary w-full mt-2">Salvar despesa</button>
                     </form>
                 </div>
             </div>
+
+            {{-- Histórico de despesas --}}
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b">
@@ -344,6 +407,7 @@
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">KM</th>
                                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
                                         <th class="px-4 py-2"></th>
                                     </tr>
@@ -355,6 +419,9 @@
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $exp->data->format('d/m/Y') }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $labExp[$exp->tipo] ?? ucfirst($exp->tipo) }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $exp->descricao ?? '-' }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-500 text-right tabular-nums">
+                                                {{ $exp->km_servico ? number_format($exp->km_servico, 0, ',', '.') . ' km' : '-' }}
+                                            </td>
                                             <td class="px-4 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($exp->valor, 2, ',', '.') }}</td>
                                             <td class="px-4 py-2 text-right text-sm">
                                                 <form action="{{ route('vehicles.expenses.destroy', [$vehicle, $exp]) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta despesa?')">
@@ -374,14 +441,14 @@
         </div>
     </div>
 
-    {{-- TAB: LEMBRETES DE MANUTENÇÃO --}}
+    {{-- TAB: LEMBRETES --}}
     <div x-show="tab === 'reminders'" id="reminders">
         @include('vehicles._reminders_tab')
     </div>
 
 </div>
 
-{{-- Chart.js: dois gráficos --}}
+{{-- Chart.js --}}
 @if(count($chartConsumo) >= 2)
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
