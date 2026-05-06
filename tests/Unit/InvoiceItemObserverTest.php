@@ -2,7 +2,12 @@
 
 namespace Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Product;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class InvoiceItemObserverTest extends TestCase
 {
@@ -38,4 +43,3 @@ class InvoiceItemObserverTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id]);
     }
 }
-
