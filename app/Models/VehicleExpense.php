@@ -16,26 +16,21 @@ class VehicleExpense extends Model
         'tipo',
         'valor',
         'descricao',
-        'invoice_item_id',
+        'km_servico',
     ];
 
     protected $casts = [
-        'data' => 'date',
-        'valor' => 'float',
+        'data'  => 'date',
+        'valor' => 'decimal:2',
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
 
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
     }
 
-    public function invoiceItem()
+    public function user()
     {
-        return $this->belongsTo(InvoiceItem::class);
+        return $this->belongsTo(User::class);
     }
 }
