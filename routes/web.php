@@ -122,6 +122,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Despesas do veículo
     Route::post('/vehicles/{vehicle}/expenses', [VehicleExpenseController::class, 'store'])->name('vehicles.expenses.store');
+    Route::patch('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'update'])->name('vehicles.expenses.update');
     Route::delete('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'destroy'])->name('vehicles.expenses.destroy');
 
     // Abastecimentos
@@ -129,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/km', [FuelEntryController::class, 'updateKm'])->name('vehicles.fuel.updateKm');
     Route::delete('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'destroy'])->name('vehicles.fuel.destroy');
 
-    // Lembretes de manutenção (Fase 3)
+    // Lembretes de manutenção
     Route::post('/vehicles/{vehicle}/reminders', [MaintenanceReminderController::class, 'store'])->name('vehicles.reminders.store');
     Route::post('/vehicles/{vehicle}/reminders/{reminder}/feito', [MaintenanceReminderController::class, 'feito'])->name('vehicles.reminders.feito');
     Route::delete('/vehicles/{vehicle}/reminders/{reminder}', [MaintenanceReminderController::class, 'destroy'])->name('vehicles.reminders.destroy');
