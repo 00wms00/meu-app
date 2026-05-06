@@ -29,11 +29,17 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Combustível</th>
                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Km atual</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Alertas</th>
                     <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($vehicles as $vehicle)
+                    @php
+                        $veicReminders = $reminders->get($vehicle->id, collect());
+                        $temVencido    = $veicReminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'vencido');
+                        $temProximo    = $veicReminders->contains(fn($r) => $r->statusAlerta($vehicle->km_atual) === 'proximo');
+                    @endphp
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-4 py-3">
                             <a href="{{ route('vehicles.show', $vehicle) }}"
@@ -51,6 +57,23 @@
                         <td class="px-4 py-3 text-sm text-gray-700">{{ ucfirst($vehicle->tipo_combustivel ?? '-') }}</td>
                         <td class="px-4 py-3 text-sm text-gray-700 text-right tabular-nums">
                             {{ number_format($vehicle->km_atual ?? 0, 0, ',', '.') }} km
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            @if($temVencido)
+                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-white bg-red-600 rounded-full px-2 py-0.5">
+                                    🔴 Vencido
+                                </span>
+                            @elseif($temProximo)
+                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full px-2 py-0.5">
+                                    ⚠️ Próximo
+                                </span>
+                            @elseif($veicReminders->isNotEmpty())
+                                <span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 rounded-full px-2 py-0.5">
+                                    ✅ Em dia
+                                </span>
+                            @else
+                                <span class="text-xs text-gray-400">-</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                             <a href="{{ route('vehicles.show', $vehicle) }}"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FuelEntry;
+use App\Models\MaintenanceReminder;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +19,15 @@ class VehicleController extends Controller
             ->orderBy('apelido')
             ->get();
 
-        return view('vehicles.index', compact('vehicles'));
+        // Carrega lembretes ativos de todos os veículos do usuário
+        // para calcular badges na listagem sem N+1
+        $vehicleIds = $vehicles->pluck('id');
+        $reminders  = MaintenanceReminder::whereIn('vehicle_id', $vehicleIds)
+            ->where('ativo', true)
+            ->get()
+            ->groupBy('vehicle_id');
+
+        return view('vehicles.index', compact('vehicles', 'reminders'));
     }
 
     public function show(Vehicle $vehicle): View
@@ -52,6 +61,12 @@ class VehicleController extends Controller
             ? round(array_sum($custoKmValidos) / count($custoKmValidos), 4)
             : null;
 
+        // Lembretes de manutenção
+        $reminders = MaintenanceReminder::where('vehicle_id', $vehicle->id)
+            ->where('ativo', true)
+            ->orderBy('km_ultimo_servico')
+            ->get();
+
         // Reverte para exibição na tabela (mais recente primeiro)
         $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
 
@@ -63,6 +78,7 @@ class VehicleController extends Controller
             'chartConsumo',
             'consumoMedioGeral',
             'custoKmMedio',
+            'reminders',
         ));
     }
 
