@@ -415,7 +415,8 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @php $labExp = ['manutencao'=>'Manutenção','seguro'=>'Seguro','impostos'=>'Impostos/IPVA','pedagio'=>'Pedágio/Estacionamento','outros'=>'Outros']; @endphp
                                     @foreach($expenses as $exp)
-                                        <tr>
+                                        {{-- linha normal --}}
+                                        <tr x-data="{ editando: false }" x-id="['exp-{{ $exp->id }}']">
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $exp->data->format('d/m/Y') }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $labExp[$exp->tipo] ?? ucfirst($exp->tipo) }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-700">{{ $exp->descricao ?? '-' }}</td>
@@ -423,11 +424,79 @@
                                                 {{ $exp->km_servico ? number_format($exp->km_servico, 0, ',', '.') . ' km' : '-' }}
                                             </td>
                                             <td class="px-4 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($exp->valor, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-2 text-right text-sm">
+                                            <td class="px-4 py-2 text-right text-sm whitespace-nowrap">
+                                                {{-- Botão Editar --}}
+                                                <button type="button"
+                                                        @click="editando = !editando"
+                                                        :class="editando ? 'text-orange-600 hover:text-orange-800' : 'text-blue-500 hover:text-blue-700'"
+                                                        class="text-xs mr-2"
+                                                        :title="editando ? 'Fechar edição' : 'Editar despesa'">
+                                                    <span x-text="editando ? '✕ Fechar' : '✏️ Editar'"></span>
+                                                </button>
+                                                {{-- Botão Remover --}}
                                                 <form action="{{ route('vehicles.expenses.destroy', [$vehicle, $exp]) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta despesa?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs">Remover</button>
+                                                    <button type="submit" class="text-red-500 hover:text-red-700 text-xs">🗑 Remover</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+
+                                        {{-- linha de edição inline (Alpine toggle) --}}
+                                        <tr x-show="editando" x-data x-cloak
+                                            class="bg-orange-50 border-l-4 border-orange-400">
+                                            <td colspan="6" class="px-4 py-4">
+                                                <form action="{{ route('vehicles.expenses.update', [$vehicle, $exp]) }}"
+                                                      method="POST"
+                                                      class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+                                                    @csrf
+                                                    @method('PATCH')
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Data</label>
+                                                        <input type="date" name="data"
+                                                               value="{{ $exp->data->format('Y-m-d') }}"
+                                                               class="form-control text-sm" required>
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                                                        <select name="tipo" class="form-control text-sm" required>
+                                                            @foreach($labExp as $v => $l)
+                                                                <option value="{{ $v }}" {{ $exp->tipo === $v ? 'selected' : '' }}>{{ $l }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="md:col-span-2 lg:col-span-2">
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
+                                                        <input type="text" name="descricao"
+                                                               value="{{ $exp->descricao }}"
+                                                               class="form-control text-sm"
+                                                               placeholder="Descrição">
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
+                                                        <input type="number" step="0.01" name="valor"
+                                                               value="{{ $exp->valor }}"
+                                                               class="form-control text-sm" min="0" required>
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-gray-600 mb-1">KM serviço</label>
+                                                        <input type="number" name="km_servico"
+                                                               value="{{ $exp->km_servico }}"
+                                                               class="form-control text-sm" min="0"
+                                                               placeholder="—">
+                                                    </div>
+
+                                                    <div class="col-span-2 md:col-span-3 lg:col-span-6 flex justify-end gap-2 pt-1">
+                                                        <button type="submit"
+                                                                class="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded font-medium">
+                                                            Salvar alterações
+                                                        </button>
+                                                    </div>
                                                 </form>
                                             </td>
                                         </tr>
