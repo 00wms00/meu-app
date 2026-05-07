@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CreditCardController;
+use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
@@ -161,12 +162,18 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
         Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
 
-        // Cartões de Crédito
+        // Cartões de Crédito (cadastro)
         Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
         Route::post('/cartoes', [CreditCardController::class, 'store'])->name('credit_cards.store');
         Route::put('/cartoes/{creditCard}', [CreditCardController::class, 'update'])->name('credit_cards.update');
         Route::patch('/cartoes/{creditCard}/toggle', [CreditCardController::class, 'toggleAtivo'])->name('credit_cards.toggle');
         Route::delete('/cartoes/{creditCard}', [CreditCardController::class, 'destroy'])->name('credit_cards.destroy');
+
+        // Compras no Crédito + Parcelas
+        Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');
+        Route::post('/compras-credito', [CreditPurchaseController::class, 'store'])->name('credit_purchases.store');
+        Route::delete('/compras-credito/{creditPurchase}', [CreditPurchaseController::class, 'destroy'])->name('credit_purchases.destroy');
+        Route::patch('/compras-credito/parcela/{installment}/toggle', [CreditPurchaseController::class, 'toggleInstallment'])->name('credit_purchases.toggle_installment');
 
     });
 
