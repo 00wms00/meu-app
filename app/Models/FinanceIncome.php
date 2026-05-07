@@ -3,39 +3,62 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class FinanceIncome extends Model
 {
     protected $fillable = [
-        'descricao', 'pessoa', 'tipo', 'valor',
-        'mes_referencia', 'data_recebimento',
-        'recorrente', 'observacao',
+        'descricao',
+        'pessoa',
+        'tipo',
+        'valor',
+        'mes_referencia',
+        'data_recebimento',
+        'recorrente',
+        'observacao',
     ];
 
     protected $casts = [
-        'mes_referencia'    => 'date',
-        'data_recebimento'  => 'date',
-        'recorrente'        => 'boolean',
-        'valor'             => 'decimal:2',
+        'mes_referencia'   => 'date',
+        'data_recebimento' => 'date',
+        'recorrente'       => 'boolean',
+        'valor'            => 'decimal:2',
     ];
 
-    // Scopes
-    public function scopeDoMes(Builder $q, Carbon $mes): Builder
+    // ---- Scopes ---------------------------------------------------------
+
+    public function scopeDoMes($query, \Carbon\Carbon $mes)
     {
-        return $q->whereYear('mes_referencia', $mes->year)
-                 ->whereMonth('mes_referencia', $mes->month);
+        return $query
+            ->whereYear('mes_referencia', $mes->year)
+            ->whereMonth('mes_referencia', $mes->month);
     }
 
-    public function scopeDaPessoa(Builder $q, string $pessoa): Builder
+    public function scopeRecorrentes($query)
     {
-        return $q->where('pessoa', $pessoa);
+        return $query->where('recorrente', true);
     }
 
-    // Helpers
-    public static function totalDoMes(Carbon $mes): float
+    // ---- Helpers --------------------------------------------------------
+
+    public function getPessoaLabelAttribute(): string
     {
-        return (float) self::doMes($mes)->sum('valor');
+        return match ($this->pessoa) {
+            'WIL'          => 'Willian',
+            'MAY'          => 'Mayara',
+            'compartilhado'=> 'Compartilhado',
+            default        => $this->pessoa,
+        };
+    }
+
+    public function getTipoLabelAttribute(): string
+    {
+        return match ($this->tipo) {
+            'salario'   => 'Salário',
+            'freelance' => 'Freelance',
+            'presente'  => 'Presente',
+            'aluguel'   => 'Aluguel',
+            'outros'    => 'Outros',
+            default     => $this->tipo,
+        };
     }
 }
