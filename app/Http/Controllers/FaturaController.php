@@ -31,20 +31,16 @@ class FaturaController extends Controller
         $despesas = FinanceExpense::where('forma_pagamento', 'credito')
             ->where('mes_referencia', '>=', $mesInicio->format('Y-m-01'))
             ->where('mes_referencia', '<=', $mesFim->format('Y-m-t'))
-            ->with('creditCard')
             ->orderBy('mes_referencia')
             ->orderBy('descricao')
             ->get();
 
-        $debugTotal    = $despesas->count();
-        $debugCartoes  = $cards->count();
-        $debugDespesas = $despesas; // para inspecionar na view
-
+        // Monta estrutura indexada por (int) card id
         $faturas = [];
         foreach ($cards as $card) {
+            $cardId = (int) $card->id;
             foreach ($meses as $mes) {
-                $key = $mes->format('Y-m');
-                $faturas[$card->id][$key] = ['total' => 0, 'itens' => []];
+                $faturas[$cardId][$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
             }
         }
 
@@ -54,10 +50,12 @@ class FaturaController extends Controller
         }
 
         foreach ($despesas as $d) {
-            $key = Carbon::parse($d->mes_referencia)->format('Y-m');
-            if ($d->credit_card_id && isset($faturas[$d->credit_card_id][$key])) {
-                $faturas[$d->credit_card_id][$key]['total']  += (float) $d->valor;
-                $faturas[$d->credit_card_id][$key]['itens'][] = $d;
+            $key    = Carbon::parse($d->mes_referencia)->format('Y-m');
+            $cardId = (int) $d->credit_card_id;
+
+            if ($cardId && isset($faturas[$cardId][$key])) {
+                $faturas[$cardId][$key]['total']  += (float) $d->valor;
+                $faturas[$cardId][$key]['itens'][] = $d;
             } else {
                 if (!isset($semCartao[$key])) {
                     $semCartao[$key] = ['total' => 0, 'itens' => []];
@@ -70,7 +68,7 @@ class FaturaController extends Controller
         $totalPorMes = [];
         foreach ($meses as $mes) {
             $key = $mes->format('Y-m');
-            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas[$c->id][$key]['total'] ?? 0)
+            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas[(int)$c->id][$key]['total'] ?? 0)
                 + ($semCartao[$key]['total'] ?? 0);
         }
 
@@ -78,8 +76,7 @@ class FaturaController extends Controller
 
         return view('finance.faturas.index', compact(
             'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao', 'temSemCartao',
-            'hoje', 'mesesAtras', 'mesesFrente',
-            'debugTotal', 'debugCartoes', 'debugDespesas'
+            'hoje', 'mesesAtras', 'mesesFrente'
         ));
     }
 }
