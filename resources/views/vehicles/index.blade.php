@@ -3,9 +3,19 @@
 @section('title', 'Veículos')
 
 @section('content')
-<div class="flex items-center justify-between mb-4">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
     <h1 class="text-2xl font-bold text-gray-900">Veículos</h1>
-    <a href="{{ route('vehicles.create') }}" class="btn-primary">+ Novo Veículo</a>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ route('vehicles.report.fuel-stations') }}"
+           class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-3 py-1.5 transition-colors">
+            ⛽ Comparativo de Postos
+        </a>
+        <a href="{{ route('vehicles.report.monthly') }}"
+           class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors">
+            📊 Relatório Mensal
+        </a>
+        <a href="{{ route('vehicles.create') }}" class="btn-primary">+ Novo Veículo</a>
+    </div>
 </div>
 
 @if(session('success'))
