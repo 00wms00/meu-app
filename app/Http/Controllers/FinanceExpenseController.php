@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\FinanceExpense;
+use App\Models\Invoice;
+use App\Models\Vehicle;
+use App\Models\VehicleExpense;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class FinanceExpenseController extends Controller
 {
@@ -14,6 +18,10 @@ class FinanceExpenseController extends Controller
             ? Carbon::createFromFormat('Y-m', $request->mes)->startOfMonth()
             : Carbon::now()->startOfMonth();
 
+        $mesInicio = $mes->copy()->startOfMonth();
+        $mesFim    = $mes->copy()->endOfMonth();
+
+        // ---- Despesas manuais do banco --------------------------------
         $expenses = FinanceExpense::doMes($mes)
             ->orderBy('tipo_despesa')
             ->orderBy('categoria')
@@ -23,17 +31,72 @@ class FinanceExpenseController extends Controller
         $fixas    = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
-        $totalFixas     = $fixas->sum('valor');
-        $totalVariaveis = $variaveis->sum('valor');
-        $totalGeral     = $expenses->sum('valor');
-        $totalPago      = $expenses->where('status', 'pago')->sum('valor');
-        $totalPendente  = $expenses->where('status', 'pendente')->sum('valor');
+        // ---- Mercado: invoices do mês --------------------------------
+        // Agrupa por loja (nome_estabelecimento), soma valor_pago
+        $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
+            ->where('user_id', Auth::id())
+            ->get()
+            ->groupBy('nome_estabelecimento')
+            ->map(function ($grupo) {
+                return [
+                    'descricao'       => $grupo->first()->nome_estabelecimento,
+                    'valor'           => $grupo->sum('valor_pago'),
+                    'quantidade'      => $grupo->count(),
+                    'categoria'       => 'Mercado',
+                    'forma_pagamento' => $grupo->first()->forma_pagamento ?? 'pix',
+                    'origem'          => 'mercado',
+                    'ids'             => $grupo->pluck('id'),
+                ];
+            })
+            ->values();
 
-        // Agrupamento por categoria para variáveis
+        $totalMercado = $invoicesDoMes->sum('valor');
+
+        // ---- Veículos: vehicle_expenses do mês ----------------------
+        $vehicleExpensesDoMes = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
+            ->where('user_id', Auth::id())
+            ->with('vehicle')
+            ->get()
+            ->groupBy(fn($e) => $e->vehicle->nome ?? 'Veículo')
+            ->map(function ($grupo, $veiculo) {
+                return [
+                    'descricao'  => $veiculo,
+                    'valor'      => $grupo->sum('valor'),
+                    'quantidade' => $grupo->count(),
+                    'categoria'  => 'Carro',
+                    'origem'     => 'veiculo',
+                    'itens'      => $grupo->map(fn($e) => [
+                        'tipo'   => $e->tipo,
+                        'valor'  => $e->valor,
+                        'data'   => $e->data->format('d/m'),
+                        'descricao' => $e->descricao,
+                    ]),
+                ];
+            })
+            ->values();
+
+        $totalVeiculos = $vehicleExpensesDoMes->sum('valor');
+
+        // ---- Totais --------------------------------------------------
+        $totalFixas     = $fixas->sum('valor');
+        $totalVariaveis = $variaveis->sum('valor') + $totalMercado + $totalVeiculos;
+        $totalGeral     = $totalFixas + $totalVariaveis;
+        $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado; // mercado = pago na hora
+        $totalPendente  = $expenses->where('status', 'pendente')->sum('valor') + $totalVeiculos;
+
+        // ---- Agrupamento por categoria (variáveis manuais + externas) --
         $porCategoria = $variaveis
             ->groupBy('categoria')
             ->map(fn($g) => $g->sum('valor'))
             ->sortByDesc(fn($v) => $v);
+
+        if ($totalMercado > 0) {
+            $porCategoria->put('Mercado', ($porCategoria->get('Mercado', 0)) + $totalMercado);
+        }
+        if ($totalVeiculos > 0) {
+            $porCategoria->put('Carro', ($porCategoria->get('Carro', 0)) + $totalVeiculos);
+        }
+        $porCategoria = $porCategoria->sortByDesc(fn($v) => $v);
 
         $meses = collect(range(0, 11))
             ->map(fn($i) => Carbon::now()->startOfMonth()->subMonths($i));
@@ -41,7 +104,9 @@ class FinanceExpenseController extends Controller
         return view('finance.expenses.index', compact(
             'expenses', 'fixas', 'variaveis', 'mes',
             'totalFixas', 'totalVariaveis', 'totalGeral',
-            'totalPago', 'totalPendente', 'porCategoria', 'meses'
+            'totalPago', 'totalPendente', 'porCategoria', 'meses',
+            'invoicesDoMes', 'totalMercado',
+            'vehicleExpensesDoMes', 'totalVeiculos'
         ));
     }
 
@@ -106,30 +171,24 @@ class FinanceExpenseController extends Controller
             ->with('success', 'Despesa removida.');
     }
 
-    /**
-     * Marca a despesa como paga (toggle).
-     */
     public function togglePago(FinanceExpense $expense)
     {
         $expense->update([
-            'status'          => $expense->isPago() ? 'pendente' : 'pago',
-            'data_pagamento'  => $expense->isPago() ? null : now()->toDateString(),
+            'status'         => $expense->isPago() ? 'pendente' : 'pago',
+            'data_pagamento' => $expense->isPago() ? null : now()->toDateString(),
         ]);
 
         return redirect()->back()->with('success', 'Status atualizado!');
     }
 
-    /**
-     * Duplica despesas fixas do mês anterior para o mês atual.
-     */
     public function duplicarFixas(Request $request)
     {
         $mes    = Carbon::createFromFormat('Y-m', $request->mes)->startOfMonth();
         $mesAnt = $mes->copy()->subMonth();
 
-        $fixas = FinanceExpense::doMes($mesAnt)->fixas()->get();
-
+        $fixas   = FinanceExpense::doMes($mesAnt)->fixas()->get();
         $criadas = 0;
+
         foreach ($fixas as $f) {
             $existe = FinanceExpense::doMes($mes)
                 ->where('descricao', $f->descricao)
