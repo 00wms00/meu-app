@@ -3,6 +3,7 @@
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FaturaController;
 use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
 use App\Http\Controllers\FuelEntryController;
@@ -168,6 +169,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/cartoes/{creditCard}', [CreditCardController::class, 'update'])->name('credit_cards.update');
         Route::patch('/cartoes/{creditCard}/toggle', [CreditCardController::class, 'toggleAtivo'])->name('credit_cards.toggle');
         Route::delete('/cartoes/{creditCard}', [CreditCardController::class, 'destroy'])->name('credit_cards.destroy');
+
+        // Faturas
+        Route::get('/faturas', [FaturaController::class, 'index'])->name('faturas.index');
 
         // Compras no Crédito + Parcelas
         Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');
