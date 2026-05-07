@@ -3,49 +3,43 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 class FinanceCreditPurchase extends Model
 {
     protected $fillable = [
-        'credit_card_id', 'descricao', 'categoria',
+        'credit_card_id', 'descricao', 'categoria', 'pessoa',
         'valor_total', 'parcelas_total',
-        'data_compra', 'nfe_id', 'observacao',
+        'data_compra', 'observacao',
     ];
 
     protected $casts = [
-        'valor_total'  => 'decimal:2',
-        'data_compra'  => 'date',
+        'valor_total' => 'decimal:2',
+        'data_compra' => 'date',
     ];
 
-    // Relacionamentos
     public function card()
     {
-        return $this->belongsTo(FinanceCreditCard::class, 'credit_card_id');
+        return $this->belongsTo(CreditCard::class, 'credit_card_id');
     }
 
     public function installments()
     {
-        return $this->hasMany(FinanceInstallment::class, 'purchase_id');
+        return $this->hasMany(FinanceInstallment::class, 'purchase_id')->orderBy('numero');
     }
 
-    public function nfe()
-    {
-        return $this->belongsTo(FinanceNfe::class, 'nfe_id');
-    }
-
-    // Gera as parcelas automaticamente ao criar a compra
+    /**
+     * Gera as parcelas mensais automaticamente.
+     * Regra: se a compra foi após o fechamento, a 1ª parcela cai no mês seguinte.
+     */
     public function gerarParcelas(): void
     {
-        $this->installments()->delete(); // limpa se já existir
+        $this->installments()->delete();
 
-        $card      = $this->card;
-        $valorParc = round($this->valor_total / $this->parcelas_total, 2);
+        $card       = $this->card;
+        $valorParc  = round($this->valor_total / $this->parcelas_total, 2);
         $dataCompra = $this->data_compra;
 
-        // Determina o mês da primeira parcela:
-        // Se a compra foi feita APÓS o fechamento, cai no mês seguinte
         $fechamento = Carbon::create($dataCompra->year, $dataCompra->month, $card->dia_fechamento);
         $mesParcela = $dataCompra->gt($fechamento)
             ? $dataCompra->copy()->startOfMonth()->addMonth()
@@ -65,11 +59,15 @@ class FinanceCreditPurchase extends Model
         }
     }
 
-    // Label de parcelas estilo "2/4"
-    public function labelParcelas(): string
+    public function getValorParcelaAttribute(): float
+    {
+        return round($this->valor_total / $this->parcelas_total, 2);
+    }
+
+    public function getLabelParcelasAttribute(): string
     {
         if ($this->parcelas_total === 1) return 'à vista';
-        $atual = $this->installments()->where('status', 'pendente')->min('numero') ?? 1;
-        return "{$atual}/{$this->parcelas_total}";
+        $pago = $this->installments->where('status', 'pago')->count();
+        return ($pago + 1) . '/' . $this->parcelas_total;
     }
 }

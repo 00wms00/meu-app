@@ -11,6 +11,9 @@ class FinanceExpense extends Model
         'tipo_despesa',
         'categoria',
         'forma_pagamento',
+        'credit_card_id',
+        'parcelas_total',
+        'installment_id',
         'pessoa',
         'valor',
         'mes_referencia',
@@ -29,6 +32,18 @@ class FinanceExpense extends Model
         'data_pagamento'  => 'date',
         'valor'           => 'decimal:2',
     ];
+
+    // ---- Relacionamentos ------------------------------------------------
+
+    public function creditCard()
+    {
+        return $this->belongsTo(CreditCard::class, 'credit_card_id');
+    }
+
+    public function installment()
+    {
+        return $this->belongsTo(FinanceInstallment::class, 'installment_id');
+    }
 
     // ---- Scopes ---------------------------------------------------------
 
@@ -72,6 +87,7 @@ class FinanceExpense extends Model
             'debito'   => 'Débito',
             'pix'      => 'Pix',
             'dinheiro' => 'Dinheiro',
+            'cartao'   => $this->creditCard ? $this->creditCard->nome : 'Cartão',
             default    => $this->forma_pagamento,
         };
     }
@@ -86,5 +102,10 @@ class FinanceExpense extends Model
         return $this->status === 'pendente'
             && $this->data_vencimento
             && $this->data_vencimento->isPast();
+    }
+
+    public function isParcelada(): bool
+    {
+        return $this->parcelas_total > 1;
     }
 }

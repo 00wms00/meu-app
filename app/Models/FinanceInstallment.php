@@ -19,7 +19,6 @@ class FinanceInstallment extends Model
         'valor'          => 'decimal:2',
     ];
 
-    // Relacionamentos
     public function purchase()
     {
         return $this->belongsTo(FinanceCreditPurchase::class, 'purchase_id');
@@ -27,10 +26,9 @@ class FinanceInstallment extends Model
 
     public function card()
     {
-        return $this->belongsTo(FinanceCreditCard::class, 'credit_card_id');
+        return $this->belongsTo(CreditCard::class, 'credit_card_id');
     }
 
-    // Scopes
     public function scopeDoMes(Builder $q, Carbon $mes): Builder
     {
         return $q->whereYear('mes_referencia', $mes->year)
@@ -42,7 +40,6 @@ class FinanceInstallment extends Model
         return $q->where('credit_card_id', $cardId);
     }
 
-    // Total de fatura de um cartão em um mês
     public static function totalFatura(int $cardId, Carbon $mes): float
     {
         return (float) self::doCartao($cardId)->doMes($mes)->sum('valor');
