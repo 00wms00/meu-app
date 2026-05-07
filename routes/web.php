@@ -14,6 +14,7 @@ use App\Http\Controllers\OfferController;
 use App\Http\Controllers\LancamentoManualController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleExpenseController;
+use App\Http\Controllers\VehicleReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -78,7 +79,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ml-interativo', [ProductController::class, 'mlSugestoesInterativo'])->name('products.ml-interativo');
     Route::post('/ml-confirmar', [ProductController::class, 'mlConfirmarAgrupamento'])->name('products.ml-confirmar');
 
-    // Relatórios
+    // Relatórios (compras)
     Route::get('/relatorio-mensal', [RelatorioController::class, 'mensal'])->name('relatorio.mensal');
     Route::get('/relatorio-periodo', [RelatorioController::class, 'periodo'])->name('relatorio.periodo');
 
@@ -118,6 +119,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lancamento-manual', [LancamentoManualController::class, 'store'])->name('lancamento.store');
 
     // ==================== VEÍCULOS ====================
+
+    // Relatório mensal — declarado ANTES do resource para evitar conflito com {vehicle}
+    Route::get('/vehicles/report/monthly', [VehicleReportController::class, 'monthly'])
+        ->name('vehicles.report.monthly');
+
     Route::resource('vehicles', VehicleController::class);
 
     // Despesas do veículo
