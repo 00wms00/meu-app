@@ -40,51 +40,59 @@ class FinanceExpenseController extends Controller
                 'descricao'  => $grupo->first()->nome_estabelecimento,
                 'valor'      => $grupo->sum('valor_pago'),
                 'quantidade' => $grupo->count(),
-                'categoria'  => 'Mercado',
-                'origem'     => 'mercado',
             ])
             ->values();
 
         $totalMercado = $invoicesDoMes->sum('valor');
 
-        // ---- Veículos: vehicle_expenses + fuel_entries do mês ---------
+        // ---- Veículos: vehicle_expenses + fuel_entries ---------------
+        // VehicleExpense não tem user_id direto — filtra via vehicle
         $vexpRaw = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
-            ->where('user_id', Auth::id())
+            ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
             ->with('vehicle')
             ->get();
 
+        // FuelEntry tem user_id direto
         $fuelRaw = FuelEntry::whereBetween('data', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->with('vehicle')
             ->get();
 
-        // Agrupa tudo por nome do veículo
-        $veiculoNomes = $vexpRaw->pluck('vehicle.nome', 'vehicle_id')
-            ->merge($fuelRaw->pluck('vehicle.nome', 'vehicle_id'))
+        // Agrupa tudo por vehicle_id
+        $vehicleIds = $vexpRaw->pluck('vehicle_id')
+            ->merge($fuelRaw->pluck('vehicle_id'))
             ->unique();
 
-        $vehicleExpensesDoMes = $veiculoNomes->map(function ($nomeVeiculo, $vehicleId) use ($vexpRaw, $fuelRaw) {
+        $vehicleExpensesDoMes = $vehicleIds->map(function ($vehicleId) use ($vexpRaw, $fuelRaw) {
             $vexps = $vexpRaw->where('vehicle_id', $vehicleId);
             $fuels = $fuelRaw->where('vehicle_id', $vehicleId);
+
+            // Nome do veículo
+            $primeiroVexp = $vexps->first();
+            $primeiroFuel = $fuels->first();
+            $nomeVeiculo  = ($primeiroVexp->vehicle->nome ?? null)
+                         ?? ($primeiroFuel->vehicle->nome ?? 'Veículo');
 
             $itens = collect();
 
             foreach ($vexps as $e) {
                 $itens->push([
                     'tipo'      => $e->tipo ?? 'Manutenção',
-                    'descricao' => $e->descricao,
-                    'valor'     => $e->valor,
+                    'descricao' => $e->descricao ?? '',
+                    'valor'     => (float) $e->valor,
                     'data'      => $e->data->format('d/m'),
                     'icone'     => '🔧',
                 ]);
             }
 
             foreach ($fuels as $f) {
-                $litros = $f->litros ? number_format($f->litros, 2, ',', '.') . 'L' : '';
+                $litros = $f->litros
+                    ? number_format((float) $f->litros, 2, ',', '.') . 'L'
+                    : '';
                 $itens->push([
                     'tipo'      => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''),
-                    'descricao' => trim(($f->posto ?? '') . ($litros ? ' &bull; ' . $litros : '')),
-                    'valor'     => $f->valor,
+                    'descricao' => trim(($f->posto ?? '') . ($litros ? ' • ' . $litros : '')),
+                    'valor'     => (float) $f->valor,
                     'data'      => $f->data->format('d/m'),
                     'icone'     => '⛽',
                 ]);
@@ -93,11 +101,9 @@ class FinanceExpenseController extends Controller
             $itens = $itens->sortBy('data');
 
             return [
-                'descricao'  => $nomeVeiculo ?? 'Veículo',
-                'valor'      => $vexps->sum('valor') + $fuels->sum('valor'),
+                'descricao'  => $nomeVeiculo,
+                'valor'      => $vexps->sum(fn($e) => (float) $e->valor) + $fuels->sum(fn($f) => (float) $f->valor),
                 'quantidade' => $itens->count(),
-                'categoria'  => 'Carro',
-                'origem'     => 'veiculo',
                 'itens'      => $itens->values()->toArray(),
             ];
         })->values();
