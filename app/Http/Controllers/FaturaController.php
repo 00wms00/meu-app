@@ -35,7 +35,6 @@ class FaturaController extends Controller
             ->orderBy('descricao')
             ->get();
 
-        // Monta estrutura indexada por (int) card id
         $faturas = [];
         foreach ($cards as $card) {
             $cardId = (int) $card->id;
@@ -65,18 +64,21 @@ class FaturaController extends Controller
             }
         }
 
-        $totalPorMes = [];
-        foreach ($meses as $mes) {
-            $key = $mes->format('Y-m');
-            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas[(int)$c->id][$key]['total'] ?? 0)
-                + ($semCartao[$key]['total'] ?? 0);
+        // DEBUG: mostra despesas e o estado de $faturas apos loop
+        $debug = [];
+        foreach ($despesas as $d) {
+            $key    = Carbon::parse($d->mes_referencia)->format('Y-m');
+            $cardId = (int) $d->credit_card_id;
+            $debug[] = [
+                'descricao'      => $d->descricao,
+                'valor'          => $d->valor,
+                'credit_card_id' => $d->credit_card_id,
+                'cardId_cast'    => $cardId,
+                'key'            => $key,
+                'isset_faturas'  => isset($faturas[$cardId][$key]) ? 'SIM' : 'NAO',
+                'faturas_keys'   => array_keys($faturas),
+            ];
         }
-
-        $temSemCartao = collect($semCartao)->contains(fn($v) => $v['total'] > 0);
-
-        return view('finance.faturas.index', compact(
-            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao', 'temSemCartao',
-            'hoje', 'mesesAtras', 'mesesFrente'
-        ));
+        dd($debug, $faturas);
     }
 }
