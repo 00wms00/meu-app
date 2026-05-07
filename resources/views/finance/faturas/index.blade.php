@@ -12,6 +12,12 @@
     <a href="{{ route('finance.credit_cards.index') }}" class="btn-back self-start sm:self-auto">← Cartões</a>
 </div>
 
+{{-- Debug temporario --}}
+<div class="mb-4 text-xs bg-yellow-50 border border-yellow-200 rounded p-3 text-yellow-800">
+    ⚠️ Debug: <strong>{{ $debugCartoes }} cartões</strong> encontrados &nbsp;|&nbsp;
+    <strong>{{ $debugTotal }} despesas</strong> com forma_pagamento=cartao no período
+</div>
+
 {{-- Filtro de período --}}
 <form method="GET" class="mb-6 flex flex-wrap gap-3 items-end bg-white rounded-xl shadow p-4">
     <div>
@@ -33,7 +39,7 @@
     <button type="submit" class="btn-primary text-sm px-4 py-2">Filtrar</button>
 </form>
 
-@if($cards->isEmpty())
+@if($cards->isEmpty() && !$temSemCartao)
     <div class="bg-white rounded-xl shadow p-10 text-center text-gray-400">
         <p class="text-4xl mb-3">💳</p>
         <p class="text-sm font-medium">Nenhum cartão cadastrado.</p>
@@ -46,13 +52,13 @@
     <table class="min-w-full text-sm">
         <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-                <th class="text-left px-4 py-3 font-semibold text-gray-600 w-40">Cartão</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-600 w-48">Cartão</th>
                 @foreach($meses as $mes)
                     <th class="text-right px-4 py-3 font-semibold
                         {{ $mes->isSameMonth($hoje) ? 'text-blue-700 bg-blue-50' : 'text-gray-600' }}">
-                        {{ $mes->translatedFormat('M/y') }}
+                        {{ ucfirst($mes->translatedFormat('M/y')) }}
                         @if($mes->isSameMonth($hoje))
-                            <span class="ml-1 text-xs font-normal text-blue-500">atual</span>
+                            <span class="block text-xs font-normal text-blue-400">atual</span>
                         @endif
                     </th>
                 @endforeach
@@ -60,14 +66,12 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
 
+            {{-- Linhas dos cartoes --}}
             @foreach($cards as $card)
-            @php $temAlgo = collect($meses)->contains(fn($m) => ($faturas[$card->id][$m->format('Y-m')]['total'] ?? 0) > 0); @endphp
             <tr x-data="{ open: false }" class="hover:bg-gray-50 cursor-pointer" @click="open = !open">
-
-                {{-- Nome do cartão --}}
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:{{ $card->cor }}"></span>
+                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background:{{ $card->cor ?? '#888' }}"></span>
                         <div>
                             <p class="font-medium text-gray-800 leading-tight">{{ $card->nome }}</p>
                             <p class="text-xs text-gray-400">{{ $card->pessoa_label }}</p>
@@ -75,8 +79,6 @@
                         <svg class="w-3 h-3 text-gray-400 ml-auto transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </td>
-
-                {{-- Valores por mês --}}
                 @foreach($meses as $mes)
                 @php
                     $key   = $mes->format('Y-m');
@@ -89,29 +91,28 @@
                             R$ {{ number_format($total, 2, ',', '.') }}
                         </span>
                     @else
-                        <span class="text-gray-300">—</span>
+                        <span class="text-gray-300">&mdash;</span>
                     @endif
                 </td>
                 @endforeach
             </tr>
-
-            {{-- Linha de detalhes expansível --}}
+            {{-- Detalhes expansíveis --}}
             <tr x-show="open" style="display:none" class="bg-gray-50">
                 <td colspan="{{ $meses->count() + 1 }}" class="px-4 pb-4 pt-2">
-                    <div class="grid grid-cols-1 md:grid-cols-{{ min($meses->count(), 4) }} gap-4">
+                    <div class="flex flex-wrap gap-4">
                         @foreach($meses as $mes)
                         @php
                             $key   = $mes->format('Y-m');
                             $itens = $faturas[$card->id][$key]['itens'] ?? [];
                         @endphp
                         @if(count($itens) > 0)
-                        <div class="bg-white rounded-lg border border-gray-100 p-3">
-                            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ $mes->translatedFormat('F/Y') }}</p>
+                        <div class="bg-white rounded-lg border border-gray-100 p-3 min-w-[180px]">
+                            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ ucfirst($mes->translatedFormat('F/Y')) }}</p>
                             <ul class="space-y-1">
                                 @foreach($itens as $item)
                                 <li class="flex justify-between text-xs">
-                                    <span class="text-gray-700 truncate max-w-[160px]">{{ $item->descricao }}</span>
-                                    <span class="font-medium text-gray-900 ml-2 flex-shrink-0">R$ {{ number_format($item->valor, 2, ',', '.') }}</span>
+                                    <span class="text-gray-700 truncate max-w-[150px]">{{ $item->descricao }}</span>
+                                    <span class="font-medium text-gray-900 ml-2">R$ {{ number_format($item->valor, 2, ',', '.') }}</span>
                                 </li>
                                 @endforeach
                             </ul>
@@ -123,21 +124,66 @@
             </tr>
             @endforeach
 
-            {{-- Linha de totais --}}
-            <tr class="bg-gray-100 font-semibold border-t-2 border-gray-300">
-                <td class="px-4 py-3 text-gray-700">TOTAL</td>
+            {{-- Linha despesas sem cartao vinculado --}}
+            @if($temSemCartao)
+            <tr x-data="{ open: false }" class="hover:bg-yellow-50 cursor-pointer" @click="open = !open">
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0 bg-gray-400"></span>
+                        <div>
+                            <p class="font-medium text-gray-700 leading-tight">Sem cartão vinculado</p>
+                            <p class="text-xs text-gray-400">forma_pagamento=cartao</p>
+                        </div>
+                        <svg class="w-3 h-3 text-gray-400 ml-auto" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                </td>
                 @foreach($meses as $mes)
-                @php $total = $totalPorMes[$mes->format('Y-m')] ?? 0; @endphp
-                <td class="px-4 py-3 text-right {{ $mes->isSameMonth($hoje) ? 'text-blue-700 bg-blue-100' : 'text-gray-800' }}">
+                @php $key = $mes->format('Y-m'); $total = $semCartao[$key]['total'] ?? 0; @endphp
+                <td class="px-4 py-3 text-right">
                     @if($total > 0)
-                        R$ {{ number_format($total, 2, ',', '.') }}
+                        <span class="font-semibold text-gray-700">R$ {{ number_format($total, 2, ',', '.') }}</span>
                     @else
-                        <span class="text-gray-300">—</span>
+                        <span class="text-gray-300">&mdash;</span>
                     @endif
                 </td>
                 @endforeach
             </tr>
+            <tr x-show="open" style="display:none" class="bg-yellow-50">
+                <td colspan="{{ $meses->count() + 1 }}" class="px-4 pb-4 pt-2">
+                    <div class="flex flex-wrap gap-4">
+                        @foreach($meses as $mes)
+                        @php $key = $mes->format('Y-m'); $itens = $semCartao[$key]['itens'] ?? []; @endphp
+                        @if(count($itens) > 0)
+                        <div class="bg-white rounded-lg border border-yellow-100 p-3 min-w-[180px]">
+                            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ ucfirst($mes->translatedFormat('F/Y')) }}</p>
+                            <ul class="space-y-1">
+                                @foreach($itens as $item)
+                                <li class="flex justify-between text-xs">
+                                    <span class="text-gray-700 truncate max-w-[150px]">{{ $item->descricao }}</span>
+                                    <span class="font-medium ml-2">R$ {{ number_format($item->valor, 2, ',', '.') }}</span>
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        @endif
+                        @endforeach
+                    </div>
+                </td>
+            </tr>
+            @endif
 
+            {{-- Total geral --}}
+            <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
+                <td class="px-4 py-3 text-gray-700">TOTAL</td>
+                @foreach($meses as $mes)
+                @php $total = $totalPorMes[$mes->format('Y-m')] ?? 0; @endphp
+                <td class="px-4 py-3 text-right {{ $mes->isSameMonth($hoje) ? 'text-blue-700 bg-blue-100' : 'text-gray-800' }}">
+                    @if($total > 0) R$ {{ number_format($total, 2, ',', '.') }}
+                    @else <span class="text-gray-300 font-normal">&mdash;</span>
+                    @endif
+                </td>
+                @endforeach
+            </tr>
         </tbody>
     </table>
 </div>
@@ -147,7 +193,7 @@
     @foreach($cards as $card)
     <div class="bg-white rounded-xl shadow overflow-hidden">
         <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-            <span class="inline-block w-3 h-3 rounded-full" style="background:{{ $card->cor }}"></span>
+            <span class="inline-block w-3 h-3 rounded-full" style="background:{{ $card->cor ?? '#888' }}"></span>
             <div>
                 <p class="font-semibold text-gray-800">{{ $card->nome }}</p>
                 <p class="text-xs text-gray-400">{{ $card->pessoa_label }}</p>
@@ -162,17 +208,19 @@
                 $atual = $mes->isSameMonth($hoje);
             @endphp
             <div x-data="{ open: false }" class="{{ $atual ? 'bg-blue-50' : '' }}">
-                <div class="flex items-center justify-between px-4 py-2 cursor-pointer" @click="open = !open">
+                <div class="flex items-center justify-between px-4 py-2 cursor-pointer" @click="if({{ count($itens) }}) open = !open">
                     <span class="text-sm {{ $atual ? 'font-semibold text-blue-700' : 'text-gray-600' }}">
-                        {{ $mes->translatedFormat('F/Y') }}
+                        {{ ucfirst($mes->translatedFormat('F/Y')) }}
                         @if($atual) <span class="text-xs font-normal">(atual)</span> @endif
                     </span>
                     <div class="flex items-center gap-2">
                         @if($total > 0)
                             <span class="font-semibold {{ $atual ? 'text-blue-700' : 'text-gray-800' }}">R$ {{ number_format($total, 2, ',', '.') }}</span>
+                            @if(count($itens))
                             <svg class="w-3 h-3 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                            @endif
                         @else
-                            <span class="text-gray-300 text-sm">—</span>
+                            <span class="text-gray-300 text-sm">&mdash;</span>
                         @endif
                     </div>
                 </div>
@@ -196,5 +244,4 @@
 </div>
 
 @endif
-
 @endsection

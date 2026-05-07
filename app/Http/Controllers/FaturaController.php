@@ -16,30 +16,32 @@ class FaturaController extends Controller
 
         $hoje      = Carbon::now()->startOfMonth();
         $mesInicio = $hoje->copy()->subMonths($mesesAtras);
-        $mesFim    = $hoje->copy()->addMonths($mesesFrente);
+        $mesFim    = $hoje->copy()->addMonths($mesesFrente)->endOfMonth();
 
         // Lista de meses no intervalo
         $meses  = collect();
-        $cursor = $mesInicio->copy();
-        while ($cursor->lte($mesFim)) {
-            $meses->push($cursor->copy());
+        $cursor = $hoje->copy()->subMonths($mesesAtras);
+        $fim    = $hoje->copy()->addMonths($mesesFrente);
+        while ($cursor->lte($fim)) {
+            $meses->push($cursor->copy()->startOfMonth());
             $cursor->addMonth();
         }
 
         $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
 
-        // forma_pagamento = 'cartao' (nao 'credito')
-        // inclui despesas com credit_card_id preenchido OU forma_pagamento = 'cartao'
-        $despesas = FinanceExpense::where(function ($q) use ($cards) {
-                $q->where('forma_pagamento', 'cartao')
-                  ->orWhereIn('credit_card_id', $cards->pluck('id'));
-            })
-            ->whereBetween('mes_referencia', [$mesInicio, $mesFim])
+        // Busca TODAS as despesas com cartao no periodo
+        $despesas = FinanceExpense::where('forma_pagamento', 'cartao')
+            ->where('mes_referencia', '>=', $mesInicio->format('Y-m-01'))
+            ->where('mes_referencia', '<=', $mesFim->format('Y-m-t'))
+            ->with('creditCard')
             ->orderBy('mes_referencia')
             ->orderBy('descricao')
             ->get();
 
-        // Monta matriz: [card_id][mes_key] => ['total' => x, 'itens' => [...]]
+        $debugTotal   = $despesas->count();
+        $debugCartoes = $cards->count();
+
+        // Monta matriz por cartao e mes
         $faturas = [];
         foreach ($cards as $card) {
             foreach ($meses as $mes) {
@@ -48,24 +50,26 @@ class FaturaController extends Controller
             }
         }
 
-        // Chave especial para despesas 'cartao' sem credit_card_id
+        // Despesas sem credit_card_id
         $semCartao = [];
         foreach ($meses as $mes) {
             $semCartao[$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
         }
 
         foreach ($despesas as $d) {
-            $key = $d->mes_referencia->format('Y-m');
+            $key = Carbon::parse($d->mes_referencia)->format('Y-m');
             if ($d->credit_card_id && isset($faturas[$d->credit_card_id][$key])) {
                 $faturas[$d->credit_card_id][$key]['total']  += (float) $d->valor;
                 $faturas[$d->credit_card_id][$key]['itens'][] = $d;
-            } elseif (!$d->credit_card_id && isset($semCartao[$key])) {
+            } else {
+                if (!isset($semCartao[$key])) {
+                    $semCartao[$key] = ['total' => 0, 'itens' => []];
+                }
                 $semCartao[$key]['total']  += (float) $d->valor;
                 $semCartao[$key]['itens'][] = $d;
             }
         }
 
-        // Total geral por mes
         $totalPorMes = [];
         foreach ($meses as $mes) {
             $key = $mes->format('Y-m');
@@ -73,9 +77,12 @@ class FaturaController extends Controller
                 + ($semCartao[$key]['total'] ?? 0);
         }
 
+        $temSemCartao = collect($semCartao)->contains(fn($v) => $v['total'] > 0);
+
         return view('finance.faturas.index', compact(
-            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao',
-            'hoje', 'mesesAtras', 'mesesFrente'
+            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao', 'temSemCartao',
+            'hoje', 'mesesAtras', 'mesesFrente',
+            'debugTotal', 'debugCartoes'
         ));
     }
 }
