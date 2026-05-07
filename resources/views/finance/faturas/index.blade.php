@@ -33,14 +33,7 @@
     <button type="submit" class="btn-primary text-sm px-4 py-2">Filtrar</button>
 </form>
 
-@php
-    $totalSemCartao = collect($semCartao)->sum('total');
-    // garante que as chaves usadas na view são int
-    $faturasPorId = [];
-    foreach($faturas as $cid => $mesesData) {
-        $faturasPorId[(int)$cid] = $mesesData;
-    }
-@endphp
+@php $totalSemCartao = collect($semCartao)->sum('total'); @endphp
 
 {{-- TABELA DESKTOP --}}
 <div class="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
@@ -61,7 +54,7 @@
         <tbody class="divide-y divide-gray-100">
 
             @foreach($cards as $card)
-            @php $cid = (int) $card->id; @endphp
+            @php $cid = 'c' . $card->id; @endphp
             <tr x-data="{ open: false }" class="hover:bg-gray-50 cursor-pointer" @click="open = !open">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
@@ -74,7 +67,7 @@
                     </div>
                 </td>
                 @foreach($meses as $mes)
-                @php $key = $mes->format('Y-m'); $total = $faturasPorId[$cid][$key]['total'] ?? 0; @endphp
+                @php $key = $mes->format('Y-m'); $total = $faturas[$cid][$key]['total'] ?? 0; @endphp
                 <td class="px-4 py-3 text-right {{ $mes->isSameMonth($hoje) ? 'bg-blue-50' : '' }}">
                     @if($total > 0)
                         <span class="font-semibold {{ $mes->isSameMonth($hoje) ? 'text-blue-700' : 'text-gray-800' }}">R$ {{ number_format($total, 2, ',', '.') }}</span>
@@ -88,7 +81,7 @@
                 <td colspan="{{ $meses->count() + 1 }}" class="px-4 pb-4 pt-2">
                     <div class="flex flex-wrap gap-4">
                         @foreach($meses as $mes)
-                        @php $itens = $faturasPorId[$cid][$mes->format('Y-m')]['itens'] ?? []; @endphp
+                        @php $itens = $faturas[$cid][$mes->format('Y-m')]['itens'] ?? []; @endphp
                         @if(count($itens) > 0)
                         <div class="bg-white rounded-lg border border-gray-100 p-3 min-w-[180px]">
                             <p class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ ucfirst($mes->translatedFormat('F/Y')) }}</p>
@@ -108,7 +101,7 @@
             </tr>
             @endforeach
 
-            {{-- Linha: sem cartão vinculado --}}
+            {{-- Linha sem cartão --}}
             @if($totalSemCartao > 0)
             <tr x-data="{ open: false }" class="hover:bg-yellow-50 cursor-pointer" @click="open = !open">
                 <td class="px-4 py-3">
@@ -176,7 +169,7 @@
 {{-- CARDS MOBILE --}}
 <div class="md:hidden space-y-4">
     @foreach($cards as $card)
-    @php $cid = (int) $card->id; @endphp
+    @php $cid = 'c' . $card->id; @endphp
     <div class="bg-white rounded-xl shadow overflow-hidden">
         <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
             <span class="inline-block w-3 h-3 rounded-full" style="background:{{ $card->cor ?? '#888' }}"></span>
@@ -189,8 +182,8 @@
             @foreach($meses as $mes)
             @php
                 $key   = $mes->format('Y-m');
-                $total = $faturasPorId[$cid][$key]['total'] ?? 0;
-                $itens = $faturasPorId[$cid][$key]['itens'] ?? [];
+                $total = $faturas[$cid][$key]['total'] ?? 0;
+                $itens = $faturas[$cid][$key]['itens'] ?? [];
                 $atual = $mes->isSameMonth($hoje);
             @endphp
             <div x-data="{ open: false }" class="{{ $atual ? 'bg-blue-50' : '' }}">

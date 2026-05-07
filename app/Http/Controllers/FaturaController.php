@@ -35,11 +35,12 @@ class FaturaController extends Controller
             ->orderBy('descricao')
             ->get();
 
+        // Chaves SEMPRE como string para evitar conflito int/string no Blade
         $faturas = [];
         foreach ($cards as $card) {
-            $cardId = (int) $card->id;
+            $cid = 'c' . $card->id; // ex: "c1"
             foreach ($meses as $mes) {
-                $faturas[$cardId][$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
+                $faturas[$cid][$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
             }
         }
 
@@ -49,12 +50,12 @@ class FaturaController extends Controller
         }
 
         foreach ($despesas as $d) {
-            $key    = Carbon::parse($d->mes_referencia)->format('Y-m');
-            $cardId = (int) $d->credit_card_id;
+            $key = Carbon::parse($d->mes_referencia)->format('Y-m');
+            $cid = 'c' . $d->credit_card_id;
 
-            if ($cardId && isset($faturas[$cardId][$key])) {
-                $faturas[$cardId][$key]['total']  += (float) $d->valor;
-                $faturas[$cardId][$key]['itens'][] = $d;
+            if ($d->credit_card_id && isset($faturas[$cid][$key])) {
+                $faturas[$cid][$key]['total']  += (float) $d->valor;
+                $faturas[$cid][$key]['itens'][] = $d;
             } else {
                 if (!isset($semCartao[$key])) {
                     $semCartao[$key] = ['total' => 0, 'itens' => []];
@@ -64,21 +65,18 @@ class FaturaController extends Controller
             }
         }
 
-        // DEBUG: mostra despesas e o estado de $faturas apos loop
-        $debug = [];
-        foreach ($despesas as $d) {
-            $key    = Carbon::parse($d->mes_referencia)->format('Y-m');
-            $cardId = (int) $d->credit_card_id;
-            $debug[] = [
-                'descricao'      => $d->descricao,
-                'valor'          => $d->valor,
-                'credit_card_id' => $d->credit_card_id,
-                'cardId_cast'    => $cardId,
-                'key'            => $key,
-                'isset_faturas'  => isset($faturas[$cardId][$key]) ? 'SIM' : 'NAO',
-                'faturas_keys'   => array_keys($faturas),
-            ];
+        $totalPorMes = [];
+        foreach ($meses as $mes) {
+            $key = $mes->format('Y-m');
+            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas['c'.$c->id][$key]['total'] ?? 0)
+                + ($semCartao[$key]['total'] ?? 0);
         }
-        dd($debug, $faturas);
+
+        $temSemCartao = collect($semCartao)->contains(fn($v) => $v['total'] > 0);
+
+        return view('finance.faturas.index', compact(
+            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao', 'temSemCartao',
+            'hoje', 'mesesAtras', 'mesesFrente'
+        ));
     }
 }
