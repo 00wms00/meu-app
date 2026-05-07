@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FuelEntryController;
+use App\Http\Controllers\FuelStationReportController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MaintenanceReminderController;
@@ -120,9 +121,11 @@ Route::middleware(['auth'])->group(function () {
 
     // ==================== VEÍCULOS ====================
 
-    // Relatório mensal — declarado ANTES do resource para evitar conflito com {vehicle}
+    // Relatórios de veículos — declarados ANTES do resource para evitar conflito com {vehicle}
     Route::get('/vehicles/report/monthly', [VehicleReportController::class, 'monthly'])
         ->name('vehicles.report.monthly');
+    Route::get('/vehicles/report/fuel-stations', [FuelStationReportController::class, 'index'])
+        ->name('vehicles.report.fuel-stations');
 
     Route::resource('vehicles', VehicleController::class);
 
