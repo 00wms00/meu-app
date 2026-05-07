@@ -40,7 +40,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Km</label>
                         <input type="number" name="intervalo_km" value="{{ old('intervalo_km') }}"
-                               class="form-control mt-1" min="100" max="200000"
+                               class="form-control mt-1" min="100"
                                placeholder="Ex: 10000">
                     </div>
                     <div>
