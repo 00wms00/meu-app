@@ -25,7 +25,7 @@
                 @php $tipos = ['manutencao'=>'Manutenção','seguro'=>'Seguro','impostos'=>'Impostos/IPVA','pedagio'=>'Pedágio/Estacionamento','outros'=>'Outros']; @endphp
                 <option value="" disabled>Selecione...</option>
                 @foreach($tipos as $v => $l)
-                    <option value="{{ $v }}" {{ old('tipo') === $v ? 'selected' : '' }}>{{ $l }}</option>
+                    <option value="{{ $v }}" {{ old('tipo') === $v ? $v : '' }}>{{ $l }}</option>
                 @endforeach
             </select>
         </div>
@@ -85,7 +85,7 @@
                     <label class="block text-sm font-medium text-gray-700">Km</label>
                     <input type="number" name="lembrete_intervalo_km"
                            value="{{ old('lembrete_intervalo_km') }}"
-                           class="form-control mt-1" min="100" max="200000"
+                           class="form-control mt-1" min="100"
                            placeholder="Ex: 10000">
                 </div>
                 <div>
