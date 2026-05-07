@@ -3,16 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class FinanceExpense extends Model
 {
     protected $fillable = [
-        'descricao', 'tipo_despesa', 'categoria', 'forma_pagamento',
-        'pessoa', 'valor', 'mes_referencia', 'data_vencimento',
-        'data_pagamento', 'status', 'origem', 'origem_id',
-        'nfe_id', 'observacao',
+        'descricao',
+        'tipo_despesa',
+        'categoria',
+        'forma_pagamento',
+        'pessoa',
+        'valor',
+        'mes_referencia',
+        'data_vencimento',
+        'data_pagamento',
+        'status',
+        'origem',
+        'origem_id',
+        'nfe_id',
+        'observacao',
     ];
 
     protected $casts = [
@@ -22,44 +30,61 @@ class FinanceExpense extends Model
         'valor'           => 'decimal:2',
     ];
 
-    // Relacionamentos
-    public function nfe()
+    // ---- Scopes ---------------------------------------------------------
+
+    public function scopeDoMes($query, \Carbon\Carbon $mes)
     {
-        return $this->belongsTo(FinanceNfe::class, 'nfe_id');
+        return $query
+            ->whereYear('mes_referencia', $mes->year)
+            ->whereMonth('mes_referencia', $mes->month);
     }
 
-    // Scopes
-    public function scopeDoMes(Builder $q, Carbon $mes): Builder
+    public function scopeFixas($query)
     {
-        return $q->whereYear('mes_referencia', $mes->year)
-                 ->whereMonth('mes_referencia', $mes->month);
+        return $query->where('tipo_despesa', 'fixa');
     }
 
-    public function scopeFixas(Builder $q): Builder
+    public function scopeVariaveis($query)
     {
-        return $q->where('tipo_despesa', 'fixa');
+        return $query->where('tipo_despesa', 'variavel');
     }
 
-    public function scopeVariaveis(Builder $q): Builder
+    public function scopePendentes($query)
     {
-        return $q->where('tipo_despesa', 'variavel');
+        return $query->where('status', 'pendente');
     }
 
-    public function scopePendentes(Builder $q): Builder
+    // ---- Helpers --------------------------------------------------------
+
+    public function getPessoaLabelAttribute(): string
     {
-        return $q->where('status', 'pendente');
+        return match ($this->pessoa) {
+            'WIL'           => 'Willian',
+            'MAY'           => 'Mayara',
+            'compartilhado' => 'Compartilhado',
+            default         => $this->pessoa,
+        };
     }
 
-    // Helpers
-    public static function totalDoMes(Carbon $mes, string $tipo = null): float
+    public function getFormaPagamentoLabelAttribute(): string
     {
-        $q = self::doMes($mes);
-        if ($tipo) $q->where('tipo_despesa', $tipo);
-        return (float) $q->sum('valor');
+        return match ($this->forma_pagamento) {
+            'debito'   => 'Débito',
+            'pix'      => 'Pix',
+            'dinheiro' => 'Dinheiro',
+            default    => $this->forma_pagamento,
+        ];
     }
 
-    public static function aPagarDoMes(Carbon $mes): float
+    public function isPago(): bool
     {
-        return (float) self::doMes($mes)->pendentes()->sum('valor');
+        return $this->status === 'pago';
+    }
+
+    public function isAtrasada(): bool
+    {
+        return $this->status === 'pendente'
+            && $this->data_vencimento
+            && $this->data_vencimento->isPast();
     }
 }

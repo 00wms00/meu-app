@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
 use App\Http\Controllers\FuelEntryController;
 use App\Http\Controllers\FuelStationReportController;
@@ -24,6 +25,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -150,7 +152,16 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/receitas/{income}', [FinanceIncomeController::class, 'destroy'])->name('incomes.destroy');
         Route::post('/receitas/duplicar-recorrentes', [FinanceIncomeController::class, 'duplicarRecorrentes'])->name('incomes.duplicar');
 
+        // Despesas
+        Route::get('/despesas', [FinanceExpenseController::class, 'index'])->name('expenses.index');
+        Route::post('/despesas', [FinanceExpenseController::class, 'store'])->name('expenses.store');
+        Route::put('/despesas/{expense}', [FinanceExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/despesas/{expense}', [FinanceExpenseController::class, 'destroy'])->name('expenses.destroy');
+        Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
+        Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
+
     });
+
 });
 
 require __DIR__.'/auth.php';
