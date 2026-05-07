@@ -19,8 +19,6 @@ class VehicleController extends Controller
             ->orderBy('apelido')
             ->get();
 
-        // Carrega lembretes ativos de todos os veículos do usuário
-        // para calcular badges na listagem sem N+1
         $vehicleIds = $vehicles->pluck('id');
         $reminders  = MaintenanceReminder::whereIn('vehicle_id', $vehicleIds)
             ->where('ativo', true)
@@ -41,34 +39,37 @@ class VehicleController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // Carrega em ordem crescente — necessário para calcular consumo/custo
         $allFuelAsc = FuelEntry::where('vehicle_id', $vehicle->id)
             ->orderBy('data')
             ->orderBy('id')
             ->get();
 
-        // Dados para os dois gráficos (consumo km/L e custo R$/km)
         $chartConsumo = FuelEntry::historicoConsumo($allFuelAsc);
 
-        // Consumo médio geral (km/L)
         $consumoMedioGeral = count($chartConsumo)
             ? round(array_sum(array_column($chartConsumo, 'consumo')) / count($chartConsumo), 2)
             : null;
 
-        // Custo médio por km (R$/km) — filtra pontos sem custo_km
         $custoKmValidos = array_filter(array_column($chartConsumo, 'custo_km'));
         $custoKmMedio   = count($custoKmValidos)
             ? round(array_sum($custoKmValidos) / count($custoKmValidos), 4)
             : null;
 
-        // Lembretes de manutenção
         $reminders = MaintenanceReminder::where('vehicle_id', $vehicle->id)
             ->where('ativo', true)
             ->orderBy('km_ultimo_servico')
             ->get();
 
-        // Reverte para exibição na tabela (mais recente primeiro)
         $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
+
+        // Lista de postos já usados pelo usuário (todos os veículos) para autocomplete
+        $vehicleIds = Vehicle::where('user_id', Auth::id())->pluck('id');
+        $postosUsados = FuelEntry::whereIn('vehicle_id', $vehicleIds)
+            ->whereNotNull('posto')
+            ->where('posto', '!=', '')
+            ->distinct()
+            ->orderBy('posto')
+            ->pluck('posto');
 
         return view('vehicles.show', compact(
             'vehicle',
@@ -79,6 +80,7 @@ class VehicleController extends Controller
             'consumoMedioGeral',
             'custoKmMedio',
             'reminders',
+            'postosUsados',
         ));
     }
 

@@ -3,7 +3,7 @@
 @section('title', 'Veículo: ' . $vehicle->apelido)
 
 @section('content')
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $vehicle->apelido }}</h1>
         <p class="text-sm text-gray-600">
@@ -13,7 +13,11 @@
             @if($vehicle->tipo_combustivel) &bull; {{ ucfirst($vehicle->tipo_combustivel) }} @endif
         </p>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ route('vehicles.report.fuel-stations') }}"
+           class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-3 py-1.5 transition-colors">
+            ⛽ Comparativo de Postos
+        </a>
         <a href="{{ route('vehicles.edit', $vehicle) }}" class="btn-outline-primary">Editar veículo</a>
         <a href="{{ route('vehicles.index') }}" class="btn-back">← Voltar</a>
     </div>
@@ -166,10 +170,28 @@
                                 @endforeach
                             </select>
                         </div>
+
+                        {{-- CAMPO POSTO COM AUTOCOMPLETE --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Posto</label>
-                            <input type="text" name="posto" value="{{ old('posto') }}" class="form-control mt-1" placeholder="Nome do posto">
+                            <input type="text" name="posto" id="posto"
+                                   value="{{ old('posto') }}"
+                                   list="postos-list"
+                                   class="form-control mt-1"
+                                   placeholder="Nome do posto"
+                                   autocomplete="off">
+                            @if($postosUsados->isNotEmpty())
+                            <datalist id="postos-list">
+                                @foreach($postosUsados as $p)
+                                    <option value="{{ $p }}"></option>
+                                @endforeach
+                            </datalist>
+                            @endif
+                            @if($postosUsados->isNotEmpty())
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $postosUsados->count() }} {{ $postosUsados->count() === 1 ? 'posto cadastrado' : 'postos cadastrados' }} &mdash; digite para filtrar.</p>
+                            @endif
                         </div>
+
                         <div class="flex items-center gap-2">
                             <input type="checkbox" name="tanque_cheio" id="tanque_cheio" value="1" {{ old('tanque_cheio') ? 'checked' : '' }} class="rounded">
                             <label for="tanque_cheio" class="text-sm text-gray-700">Tanque cheio</label>
@@ -287,7 +309,6 @@
     <div x-show="tab === 'expenses'">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {{-- Formulário com km_servico + lembrete integrado --}}
             <div class="lg:col-span-1"
                  x-data="{
                      tipo: '{{ old('tipo', '') }}',
@@ -332,7 +353,6 @@
                                    placeholder="Ex: Troca de óleo, Seguro anual...">
                         </div>
 
-                        {{-- KM do serviço — só aparece para manutenção --}}
                         <div x-show="tipo === 'manutencao'" x-cloak>
                             <label class="block text-sm font-medium text-gray-700">KM no serviço</label>
                             <input type="number" name="km_servico"
@@ -342,7 +362,6 @@
                             <p class="text-xs text-gray-400 mt-1">Atualiza o hodômetro do veículo automaticamente.</p>
                         </div>
 
-                        {{-- Toggle lembrete — só para manutenção --}}
                         <div x-show="tipo === 'manutencao'" x-cloak>
                             <label class="flex items-center gap-2 cursor-pointer select-none">
                                 <input type="checkbox" name="criar_lembrete" value="1"
@@ -352,7 +371,6 @@
                             </label>
                         </div>
 
-                        {{-- Painel do lembrete embutido --}}
                         <div x-show="tipo === 'manutencao' && criarLembrete" x-cloak
                              class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
 
@@ -391,7 +409,6 @@
                 </div>
             </div>
 
-            {{-- Histórico de despesas --}}
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b">
@@ -402,7 +419,6 @@
                     @else
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
-                                {{-- cabeçalho --}}
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
@@ -419,7 +435,6 @@
                                 @foreach($expenses as $exp)
                                 <tbody x-data="{ editando: false }" class="divide-y divide-gray-200">
 
-                                    {{-- Linha normal --}}
                                     <tr class="bg-white hover:bg-gray-50">
                                         <td class="px-4 py-2 text-sm text-gray-700">{{ $exp->data->format('d/m/Y') }}</td>
                                         <td class="px-4 py-2 text-sm text-gray-700">{{ $labExp[$exp->tipo] ?? ucfirst($exp->tipo) }}</td>
@@ -443,7 +458,6 @@
                                         </td>
                                     </tr>
 
-                                    {{-- Linha de edição inline --}}
                                     <tr x-show="editando" x-cloak class="bg-orange-50">
                                         <td colspan="6" class="px-4 py-4 border-l-4 border-orange-400">
                                             <form action="{{ route('vehicles.expenses.update', [$vehicle, $exp]) }}"
