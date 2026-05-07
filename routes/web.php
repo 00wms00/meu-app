@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinanceIncomeController;
 use App\Http\Controllers\FuelEntryController;
 use App\Http\Controllers\FuelStationReportController;
 use App\Http\Controllers\ImportController;
@@ -120,8 +121,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lancamento-manual', [LancamentoManualController::class, 'store'])->name('lancamento.store');
 
     // ==================== VEÍCULOS ====================
-
-    // Relatórios de veículos — declarados ANTES do resource para evitar conflito com {vehicle}
     Route::get('/vehicles/report/monthly', [VehicleReportController::class, 'monthly'])
         ->name('vehicles.report.monthly');
     Route::get('/vehicles/report/fuel-stations', [FuelStationReportController::class, 'index'])
@@ -129,20 +128,29 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('vehicles', VehicleController::class);
 
-    // Despesas do veículo
     Route::post('/vehicles/{vehicle}/expenses', [VehicleExpenseController::class, 'store'])->name('vehicles.expenses.store');
     Route::patch('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'update'])->name('vehicles.expenses.update');
     Route::delete('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'destroy'])->name('vehicles.expenses.destroy');
 
-    // Abastecimentos
     Route::post('/vehicles/{vehicle}/fuel', [FuelEntryController::class, 'store'])->name('vehicles.fuel.store');
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/km', [FuelEntryController::class, 'updateKm'])->name('vehicles.fuel.updateKm');
     Route::delete('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'destroy'])->name('vehicles.fuel.destroy');
 
-    // Lembretes de manutenção
     Route::post('/vehicles/{vehicle}/reminders', [MaintenanceReminderController::class, 'store'])->name('vehicles.reminders.store');
     Route::post('/vehicles/{vehicle}/reminders/{reminder}/feito', [MaintenanceReminderController::class, 'feito'])->name('vehicles.reminders.feito');
     Route::delete('/vehicles/{vehicle}/reminders/{reminder}', [MaintenanceReminderController::class, 'destroy'])->name('vehicles.reminders.destroy');
+
+    // ==================== FINANÇAS ====================
+    Route::prefix('financas')->name('finance.')->group(function () {
+
+        // Receitas
+        Route::get('/receitas', [FinanceIncomeController::class, 'index'])->name('incomes.index');
+        Route::post('/receitas', [FinanceIncomeController::class, 'store'])->name('incomes.store');
+        Route::put('/receitas/{income}', [FinanceIncomeController::class, 'update'])->name('incomes.update');
+        Route::delete('/receitas/{income}', [FinanceIncomeController::class, 'destroy'])->name('incomes.destroy');
+        Route::post('/receitas/duplicar-recorrentes', [FinanceIncomeController::class, 'duplicarRecorrentes'])->name('incomes.duplicar');
+
+    });
 });
 
 require __DIR__.'/auth.php';
