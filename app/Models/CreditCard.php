@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreditCard extends Model
 {
+    protected $table = 'finance_credit_cards';
+
     protected $fillable = [
         'nome', 'bandeira', 'pessoa', 'limite',
         'dia_vencimento', 'dia_fechamento', 'cor', 'ativo',
@@ -35,5 +37,10 @@ class CreditCard extends Model
             'MAY'          => 'Mayara',
             'compartilhado'=> 'Compartilhado',
         ][$this->pessoa] ?? $this->pessoa;
+    }
+
+    public function purchases()
+    {
+        return $this->hasMany(CreditPurchase::class, 'credit_card_id');
     }
 }

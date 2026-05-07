@@ -32,10 +32,8 @@ class FinanceExpenseController extends Controller
         $fixas     = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
-        // ---- Cartões de crédito (para select) -----------------------
-        $creditCards = CreditCard::where('user_id', Auth::id())
-            ->orderBy('nome')
-            ->get();
+        // ---- Cartões de crédito (globais, sem filtro user_id) --------
+        $creditCards = CreditCard::orderBy('nome')->get();
 
         // ---- Mercado: invoices do mês --------------------------------
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
@@ -163,7 +161,6 @@ class FinanceExpenseController extends Controller
             'observacao'      => 'nullable|string|max:500',
         ]);
 
-        // Se não for crédito, limpa o cartão
         if ($data['forma_pagamento'] !== 'credito') {
             $data['credit_card_id'] = null;
         }
