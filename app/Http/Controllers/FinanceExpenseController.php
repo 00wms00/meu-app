@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\FinanceExpense;
+use App\Models\FuelEntry;
 use App\Models\Invoice;
-use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,59 +21,86 @@ class FinanceExpenseController extends Controller
         $mesInicio = $mes->copy()->startOfMonth();
         $mesFim    = $mes->copy()->endOfMonth();
 
-        // ---- Despesas manuais do banco --------------------------------
+        // ---- Despesas manuais ----------------------------------------
         $expenses = FinanceExpense::doMes($mes)
             ->orderBy('tipo_despesa')
             ->orderBy('categoria')
             ->orderBy('descricao')
             ->get();
 
-        $fixas    = $expenses->where('tipo_despesa', 'fixa');
+        $fixas     = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
         // ---- Mercado: invoices do mês --------------------------------
-        // Agrupa por loja (nome_estabelecimento), soma valor_pago
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->get()
             ->groupBy('nome_estabelecimento')
-            ->map(function ($grupo) {
-                return [
-                    'descricao'       => $grupo->first()->nome_estabelecimento,
-                    'valor'           => $grupo->sum('valor_pago'),
-                    'quantidade'      => $grupo->count(),
-                    'categoria'       => 'Mercado',
-                    'forma_pagamento' => $grupo->first()->forma_pagamento ?? 'pix',
-                    'origem'          => 'mercado',
-                    'ids'             => $grupo->pluck('id'),
-                ];
-            })
+            ->map(fn($grupo) => [
+                'descricao'  => $grupo->first()->nome_estabelecimento,
+                'valor'      => $grupo->sum('valor_pago'),
+                'quantidade' => $grupo->count(),
+                'categoria'  => 'Mercado',
+                'origem'     => 'mercado',
+            ])
             ->values();
 
         $totalMercado = $invoicesDoMes->sum('valor');
 
-        // ---- Veículos: vehicle_expenses do mês ----------------------
-        $vehicleExpensesDoMes = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
+        // ---- Veículos: vehicle_expenses + fuel_entries do mês ---------
+        $vexpRaw = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->with('vehicle')
-            ->get()
-            ->groupBy(fn($e) => $e->vehicle->nome ?? 'Veículo')
-            ->map(function ($grupo, $veiculo) {
-                return [
-                    'descricao'  => $veiculo,
-                    'valor'      => $grupo->sum('valor'),
-                    'quantidade' => $grupo->count(),
-                    'categoria'  => 'Carro',
-                    'origem'     => 'veiculo',
-                    'itens'      => $grupo->map(fn($e) => [
-                        'tipo'   => $e->tipo,
-                        'valor'  => $e->valor,
-                        'data'   => $e->data->format('d/m'),
-                        'descricao' => $e->descricao,
-                    ]),
-                ];
-            })
-            ->values();
+            ->get();
+
+        $fuelRaw = FuelEntry::whereBetween('data', [$mesInicio, $mesFim])
+            ->where('user_id', Auth::id())
+            ->with('vehicle')
+            ->get();
+
+        // Agrupa tudo por nome do veículo
+        $veiculoNomes = $vexpRaw->pluck('vehicle.nome', 'vehicle_id')
+            ->merge($fuelRaw->pluck('vehicle.nome', 'vehicle_id'))
+            ->unique();
+
+        $vehicleExpensesDoMes = $veiculoNomes->map(function ($nomeVeiculo, $vehicleId) use ($vexpRaw, $fuelRaw) {
+            $vexps = $vexpRaw->where('vehicle_id', $vehicleId);
+            $fuels = $fuelRaw->where('vehicle_id', $vehicleId);
+
+            $itens = collect();
+
+            foreach ($vexps as $e) {
+                $itens->push([
+                    'tipo'      => $e->tipo ?? 'Manutenção',
+                    'descricao' => $e->descricao,
+                    'valor'     => $e->valor,
+                    'data'      => $e->data->format('d/m'),
+                    'icone'     => '🔧',
+                ]);
+            }
+
+            foreach ($fuels as $f) {
+                $litros = $f->litros ? number_format($f->litros, 2, ',', '.') . 'L' : '';
+                $itens->push([
+                    'tipo'      => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''),
+                    'descricao' => trim(($f->posto ?? '') . ($litros ? ' &bull; ' . $litros : '')),
+                    'valor'     => $f->valor,
+                    'data'      => $f->data->format('d/m'),
+                    'icone'     => '⛽',
+                ]);
+            }
+
+            $itens = $itens->sortBy('data');
+
+            return [
+                'descricao'  => $nomeVeiculo ?? 'Veículo',
+                'valor'      => $vexps->sum('valor') + $fuels->sum('valor'),
+                'quantidade' => $itens->count(),
+                'categoria'  => 'Carro',
+                'origem'     => 'veiculo',
+                'itens'      => $itens->values()->toArray(),
+            ];
+        })->values();
 
         $totalVeiculos = $vehicleExpensesDoMes->sum('valor');
 
@@ -81,20 +108,20 @@ class FinanceExpenseController extends Controller
         $totalFixas     = $fixas->sum('valor');
         $totalVariaveis = $variaveis->sum('valor') + $totalMercado + $totalVeiculos;
         $totalGeral     = $totalFixas + $totalVariaveis;
-        $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado; // mercado = pago na hora
+        $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado;
         $totalPendente  = $expenses->where('status', 'pendente')->sum('valor') + $totalVeiculos;
 
-        // ---- Agrupamento por categoria (variáveis manuais + externas) --
+        // ---- Resumo por categoria ------------------------------------
         $porCategoria = $variaveis
             ->groupBy('categoria')
             ->map(fn($g) => $g->sum('valor'))
             ->sortByDesc(fn($v) => $v);
 
         if ($totalMercado > 0) {
-            $porCategoria->put('Mercado', ($porCategoria->get('Mercado', 0)) + $totalMercado);
+            $porCategoria->put('Mercado', $porCategoria->get('Mercado', 0) + $totalMercado);
         }
         if ($totalVeiculos > 0) {
-            $porCategoria->put('Carro', ($porCategoria->get('Carro', 0)) + $totalVeiculos);
+            $porCategoria->put('Carro', $porCategoria->get('Carro', 0) + $totalVeiculos);
         }
         $porCategoria = $porCategoria->sortByDesc(fn($v) => $v);
 
