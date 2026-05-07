@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
@@ -159,6 +160,13 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/despesas/{expense}', [FinanceExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
         Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
+
+        // Cartões de Crédito
+        Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
+        Route::post('/cartoes', [CreditCardController::class, 'store'])->name('credit_cards.store');
+        Route::put('/cartoes/{creditCard}', [CreditCardController::class, 'update'])->name('credit_cards.update');
+        Route::patch('/cartoes/{creditCard}/toggle', [CreditCardController::class, 'toggleAtivo'])->name('credit_cards.toggle');
+        Route::delete('/cartoes/{creditCard}', [CreditCardController::class, 'destroy'])->name('credit_cards.destroy');
 
     });
 
