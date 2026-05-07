@@ -22,7 +22,6 @@ class FinanceExpenseController extends Controller
         $mesInicio = $mes->copy()->startOfMonth();
         $mesFim    = $mes->copy()->endOfMonth();
 
-        // ---- Despesas manuais ----------------------------------------
         $expenses = FinanceExpense::doMes($mes)
             ->orderBy('tipo_despesa')
             ->orderBy('categoria')
@@ -32,10 +31,8 @@ class FinanceExpenseController extends Controller
         $fixas     = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
-        // ---- Cartões de crédito --------------------------------------
         $creditCards = CreditCard::orderBy('nome')->get();
 
-        // ---- Mercado: invoices do mês --------------------------------
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->get()
@@ -49,7 +46,6 @@ class FinanceExpenseController extends Controller
 
         $totalMercado = $invoicesDoMes->sum('valor');
 
-        // ---- Veículos: vehicle_expenses + fuel_entries ---------------
         $vexpRaw = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
             ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
             ->with('vehicle')
@@ -67,72 +63,36 @@ class FinanceExpenseController extends Controller
         $vehicleExpensesDoMes = $vehicleIds->map(function ($vehicleId) use ($vexpRaw, $fuelRaw) {
             $vexps = $vexpRaw->where('vehicle_id', $vehicleId);
             $fuels = $fuelRaw->where('vehicle_id', $vehicleId);
-
-            $primeiroVexp = $vexps->first();
-            $primeiroFuel = $fuels->first();
-            $nomeVeiculo  = ($primeiroVexp->vehicle->nome ?? null)
-                         ?? ($primeiroFuel->vehicle->nome ?? 'Veículo');
-
+            $nomeVeiculo = ($vexps->first()?->vehicle->nome) ?? ($fuels->first()?->vehicle->nome) ?? 'Veículo';
             $itens = collect();
-
             foreach ($vexps as $e) {
-                $itens->push([
-                    'tipo'      => $e->tipo ?? 'Manutenção',
-                    'descricao' => $e->descricao ?? '',
-                    'valor'     => (float) $e->valor,
-                    'data'      => $e->data->format('d/m'),
-                    'icone'     => '🔧',
-                ]);
+                $itens->push(['tipo' => $e->tipo ?? 'Manutenção', 'descricao' => $e->descricao ?? '', 'valor' => (float)$e->valor, 'data' => $e->data->format('d/m'), 'icone' => '🔧']);
             }
-
             foreach ($fuels as $f) {
-                $litros = $f->litros
-                    ? number_format((float) $f->litros, 2, ',', '.') . 'L'
-                    : '';
-                $itens->push([
-                    'tipo'      => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''),
-                    'descricao' => trim(($f->posto ?? '') . ($litros ? ' • ' . $litros : '')),
-                    'valor'     => (float) $f->valor,
-                    'data'      => $f->data->format('d/m'),
-                    'icone'     => '⛽',
-                ]);
+                $litros = $f->litros ? number_format((float)$f->litros, 2, ',', '.') . 'L' : '';
+                $itens->push(['tipo' => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''), 'descricao' => trim(($f->posto ?? '') . ($litros ? ' • ' . $litros : '')), 'valor' => (float)$f->valor, 'data' => $f->data->format('d/m'), 'icone' => '⛽']);
             }
-
-            $itens = $itens->sortBy('data');
-
             return [
                 'descricao'  => $nomeVeiculo,
-                'valor'      => $vexps->sum(fn($e) => (float) $e->valor) + $fuels->sum(fn($f) => (float) $f->valor),
+                'valor'      => $vexps->sum(fn($e) => (float)$e->valor) + $fuels->sum(fn($f) => (float)$f->valor),
                 'quantidade' => $itens->count(),
-                'itens'      => $itens->values()->toArray(),
+                'itens'      => $itens->sortBy('data')->values()->toArray(),
             ];
         })->values();
 
-        $totalVeiculos = $vehicleExpensesDoMes->sum('valor');
-
-        // ---- Totais --------------------------------------------------
+        $totalVeiculos  = $vehicleExpensesDoMes->sum('valor');
         $totalFixas     = $fixas->sum('valor');
         $totalVariaveis = $variaveis->sum('valor') + $totalMercado + $totalVeiculos;
         $totalGeral     = $totalFixas + $totalVariaveis;
         $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado;
         $totalPendente  = $expenses->where('status', 'pendente')->sum('valor') + $totalVeiculos;
 
-        // ---- Resumo por categoria ------------------------------------
-        $porCategoria = $variaveis
-            ->groupBy('categoria')
-            ->map(fn($g) => $g->sum('valor'))
-            ->sortByDesc(fn($v) => $v);
-
-        if ($totalMercado > 0) {
-            $porCategoria->put('Mercado', $porCategoria->get('Mercado', 0) + $totalMercado);
-        }
-        if ($totalVeiculos > 0) {
-            $porCategoria->put('Carro', $porCategoria->get('Carro', 0) + $totalVeiculos);
-        }
+        $porCategoria = $variaveis->groupBy('categoria')->map(fn($g) => $g->sum('valor'))->sortByDesc(fn($v) => $v);
+        if ($totalMercado > 0) $porCategoria->put('Mercado', $porCategoria->get('Mercado', 0) + $totalMercado);
+        if ($totalVeiculos > 0) $porCategoria->put('Carro',   $porCategoria->get('Carro', 0)   + $totalVeiculos);
         $porCategoria = $porCategoria->sortByDesc(fn($v) => $v);
 
-        $meses = collect(range(0, 11))
-            ->map(fn($i) => Carbon::now()->startOfMonth()->subMonths($i));
+        $meses = collect(range(0, 11))->map(fn($i) => Carbon::now()->startOfMonth()->subMonths($i));
 
         return view('finance.expenses.index', compact(
             'expenses', 'fixas', 'variaveis', 'mes',
@@ -152,6 +112,7 @@ class FinanceExpenseController extends Controller
             'categoria'       => 'nullable|string|max:100',
             'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
             'credit_card_id'  => 'nullable|exists:credit_cards,id',
+            'parcelas_total'  => 'nullable|integer|min:1|max:48',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',
@@ -163,6 +124,9 @@ class FinanceExpenseController extends Controller
 
         if ($data['forma_pagamento'] !== 'credito') {
             $data['credit_card_id'] = null;
+            $data['parcelas_total'] = 1;
+        } else {
+            $data['parcelas_total'] = $data['parcelas_total'] ?? 1;
         }
 
         $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
@@ -183,6 +147,7 @@ class FinanceExpenseController extends Controller
             'categoria'       => 'nullable|string|max:100',
             'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
             'credit_card_id'  => 'nullable|exists:credit_cards,id',
+            'parcelas_total'  => 'nullable|integer|min:1|max:48',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',
@@ -194,10 +159,12 @@ class FinanceExpenseController extends Controller
 
         if ($data['forma_pagamento'] !== 'credito') {
             $data['credit_card_id'] = null;
+            $data['parcelas_total'] = 1;
+        } else {
+            $data['parcelas_total'] = $data['parcelas_total'] ?? 1;
         }
 
         $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
-
         $expense->update($data);
 
         return redirect()
@@ -209,10 +176,7 @@ class FinanceExpenseController extends Controller
     {
         $mes = $expense->mes_referencia->format('Y-m');
         $expense->delete();
-
-        return redirect()
-            ->route('finance.expenses.index', ['mes' => $mes])
-            ->with('success', 'Despesa removida.');
+        return redirect()->route('finance.expenses.index', ['mes' => $mes])->with('success', 'Despesa removida.');
     }
 
     public function togglePago(FinanceExpense $expense)
@@ -221,7 +185,6 @@ class FinanceExpenseController extends Controller
             'status'         => $expense->isPago() ? 'pendente' : 'pago',
             'data_pagamento' => $expense->isPago() ? null : now()->toDateString(),
         ]);
-
         return redirect()->back()->with('success', 'Status atualizado!');
     }
 
@@ -229,8 +192,7 @@ class FinanceExpenseController extends Controller
     {
         $mes    = Carbon::createFromFormat('Y-m', $request->mes)->startOfMonth();
         $mesAnt = $mes->copy()->subMonth();
-
-        $fixas   = FinanceExpense::doMes($mesAnt)->fixas()->get();
+        $fixas  = FinanceExpense::doMes($mesAnt)->fixas()->get();
         $criadas = 0;
 
         foreach ($fixas as $f) {
@@ -247,12 +209,11 @@ class FinanceExpenseController extends Controller
                     'categoria'       => $f->categoria,
                     'forma_pagamento' => $f->forma_pagamento,
                     'credit_card_id'  => $f->credit_card_id,
+                    'parcelas_total'  => $f->parcelas_total,
                     'pessoa'          => $f->pessoa,
                     'valor'           => $f->valor,
                     'mes_referencia'  => $mes,
-                    'data_vencimento' => $f->data_vencimento
-                        ? $mes->copy()->day($f->data_vencimento->day)
-                        : null,
+                    'data_vencimento' => $f->data_vencimento ? $mes->copy()->day($f->data_vencimento->day) : null,
                     'data_pagamento'  => null,
                     'status'          => 'pendente',
                     'origem'          => 'manual',

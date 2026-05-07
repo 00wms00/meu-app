@@ -45,12 +45,17 @@
                 @if($expense->categoria)
                     <span class="bg-white/60 rounded px-1">{{ $expense->categoria }}</span>
                 @endif
-                @php
-                    $formaLabel = ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro','credito'=>'💳 Crédito'];
-                @endphp
+                @php $formaLabel = ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro','credito'=>'💳 Crédito']; @endphp
                 <span>{{ $formaLabel[$expense->forma_pagamento] ?? $expense->forma_pagamento }}</span>
-                @if($expense->forma_pagamento === 'credito' && $expense->creditCard)
-                    <span class="text-indigo-600 font-medium">{{ $expense->creditCard->nome }}</span>
+                @if($expense->forma_pagamento === 'credito')
+                    @if($expense->creditCard)
+                        <span class="text-indigo-600 font-medium">{{ $expense->creditCard->nome }}</span>
+                    @endif
+                    @if($expense->parcelas_total > 1)
+                        <span class="bg-indigo-50 text-indigo-700 px-1.5 rounded font-semibold">
+                            {{ $expense->parcelas_total }}x
+                        </span>
+                    @endif
                 @endif
                 @if($expense->data_vencimento)
                     <span class="{{ $expense->isAtrasada() ? 'text-red-600 font-semibold' : '' }}">
@@ -71,8 +76,6 @@
 
         {{-- Botões ação --}}
         <div class="flex gap-1 shrink-0">
-
-            {{-- Editar --}}
             <button @click="editing = !editing"
                     :title="editing ? 'Fechar edição' : 'Editar'"
                     :class="editing ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'"
@@ -81,14 +84,11 @@
                     <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
             </button>
-
-            {{-- Excluir --}}
             <form method="POST" action="{{ route('finance.expenses.destroy', $expense) }}" id="del-{{ $expense->id }}">
                 @csrf @method('DELETE')
                 <button type="button"
                         onclick="if(confirm('Remover \'{{ addslashes($expense->descricao) }}\'?')) document.getElementById('del-{{ $expense->id }}').submit()"
-                        class="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                        title="Remover">
+                        class="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Remover">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
@@ -108,25 +108,21 @@
          style="display:none"
          class="px-5 pb-5 pt-4 bg-blue-50 border-t border-blue-100">
 
-        <form method="POST" action="{{ route('finance.expenses.update', $expense) }}"
-              class="grid grid-cols-2 gap-3">
+        <form method="POST" action="{{ route('finance.expenses.update', $expense) }}" class="grid grid-cols-2 gap-3">
             @csrf @method('PUT')
             <input type="hidden" name="mes_referencia" value="{{ $mes->format('Y-m') }}">
 
             <div class="col-span-2">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
-                <input type="text" name="descricao" value="{{ $expense->descricao }}" required
-                       class="form-control text-sm w-full">
+                <input type="text" name="descricao" value="{{ $expense->descricao }}" required class="form-control text-sm w-full">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
-                <input type="number" name="valor" value="{{ $expense->valor }}" step="0.01" min="0.01" required
-                       class="form-control text-sm w-full">
+                <input type="number" name="valor" value="{{ $expense->valor }}" step="0.01" min="0.01" required class="form-control text-sm w-full">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-                <input type="text" name="categoria" value="{{ $expense->categoria }}"
-                       class="form-control text-sm w-full" list="categorias-list">
+                <input type="text" name="categoria" value="{{ $expense->categoria }}" class="form-control text-sm w-full" list="categorias-list">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
@@ -145,17 +141,31 @@
                 </select>
             </div>
 
-            {{-- Cartão inline (só ao editar com crédito) --}}
+            {{-- Cartão + parcelas (inline edit) --}}
             <div class="col-span-2" x-show="formaPgto === 'credito'" x-cloak>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Cartão de crédito</label>
-                <select name="credit_card_id" class="form-control text-sm w-full">
-                    <option value="">Selecione o cartão...</option>
-                    @foreach($creditCards as $card)
-                        <option value="{{ $card->id }}" {{ $expense->credit_card_id == $card->id ? 'selected' : '' }}>
-                            {{ $card->nome }} @if($card->bandeira)({{ $card->bandeira }})@endif
-                        </option>
-                    @endforeach
-                </select>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Cartão</label>
+                        <select name="credit_card_id" class="form-control text-sm w-full">
+                            <option value="">Selecione...</option>
+                            @foreach($creditCards as $card)
+                                <option value="{{ $card->id }}" {{ $expense->credit_card_id == $card->id ? 'selected' : '' }}>
+                                    {{ $card->nome }}@if($card->bandeira) ({{ $card->bandeira }})@endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Parcelas</label>
+                        <select name="parcelas_total" class="form-control text-sm w-full">
+                            @for($i = 1; $i <= 48; $i++)
+                                <option value="{{ $i }}" {{ ($expense->parcelas_total ?? 1) == $i ? 'selected' : '' }}>
+                                    {{ $i }}x @if($i === 1)(à vista)@endif
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div>
@@ -175,22 +185,16 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Vencimento</label>
-                <input type="date" name="data_vencimento"
-                       value="{{ $expense->data_vencimento?->format('Y-m-d') }}"
-                       class="form-control text-sm w-full">
+                <input type="date" name="data_vencimento" value="{{ $expense->data_vencimento?->format('Y-m-d') }}" class="form-control text-sm w-full">
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Data pagamento</label>
-                <input type="date" name="data_pagamento"
-                       value="{{ $expense->data_pagamento?->format('Y-m-d') }}"
-                       class="form-control text-sm w-full">
+                <input type="date" name="data_pagamento" value="{{ $expense->data_pagamento?->format('Y-m-d') }}" class="form-control text-sm w-full">
             </div>
             <div class="col-span-2 flex gap-2 pt-1">
                 <button type="submit" class="btn-primary text-sm px-5 py-2">Salvar</button>
                 <button type="button" @click="editing = false"
-                        class="text-sm px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
-                    Cancelar
-                </button>
+                        class="text-sm px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
             </div>
         </form>
     </div>
