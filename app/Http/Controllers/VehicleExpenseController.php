@@ -23,7 +23,7 @@ class VehicleExpenseController extends Controller
             'km_servico'               => ['nullable', 'integer', 'min:0'],
             'criar_lembrete'           => ['nullable', 'boolean'],
             'lembrete_descricao'       => ['nullable', 'string', 'max:120'],
-            'lembrete_intervalo_km'    => ['nullable', 'integer', 'min:0', 'max:200000'],
+            'lembrete_intervalo_km'    => ['nullable', 'integer', 'min:0'],
             'lembrete_intervalo_meses' => ['nullable', 'integer', 'min:1', 'max:120'],
         ]);
 
@@ -80,7 +80,6 @@ class VehicleExpenseController extends Controller
             'km_servico' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        // Atualiza hodometro se km aumentou
         if (! empty($validated['km_servico']) && $validated['km_servico'] > ($vehicle->km_atual ?? 0)) {
             $vehicle->update(['km_atual' => $validated['km_servico']]);
         }
