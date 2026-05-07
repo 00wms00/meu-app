@@ -2,7 +2,7 @@
 <div x-data="{ editing: false }">
 
     {{-- === LINHA PRINCIPAL === --}}
-    <div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 group"
+    <div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50"
          :class="editing ? 'bg-blue-50' : ''">
 
         {{-- Toggle pago --}}
@@ -58,8 +58,8 @@
             R$ {{ number_format($expense->valor, 2, ',', '.') }}
         </span>
 
-        {{-- Botões ação (sempre visíveis no mobile, hover no desktop) --}}
-        <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        {{-- Botões ação — SEMPRE VISÍVEIS --}}
+        <div class="flex gap-1 shrink-0">
 
             {{-- Editar --}}
             <button @click="editing = !editing"
@@ -169,10 +169,7 @@
             </div>
 
             <div class="col-span-2 flex gap-2 pt-1">
-                <button type="submit"
-                        class="btn-primary text-sm px-5 py-2">
-                    Salvar
-                </button>
+                <button type="submit" class="btn-primary text-sm px-5 py-2">Salvar</button>
                 <button type="button" @click="editing = false"
                         class="text-sm px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
                     Cancelar
