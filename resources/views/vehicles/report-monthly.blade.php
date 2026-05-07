@@ -1,45 +1,141 @@
 @extends('layouts.app')
 
-@section('title', 'Resumo Mensal — Veículos')
+@section('title', 'Resumo por veículo')
 
 @section('content')
 
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">📊 Resumo mensal por veículo</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Combustível, manutenção e outras despesas por período.</p>
+        <h1 class="text-2xl font-bold text-gray-900">📊 Resumo por veículo</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Combustível, manutenção e outras despesas — <span class="font-medium text-gray-700">{{ $labelPeriodo }}</span></p>
     </div>
     <a href="{{ route('vehicles.index') }}" class="btn-back self-start sm:self-auto">← Veículos</a>
 </div>
 
-{{-- Seletor de mês --}}
-<form method="GET" action="{{ route('vehicles.report.monthly') }}" class="mb-6">
-    <div class="flex flex-wrap items-center gap-3">
-        <label class="text-sm font-medium text-gray-700">Período:</label>
-        <select name="mes" class="form-control w-auto text-sm">
-            @foreach($mesesDisp as $item)
-                <option value="{{ $item['mes'] }}"
-                        @selected($item['mes'] == $mes && $item['ano'] == $ano)
-                        data-ano="{{ $item['ano'] }}">
-                    {{ $item['label'] }}
-                </option>
-            @endforeach
-        </select>
-        <input type="hidden" name="ano" id="ano-hidden" value="{{ $ano }}">
-        <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
+{{-- ===== FILTRO DE PERÍODO ===== --}}
+<div x-data="{
+    modo: '{{ $modo }}',
+    ano:  '{{ $modo === 'mes' ? $dataInicio->year : now()->year }}',
+    mes:  '{{ $modo === 'mes' ? $dataInicio->month : now()->month }}',
+    dia:  '{{ $modo === 'dia' ? $dataInicio->toDateString() : now()->toDateString() }}',
+    ini:  '{{ $modo === 'livre' ? $dataInicio->toDateString() : now()->startOfMonth()->toDateString() }}',
+    fim:  '{{ $modo === 'livre' ? $dataFim->toDateString() : now()->toDateString() }}',
+}" class="bg-white rounded-lg shadow p-4 mb-6">
+
+    {{-- Tabs de modo --}}
+    <div class="flex gap-2 mb-4 border-b border-gray-200 pb-3">
+        <button type="button"
+            @click="modo = 'mes'"
+            :class="modo === 'mes' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+            class="px-3 py-1.5 rounded text-sm font-medium transition">
+            📅 Este mês
+        </button>
+        <button type="button"
+            @click="modo = 'dia'"
+            :class="modo === 'dia' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+            class="px-3 py-1.5 rounded text-sm font-medium transition">
+            📆 Dia
+        </button>
+        <button type="button"
+            @click="modo = 'livre'"
+            :class="modo === 'livre' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+            class="px-3 py-1.5 rounded text-sm font-medium transition">
+            🗓️ Intervalo livre
+        </button>
     </div>
-</form>
-<script>
-    document.querySelector('[name="mes"]').addEventListener('change', function () {
-        document.getElementById('ano-hidden').value = this.options[this.selectedIndex].dataset.ano;
-    });
-</script>
+
+    <form method="GET" action="{{ route('vehicles.report.monthly') }}">
+        <input type="hidden" name="modo" :value="modo">
+
+        {{-- MODO: Mês --}}
+        <div x-show="modo === 'mes'" class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Mês</label>
+                <select name="mes" x-model="mes" class="form-control text-sm w-auto">
+                    @foreach(range(1,12) as $m)
+                        <option value="{{ $m }}">{{ \Carbon\Carbon::create(2000,$m,1)->translatedFormat('F') }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Ano</label>
+                <select name="ano" x-model="ano" class="form-control text-sm w-auto">
+                    @foreach(range(now()->year, now()->year - 5) as $y)
+                        <option value="{{ $y }}">{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+            {{-- Atalhos rápidos por mês --}}
+            <div class="flex flex-wrap gap-1 items-end">
+                @foreach($mesesDisp->take(6) as $item)
+                    <a href="{{ route('vehicles.report.monthly', ['modo'=>'mes','ano'=>$item['ano'],'mes'=>$item['mes']]) }}"
+                       class="px-2 py-1 text-xs rounded border {{ $modo === 'mes' && $dataInicio->month == $item['mes'] && $dataInicio->year == $item['ano'] ? 'bg-blue-50 border-blue-400 text-blue-700 font-semibold' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600' }}">
+                        {{ $item['label'] }}
+                    </a>
+                @endforeach
+            </div>
+            <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
+        </div>
+
+        {{-- MODO: Dia --}}
+        <div x-show="modo === 'dia'" class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Data</label>
+                <input type="date" name="dia" x-model="dia" class="form-control text-sm">
+            </div>
+            <div class="flex gap-2">
+                <button type="button"
+                    @click="dia = '{{ now()->toDateString() }}'"
+                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+                    Hoje
+                </button>
+                <button type="button"
+                    @click="dia = '{{ now()->subDay()->toDateString() }}'"
+                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+                    Ontem
+                </button>
+            </div>
+            <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
+        </div>
+
+        {{-- MODO: Intervalo livre --}}
+        <div x-show="modo === 'livre'" class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">De</label>
+                <input type="date" name="data_inicio" x-model="ini" class="form-control text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Até</label>
+                <input type="date" name="data_fim" x-model="fim" class="form-control text-sm">
+            </div>
+            {{-- Atalhos rápidos --}}
+            <div class="flex flex-wrap gap-1 items-end">
+                <button type="button"
+                    @click="ini = '{{ now()->startOfMonth()->toDateString() }}'; fim = '{{ now()->toDateString() }}'"
+                    class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600">Mês atual</button>
+                <button type="button"
+                    @click="ini = '{{ now()->subMonth()->startOfMonth()->toDateString() }}'; fim = '{{ now()->subMonth()->endOfMonth()->toDateString() }}'"
+                    class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600">Mês passado</button>
+                <button type="button"
+                    @click="ini = '{{ now()->startOfYear()->toDateString() }}'; fim = '{{ now()->toDateString() }}'"
+                    class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600">Este ano</button>
+                <button type="button"
+                    @click="ini = '{{ now()->subDays(29)->toDateString() }}'; fim = '{{ now()->toDateString() }}'"
+                    class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600">Últimos 30d</button>
+                <button type="button"
+                    @click="ini = '{{ now()->subDays(89)->toDateString() }}'; fim = '{{ now()->toDateString() }}'"
+                    class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600">Últimos 90d</button>
+            </div>
+            <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
+        </div>
+    </form>
+</div>
 
 @if(empty($resumo))
     <div class="bg-white rounded-lg shadow p-10 text-center text-gray-400">
         <p class="text-4xl mb-3">🚗</p>
         <p class="text-base font-medium">Nenhum dado registrado neste período.</p>
-        <p class="text-sm mt-1">Registre abastecimentos ou despesas nos seus veículos para ver o resumo aqui.</p>
+        <p class="text-sm mt-1">Tente outro intervalo ou registre abastecimentos e despesas.</p>
     </div>
 @else
 
@@ -121,7 +217,6 @@
                                 @if($row['vehicle']->placa) · {{ $row['vehicle']->placa }} @endif
                             </p>
                         @endif
-                        {{-- mini barra proporcional --}}
                         <div class="mt-1.5 flex h-1.5 rounded-full overflow-hidden w-32">
                             <div class="bg-blue-500"   style="width:{{ $pct_comb }}%"></div>
                             <div class="bg-orange-400" style="width:{{ $pct_manut }}%"></div>
@@ -146,7 +241,6 @@
                         @else <span class="text-sm text-gray-300">—</span>
                         @endif
                     </td>
-                    {{-- Outros com tooltip Alpine --}}
                     <td class="px-4 py-3 text-right tabular-nums" x-data="{ open: false }">
                         @if($row['outros'] > 0)
                             <div class="relative inline-block">

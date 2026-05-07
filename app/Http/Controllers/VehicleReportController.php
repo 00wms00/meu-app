@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FuelEntry;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -12,20 +13,47 @@ use Illuminate\View\View;
 class VehicleReportController extends Controller
 {
     /**
-     * Resumo mensal de custos por veículo.
-     * URL: GET /vehicles/report/monthly?ano=2026&mes=5
+     * Resumo de custos por veículo com filtro de período livre.
+     * URL: GET /vehicles/report/monthly?modo=mes|dia|livre&data_inicio=&data_fim=&dia=
      */
     public function monthly(Request $request): View
     {
         $userId = Auth::id();
 
+        // --- Determina o modo e o intervalo ---
+        $modo = $request->get('modo', 'mes'); // 'mes' | 'dia' | 'livre'
+
+        [$dataInicio, $dataFim, $labelPeriodo] = match ($modo) {
+            'dia' => (function () use ($request) {
+                $dia = $request->get('dia', now()->toDateString());
+                $d   = Carbon::parse($dia);
+                return [$d->copy()->startOfDay(), $d->copy()->endOfDay(),
+                        $d->translatedFormat('d \de F \de Y')];
+            })(),
+            'livre' => (function () use ($request) {
+                $ini = Carbon::parse($request->get('data_inicio', now()->startOfMonth()->toDateString()));
+                $fim = Carbon::parse($request->get('data_fim',    now()->toDateString()));
+                if ($fim->lt($ini)) $fim = $ini->copy();
+                return [$ini->copy()->startOfDay(), $fim->copy()->endOfDay(),
+                        $ini->translatedFormat('d/m/Y') . ' até ' . $fim->translatedFormat('d/m/Y')];
+            })(),
+            default => (function () use ($request) { // 'mes'
+                $ano = (int) $request->get('ano', now()->year);
+                $mes = (int) $request->get('mes', now()->month);
+                $ini = Carbon::create($ano, $mes, 1)->startOfDay();
+                $fim = $ini->copy()->endOfMonth()->endOfDay();
+                return [$ini, $fim, $ini->translatedFormat('F Y')];
+            })(),
+        };
+
+        // Meses com dados para o seletor rápido
         $mesesDisp = $this->mesesComDados($userId);
-
-        $ano = (int) $request->get('ano', now()->year);
-        $mes = (int) $request->get('mes', now()->month);
-
         if ($mesesDisp->isEmpty()) {
-            $mesesDisp = collect([['ano' => $ano, 'mes' => $mes, 'label' => now()->translatedFormat('F Y')]]);
+            $mesesDisp = collect([[
+                'ano'   => now()->year,
+                'mes'   => now()->month,
+                'label' => now()->translatedFormat('F Y'),
+            ]]);
         }
 
         $vehicles = Vehicle::where('user_id', $userId)->orderBy('apelido')->get();
@@ -35,20 +63,20 @@ class VehicleReportController extends Controller
         foreach ($vehicles as $vehicle) {
             // Combustível
             $fuel = FuelEntry::where('vehicle_id', $vehicle->id)
-                ->whereYear('data', $ano)
-                ->whereMonth('data', $mes)
+                ->whereBetween('data', [$dataInicio->toDateString(), $dataFim->toDateString()])
                 ->selectRaw('SUM(valor) as total_valor, SUM(litros) as total_litros, COUNT(*) as qtd')
                 ->first();
 
             $totalCombust = (float) ($fuel->total_valor ?? 0);
             $totalLitros  = $fuel->total_litros ? (float) $fuel->total_litros : null;
             $qtdAbast     = (int) ($fuel->qtd ?? 0);
-            $mediaPrecoL  = ($totalLitros && $totalLitros > 0) ? round($totalCombust / $totalLitros, 3) : null;
+            $mediaPrecoL  = ($totalLitros && $totalLitros > 0)
+                ? round($totalCombust / $totalLitros, 3)
+                : null;
 
             // Despesas agrupadas por tipo
             $expenses = VehicleExpense::where('vehicle_id', $vehicle->id)
-                ->whereYear('data', $ano)
-                ->whereMonth('data', $mes)
+                ->whereBetween('data', [$dataInicio->toDateString(), $dataFim->toDateString()])
                 ->selectRaw('tipo, SUM(valor) as subtotal')
                 ->groupBy('tipo')
                 ->pluck('subtotal', 'tipo');
@@ -95,7 +123,8 @@ class VehicleReportController extends Controller
         }
 
         return view('vehicles.report-monthly', compact(
-            'vehicles', 'ano', 'mes', 'mesesDisp',
+            'vehicles', 'mesesDisp',
+            'modo', 'dataInicio', 'dataFim', 'labelPeriodo',
             'resumo', 'totaisGerais',
             'chartLabels', 'chartCombust', 'chartManut', 'chartOutros',
         ));
@@ -109,7 +138,6 @@ class VehicleReportController extends Controller
             return collect();
         }
 
-        // EXTRACT é padrão SQL e compatível com PostgreSQL (e MySQL >= 5.x)
         $mesesFuel = FuelEntry::whereIn('vehicle_id', $vehicleIds)
             ->selectRaw('EXTRACT(YEAR FROM data)::int as ano, EXTRACT(MONTH FROM data)::int as mes')
             ->distinct()->get();
@@ -124,7 +152,7 @@ class VehicleReportController extends Controller
             ->map(fn($r) => [
                 'ano'   => (int) $r->ano,
                 'mes'   => (int) $r->mes,
-                'label' => \Carbon\Carbon::create($r->ano, $r->mes, 1)->translatedFormat('F Y'),
+                'label' => Carbon::create($r->ano, $r->mes, 1)->translatedFormat('F Y'),
             ])
             ->values();
     }
