@@ -129,8 +129,8 @@
     </div>
 @else
 
-{{-- KPIs — sempre 5 colunas em 1 linha --}}
-<div class="grid grid-cols-5 gap-4 mb-6">
+{{-- KPIs — 5 colunas fixas em 1 linha (CSS inline para não depender do build do Tailwind) --}}
+<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem;">
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Total geral</p>
         <p class="text-xl font-bold text-gray-900">R$ {{ number_format($totaisGerais['total'], 2, ',', '.') }}</p>
@@ -236,7 +236,6 @@
                     <td class="px-4 py-3 text-right text-sm text-gray-600 tabular-nums">
                         {{ $row['media_preco_litro'] ? 'R$ ' . number_format($row['media_preco_litro'], 3, ',', '.') : '—' }}
                     </td>
-                    {{-- KM RODADOS --}}
                     <td class="px-4 py-3 text-right tabular-nums">
                         @if($row['km_rodados'])
                             <span class="text-sm font-semibold text-green-700">{{ number_format($row['km_rodados'], 0, ',', '.') }} km</span>
@@ -244,7 +243,6 @@
                             <span class="text-sm text-gray-300" title="Informe o KM nos abastecimentos">—</span>
                         @endif
                     </td>
-                    {{-- R$/KM --}}
                     <td class="px-4 py-3 text-right tabular-nums">
                         @if($row['custo_por_km'])
                             <span class="text-sm text-gray-600">{{ number_format($row['custo_por_km'], 3, ',', '.') }}</span>
