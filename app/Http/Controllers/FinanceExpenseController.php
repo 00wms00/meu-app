@@ -32,7 +32,7 @@ class FinanceExpenseController extends Controller
         $fixas     = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
-        // ---- Cartões de crédito (globais, sem filtro user_id) --------
+        // ---- Cartões de crédito --------------------------------------
         $creditCards = CreditCard::orderBy('nome')->get();
 
         // ---- Mercado: invoices do mês --------------------------------
@@ -151,7 +151,7 @@ class FinanceExpenseController extends Controller
             'tipo_despesa'    => 'required|in:fixa,variavel',
             'categoria'       => 'nullable|string|max:100',
             'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
-            'credit_card_id'  => 'nullable|exists:finance_credit_cards,id',
+            'credit_card_id'  => 'nullable|exists:credit_cards,id',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',
@@ -182,7 +182,7 @@ class FinanceExpenseController extends Controller
             'tipo_despesa'    => 'required|in:fixa,variavel',
             'categoria'       => 'nullable|string|max:100',
             'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
-            'credit_card_id'  => 'nullable|exists:finance_credit_cards,id',
+            'credit_card_id'  => 'nullable|exists:credit_cards,id',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',

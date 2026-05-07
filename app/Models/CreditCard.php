@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreditCard extends Model
 {
-    protected $table = 'finance_credit_cards';
+    protected $table = 'credit_cards';
 
     protected $fillable = [
         'nome', 'bandeira', 'pessoa', 'limite',
@@ -33,9 +33,9 @@ class CreditCard extends Model
     public function getPessoaLabelAttribute(): string
     {
         return [
-            'WIL'          => 'Willian',
-            'MAY'          => 'Mayara',
-            'compartilhado'=> 'Compartilhado',
+            'WIL'           => 'Willian',
+            'MAY'           => 'Mayara',
+            'compartilhado' => 'Compartilhado',
         ][$this->pessoa] ?? $this->pessoa;
     }
 
