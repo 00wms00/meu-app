@@ -2,8 +2,13 @@
 <div x-data="{ editing: false }">
 
     {{-- === LINHA PRINCIPAL === --}}
-    <div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50"
-         :class="editing ? 'bg-blue-50' : ''">
+    <div class="px-5 py-3 flex items-center gap-3
+                {{ $expense->isPago()
+                    ? 'bg-green-50 hover:bg-green-100'
+                    : ($expense->isAtrasada()
+                        ? 'bg-red-50 hover:bg-red-100'
+                        : 'hover:bg-gray-50') }}"
+         :class="editing ? '!bg-blue-50' : ''">
 
         {{-- Toggle pago --}}
         <form method="POST" action="{{ route('finance.expenses.toggle', $expense) }}" class="shrink-0">
@@ -32,29 +37,29 @@
 
         {{-- Descrição + meta --}}
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate
-                      {{ $expense->isPago() ? 'line-through text-gray-400' : '' }}">
+            <p class="text-sm font-medium truncate
+                      {{ $expense->isPago() ? 'line-through text-gray-400' : 'text-gray-900' }}">
                 {{ $expense->descricao }}
             </p>
             <p class="text-xs text-gray-400 flex gap-2 flex-wrap">
                 @if($expense->categoria)
-                    <span class="bg-gray-100 rounded px-1">{{ $expense->categoria }}</span>
+                    <span class="bg-white/60 rounded px-1">{{ $expense->categoria }}</span>
                 @endif
                 <span>{{ ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro'][$expense->forma_pagamento] }}</span>
                 @if($expense->data_vencimento)
-                    <span class="{{ $expense->isAtrasada() ? 'text-red-500 font-semibold' : '' }}">
+                    <span class="{{ $expense->isAtrasada() ? 'text-red-600 font-semibold' : '' }}">
                         vence {{ $expense->data_vencimento->format('d/m') }}
                     </span>
                 @endif
                 @if($expense->data_pagamento)
-                    <span class="text-green-600">pago {{ $expense->data_pagamento->format('d/m') }}</span>
+                    <span class="text-green-700">pago {{ $expense->data_pagamento->format('d/m') }}</span>
                 @endif
             </p>
         </div>
 
         {{-- Valor --}}
         <span class="text-sm font-bold tabular-nums whitespace-nowrap
-                     {{ $expense->isPago() ? 'text-green-600' : ($expense->isAtrasada() ? 'text-red-500' : 'text-gray-800') }}">
+                     {{ $expense->isPago() ? 'text-green-700' : ($expense->isAtrasada() ? 'text-red-600' : 'text-gray-800') }}">
             R$ {{ number_format($expense->valor, 2, ',', '.') }}
         </span>
 
@@ -86,7 +91,7 @@
         </div>
     </div>
 
-    {{-- === FORMULÁRIO INLINE DE EDIÇÃO (oculto por padrão) === --}}
+    {{-- === FORMULÁRIO INLINE DE EDIÇÃO === --}}
     <div x-show="editing"
          x-transition:enter="transition ease-out duration-150"
          x-transition:enter-start="opacity-0 -translate-y-1"
@@ -107,19 +112,16 @@
                 <input type="text" name="descricao" value="{{ $expense->descricao }}" required
                        class="form-control text-sm w-full">
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
                 <input type="number" name="valor" value="{{ $expense->valor }}" step="0.01" min="0.01" required
                        class="form-control text-sm w-full">
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
                 <input type="text" name="categoria" value="{{ $expense->categoria }}"
                        class="form-control text-sm w-full" list="categorias-list">
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
                 <select name="tipo_despesa" class="form-control text-sm w-full">
@@ -127,7 +129,6 @@
                     <option value="variavel" {{ $expense->tipo_despesa==='variavel'?'selected':'' }}>Variável</option>
                 </select>
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Forma pagamento</label>
                 <select name="forma_pagamento" class="form-control text-sm w-full">
@@ -136,7 +137,6 @@
                     <option value="dinheiro" {{ $expense->forma_pagamento==='dinheiro'?'selected':'' }}>Dinheiro</option>
                 </select>
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Pessoa</label>
                 <select name="pessoa" class="form-control text-sm w-full">
@@ -145,7 +145,6 @@
                     <option value="compartilhado" {{ $expense->pessoa==='compartilhado'?'selected':'' }}>Compartilhado</option>
                 </select>
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
                 <select name="status" class="form-control text-sm w-full">
@@ -153,21 +152,18 @@
                     <option value="pago"     {{ $expense->status==='pago'    ?'selected':'' }}>Pago</option>
                 </select>
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Vencimento</label>
                 <input type="date" name="data_vencimento"
                        value="{{ $expense->data_vencimento?->format('Y-m-d') }}"
                        class="form-control text-sm w-full">
             </div>
-
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Data pagamento</label>
                 <input type="date" name="data_pagamento"
                        value="{{ $expense->data_pagamento?->format('Y-m-d') }}"
                        class="form-control text-sm w-full">
             </div>
-
             <div class="col-span-2 flex gap-2 pt-1">
                 <button type="submit" class="btn-primary text-sm px-5 py-2">Salvar</button>
                 <button type="button" @click="editing = false"
