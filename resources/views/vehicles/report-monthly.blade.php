@@ -22,7 +22,6 @@
     fim:  '{{ $modo === 'livre' ? $dataFim->toDateString() : now()->toDateString() }}',
 }" class="bg-white rounded-lg shadow p-4 mb-6">
 
-    {{-- Tabs de modo --}}
     <div class="flex gap-2 mb-4 border-b border-gray-200 pb-3">
         <button type="button"
             @click="modo = 'mes'"
@@ -47,7 +46,6 @@
     <form method="GET" action="{{ route('vehicles.report.monthly') }}">
         <input type="hidden" name="modo" :value="modo">
 
-        {{-- MODO: Mês --}}
         <div x-show="modo === 'mes'" class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Mês</label>
@@ -65,7 +63,6 @@
                     @endforeach
                 </select>
             </div>
-            {{-- Atalhos rápidos por mês --}}
             <div class="flex flex-wrap gap-1 items-end">
                 @foreach($mesesDisp->take(6) as $item)
                     <a href="{{ route('vehicles.report.monthly', ['modo'=>'mes','ano'=>$item['ano'],'mes'=>$item['mes']]) }}"
@@ -77,7 +74,6 @@
             <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
         </div>
 
-        {{-- MODO: Dia --}}
         <div x-show="modo === 'dia'" class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Data</label>
@@ -86,19 +82,14 @@
             <div class="flex gap-2">
                 <button type="button"
                     @click="dia = '{{ now()->toDateString() }}'"
-                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">
-                    Hoje
-                </button>
+                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">Hoje</button>
                 <button type="button"
                     @click="dia = '{{ now()->subDay()->toDateString() }}'"
-                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">
-                    Ontem
-                </button>
+                    class="px-3 py-1.5 text-xs rounded border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600">Ontem</button>
             </div>
             <button type="submit" class="btn-primary text-sm px-4 py-2">Ver</button>
         </div>
 
-        {{-- MODO: Intervalo livre --}}
         <div x-show="modo === 'livre'" class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">De</label>
@@ -108,7 +99,6 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1">Até</label>
                 <input type="date" name="data_fim" x-model="fim" class="form-control text-sm">
             </div>
-            {{-- Atalhos rápidos --}}
             <div class="flex flex-wrap gap-1 items-end">
                 <button type="button"
                     @click="ini = '{{ now()->startOfMonth()->toDateString() }}'; fim = '{{ now()->toDateString() }}'"
@@ -140,7 +130,7 @@
 @else
 
 {{-- KPIs --}}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Total geral</p>
         <p class="text-xl font-bold text-gray-900">R$ {{ number_format($totaisGerais['total'], 2, ',', '.') }}</p>
@@ -164,6 +154,15 @@
         <p class="text-xl font-bold text-purple-600">R$ {{ number_format($totaisGerais['outros'], 2, ',', '.') }}</p>
         @if($totaisGerais['total'] > 0)
             <p class="text-xs text-gray-400 mt-1">{{ number_format($totaisGerais['outros'] / $totaisGerais['total'] * 100, 1) }}% do total</p>
+        @endif
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">🛣️ KM rodados</p>
+        @if($totaisGerais['km_rodados'] > 0)
+            <p class="text-xl font-bold text-green-700">{{ number_format($totaisGerais['km_rodados'], 0, ',', '.') }} km</p>
+        @else
+            <p class="text-xl font-bold text-gray-300">—</p>
+            <p class="text-xs text-gray-400 mt-1">Informe o KM nos abastecimentos</p>
         @endif
     </div>
 </div>
@@ -191,6 +190,8 @@
                     <th class="px-4 py-3 text-right  text-xs font-medium text-blue-600 uppercase">⛽ Combustível</th>
                     <th class="px-4 py-3 text-right  text-xs font-medium text-gray-500 uppercase">Litros</th>
                     <th class="px-4 py-3 text-right  text-xs font-medium text-gray-500 uppercase">Preço/L</th>
+                    <th class="px-4 py-3 text-right  text-xs font-medium text-green-700 uppercase">🛣️ KM rodados</th>
+                    <th class="px-4 py-3 text-right  text-xs font-medium text-gray-500 uppercase">R$/km</th>
                     <th class="px-4 py-3 text-right  text-xs font-medium text-orange-600 uppercase">🔧 Manutenção</th>
                     <th class="px-4 py-3 text-right  text-xs font-medium text-purple-600 uppercase">📋 Outros</th>
                     <th class="px-4 py-3 text-right  text-xs font-medium text-gray-900 uppercase">Total</th>
@@ -234,6 +235,22 @@
                     </td>
                     <td class="px-4 py-3 text-right text-sm text-gray-600 tabular-nums">
                         {{ $row['media_preco_litro'] ? 'R$ ' . number_format($row['media_preco_litro'], 3, ',', '.') : '—' }}
+                    </td>
+                    {{-- KM RODADOS --}}
+                    <td class="px-4 py-3 text-right tabular-nums">
+                        @if($row['km_rodados'])
+                            <span class="text-sm font-semibold text-green-700">{{ number_format($row['km_rodados'], 0, ',', '.') }} km</span>
+                        @else
+                            <span class="text-sm text-gray-300" title="Informe o KM nos abastecimentos">—</span>
+                        @endif
+                    </td>
+                    {{-- R$/KM --}}
+                    <td class="px-4 py-3 text-right tabular-nums">
+                        @if($row['custo_por_km'])
+                            <span class="text-sm text-gray-600">{{ number_format($row['custo_por_km'], 3, ',', '.') }}</span>
+                        @else
+                            <span class="text-sm text-gray-300">—</span>
+                        @endif
                     </td>
                     <td class="px-4 py-3 text-right tabular-nums">
                         @if($row['manutencao'] > 0)
@@ -284,6 +301,13 @@
                         R$ {{ number_format($totaisGerais['combustivel'], 2, ',', '.') }}
                     </td>
                     <td colspan="2"></td>
+                    <td class="px-4 py-3 text-right text-sm font-bold text-green-700 tabular-nums">
+                        @if($totaisGerais['km_rodados'] > 0)
+                            {{ number_format($totaisGerais['km_rodados'], 0, ',', '.') }} km
+                        @else —
+                        @endif
+                    </td>
+                    <td></td>
                     <td class="px-4 py-3 text-right text-sm font-bold text-orange-600 tabular-nums">
                         R$ {{ number_format($totaisGerais['manutencao'], 2, ',', '.') }}
                     </td>

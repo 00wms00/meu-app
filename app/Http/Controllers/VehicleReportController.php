@@ -14,14 +14,12 @@ class VehicleReportController extends Controller
 {
     /**
      * Resumo de custos por veículo com filtro de período livre.
-     * URL: GET /vehicles/report/monthly?modo=mes|dia|livre&data_inicio=&data_fim=&dia=
      */
     public function monthly(Request $request): View
     {
         $userId = Auth::id();
 
-        // --- Determina o modo e o intervalo ---
-        $modo = $request->get('modo', 'mes'); // 'mes' | 'dia' | 'livre'
+        $modo = $request->get('modo', 'mes');
 
         [$dataInicio, $dataFim, $labelPeriodo] = match ($modo) {
             'dia' => (function () use ($request) {
@@ -37,7 +35,7 @@ class VehicleReportController extends Controller
                 return [$ini->copy()->startOfDay(), $fim->copy()->endOfDay(),
                         $ini->translatedFormat('d/m/Y') . ' até ' . $fim->translatedFormat('d/m/Y')];
             })(),
-            default => (function () use ($request) { // 'mes'
+            default => (function () use ($request) {
                 $ano = (int) $request->get('ano', now()->year);
                 $mes = (int) $request->get('mes', now()->month);
                 $ini = Carbon::create($ano, $mes, 1)->startOfDay();
@@ -46,7 +44,6 @@ class VehicleReportController extends Controller
             })(),
         };
 
-        // Meses com dados para o seletor rápido
         $mesesDisp = $this->mesesComDados($userId);
         if ($mesesDisp->isEmpty()) {
             $mesesDisp = collect([[
@@ -61,7 +58,7 @@ class VehicleReportController extends Controller
         $resumo = [];
 
         foreach ($vehicles as $vehicle) {
-            // Combustível
+            // Combustível no período
             $fuel = FuelEntry::where('vehicle_id', $vehicle->id)
                 ->whereBetween('data', [$dataInicio->toDateString(), $dataFim->toDateString()])
                 ->selectRaw('SUM(valor) as total_valor, SUM(litros) as total_litros, COUNT(*) as qtd')
@@ -72,6 +69,35 @@ class VehicleReportController extends Controller
             $qtdAbast     = (int) ($fuel->qtd ?? 0);
             $mediaPrecoL  = ($totalLitros && $totalLitros > 0)
                 ? round($totalCombust / $totalLitros, 3)
+                : null;
+
+            // KM rodados no período:
+            // máx KM dentro do intervalo  −  máx KM anterior ao início (ou primeiro KM do intervalo)
+            $kmFim = FuelEntry::where('vehicle_id', $vehicle->id)
+                ->whereBetween('data', [$dataInicio->toDateString(), $dataFim->toDateString()])
+                ->whereNotNull('km_abastecimento')
+                ->max('km_abastecimento');
+
+            $kmInicio = FuelEntry::where('vehicle_id', $vehicle->id)
+                ->where('data', '<', $dataInicio->toDateString())
+                ->whereNotNull('km_abastecimento')
+                ->max('km_abastecimento');
+
+            // Fallback: se não há km anterior, usa o mínimo dentro do período
+            if (is_null($kmInicio)) {
+                $kmInicio = FuelEntry::where('vehicle_id', $vehicle->id)
+                    ->whereBetween('data', [$dataInicio->toDateString(), $dataFim->toDateString()])
+                    ->whereNotNull('km_abastecimento')
+                    ->min('km_abastecimento');
+            }
+
+            $kmRodados = ($kmFim && $kmInicio && $kmFim > $kmInicio)
+                ? $kmFim - $kmInicio
+                : null;
+
+            // Custo por km no período (só combustível)
+            $custoPorKm = ($kmRodados && $totalCombust > 0)
+                ? round($totalCombust / $kmRodados, 4)
                 : null;
 
             // Despesas agrupadas por tipo
@@ -98,6 +124,8 @@ class VehicleReportController extends Controller
                     'media_preco_litro' => $mediaPrecoL,
                     'abastecimentos'    => $qtdAbast,
                     'por_tipo'          => $expenses,
+                    'km_rodados'        => $kmRodados,
+                    'custo_por_km'      => $custoPorKm,
                 ];
             }
         }
@@ -109,6 +137,7 @@ class VehicleReportController extends Controller
             'manutencao'  => array_sum(array_column($resumo, 'manutencao')),
             'outros'      => array_sum(array_column($resumo, 'outros')),
             'total'       => array_sum(array_column($resumo, 'total')),
+            'km_rodados'  => array_sum(array_filter(array_column($resumo, 'km_rodados'))),
         ];
 
         $chartLabels  = [];
@@ -147,7 +176,7 @@ class VehicleReportController extends Controller
             ->distinct()->get();
 
         return $mesesFuel->concat($mesesExp)
-            ->unique(fn($r) => $r->ano . '-' . str_pad($r->mes, 2, '0', STR_PAD_LEFT))
+            ->unique(fn($r) => $r->ano . '-' . str_pad($r->mes, 2, '0', '0'))
             ->sortByDesc(fn($r) => $r->ano * 100 + $r->mes)
             ->map(fn($r) => [
                 'ano'   => (int) $r->ano,
