@@ -58,7 +58,7 @@
             R$ {{ number_format($expense->valor, 2, ',', '.') }}
         </span>
 
-        {{-- Botões ação — SEMPRE VISÍVEIS --}}
+        {{-- Botões ação --}}
         <div class="flex gap-1 shrink-0">
 
             {{-- Editar --}}
@@ -72,10 +72,10 @@
             </button>
 
             {{-- Excluir --}}
-            <form method="POST" action="{{ route('finance.expenses.destroy', $expense) }}"
-                  data-confirm="Remover '{{ $expense->descricao }}'?">
+            <form method="POST" action="{{ route('finance.expenses.destroy', $expense) }}" id="del-{{ $expense->id }}">
                 @csrf @method('DELETE')
-                <button type="submit"
+                <button type="button"
+                        onclick="if(confirm('Remover \'{{ addslashes($expense->descricao) }}\'?')) document.getElementById('del-{{ $expense->id }}').submit()"
                         class="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
                         title="Remover">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -123,34 +123,34 @@
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
                 <select name="tipo_despesa" class="form-control text-sm w-full">
-                    <option value="fixa"    {{ $expense->tipo_despesa==='fixa'    ?'selected':'' }}>Fixa</option>
-                    <option value="variavel"{{ $expense->tipo_despesa==='variavel'?'selected':'' }}>Variável</option>
+                    <option value="fixa"     {{ $expense->tipo_despesa==='fixa'    ?'selected':'' }}>Fixa</option>
+                    <option value="variavel" {{ $expense->tipo_despesa==='variavel'?'selected':'' }}>Variável</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Forma pagamento</label>
                 <select name="forma_pagamento" class="form-control text-sm w-full">
-                    <option value="pix"     {{ $expense->forma_pagamento==='pix'     ?'selected':'' }}>Pix</option>
-                    <option value="debito"  {{ $expense->forma_pagamento==='debito'  ?'selected':'' }}>Débito</option>
-                    <option value="dinheiro"{{ $expense->forma_pagamento==='dinheiro'?'selected':'' }}>Dinheiro</option>
+                    <option value="pix"      {{ $expense->forma_pagamento==='pix'     ?'selected':'' }}>Pix</option>
+                    <option value="debito"   {{ $expense->forma_pagamento==='debito'  ?'selected':'' }}>Débito</option>
+                    <option value="dinheiro" {{ $expense->forma_pagamento==='dinheiro'?'selected':'' }}>Dinheiro</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Pessoa</label>
                 <select name="pessoa" class="form-control text-sm w-full">
-                    <option value="WIL"          {{ $expense->pessoa==='WIL'          ?'selected':'' }}>Willian</option>
-                    <option value="MAY"          {{ $expense->pessoa==='MAY'          ?'selected':'' }}>Mayara</option>
-                    <option value="compartilhado"{{ $expense->pessoa==='compartilhado'?'selected':'' }}>Compartilhado</option>
+                    <option value="WIL"           {{ $expense->pessoa==='WIL'          ?'selected':'' }}>Willian</option>
+                    <option value="MAY"           {{ $expense->pessoa==='MAY'          ?'selected':'' }}>Mayara</option>
+                    <option value="compartilhado" {{ $expense->pessoa==='compartilhado'?'selected':'' }}>Compartilhado</option>
                 </select>
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
                 <select name="status" class="form-control text-sm w-full">
-                    <option value="pendente"{{ $expense->status==='pendente'?'selected':'' }}>Pendente</option>
-                    <option value="pago"    {{ $expense->status==='pago'    ?'selected':'' }}>Pago</option>
+                    <option value="pendente" {{ $expense->status==='pendente'?'selected':'' }}>Pendente</option>
+                    <option value="pago"     {{ $expense->status==='pago'    ?'selected':'' }}>Pago</option>
                 </select>
             </div>
 
