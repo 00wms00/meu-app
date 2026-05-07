@@ -73,7 +73,7 @@ class FinanceExpense extends Model
             'pix'      => 'Pix',
             'dinheiro' => 'Dinheiro',
             default    => $this->forma_pagamento,
-        ];
+        };
     }
 
     public function isPago(): bool
