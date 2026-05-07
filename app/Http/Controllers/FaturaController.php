@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CreditCard;
+use App\Models\FinanceInstallment;
 use App\Models\FinanceExpense;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,72 +12,64 @@ class FaturaController extends Controller
 {
     public function index(Request $request)
     {
-        $mesesAtras  = max(0, min(11, (int)($request->get('passados', 2))));
-        $mesesFrente = max(0, min(11, (int)($request->get('futuros',  3))));
+        $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
 
-        $hoje      = Carbon::now()->startOfMonth();
-        $mesInicio = $hoje->copy()->subMonths($mesesAtras);
-        $mesFim    = $hoje->copy()->addMonths($mesesFrente)->endOfMonth();
+        $cardId = $request->get('card_id', optional($cards->first())->id);
+        $mesStr = $request->get('mes', Carbon::now()->format('Y-m'));
 
-        $meses  = collect();
-        $cursor = $hoje->copy()->subMonths($mesesAtras);
-        $fim    = $hoje->copy()->addMonths($mesesFrente);
-        while ($cursor->lte($fim)) {
-            $meses->push($cursor->copy()->startOfMonth());
+        $mes  = Carbon::createFromFormat('Y-m', $mesStr)->startOfMonth();
+        $card = $cards->firstWhere('id', $cardId);
+
+        // Parcelas do cartao neste mes
+        $parcelas = FinanceInstallment::with('purchase')
+            ->where('credit_card_id', $cardId)
+            ->whereYear('mes_referencia', $mes->year)
+            ->whereMonth('mes_referencia', $mes->month)
+            ->orderBy('mes_referencia')
+            ->get()
+            ->map(function ($inst) {
+                return [
+                    'descricao' => $inst->purchase->descricao ?? '—',
+                    'parcela'   => $inst->numero . '/' . $inst->total,
+                    'valor'     => (float) $inst->valor,
+                    'tipo'      => 'parcela',
+                    'status'    => $inst->status,
+                ];
+            });
+
+        // Despesas avulsas no credito deste cartao neste mes
+        $avulsas = FinanceExpense::where('forma_pagamento', 'credito')
+            ->where('credit_card_id', $cardId)
+            ->whereYear('mes_referencia', $mes->year)
+            ->whereMonth('mes_referencia', $mes->month)
+            ->orderBy('descricao')
+            ->get()
+            ->map(function ($exp) {
+                $parcela = $exp->parcelas_total > 1
+                    ? '—/' . $exp->parcelas_total  // avulsa parcelada sem installment
+                    : 'à vista';
+                return [
+                    'descricao' => $exp->descricao,
+                    'parcela'   => $parcela,
+                    'valor'     => (float) $exp->valor,
+                    'tipo'      => 'avulsa',
+                    'status'    => $exp->status,
+                ];
+            });
+
+        $itens = $parcelas->concat($avulsas)->sortBy('descricao')->values();
+        $total = $itens->sum('valor');
+
+        // Meses disponíveis: 6 atrás e 6 à frente
+        $meses = collect();
+        $cursor = Carbon::now()->subMonths(6)->startOfMonth();
+        for ($i = 0; $i <= 12; $i++) {
+            $meses->push($cursor->copy());
             $cursor->addMonth();
         }
 
-        $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
-
-        $despesas = FinanceExpense::where('forma_pagamento', 'credito')
-            ->where('mes_referencia', '>=', $mesInicio->format('Y-m-01'))
-            ->where('mes_referencia', '<=', $mesFim->format('Y-m-t'))
-            ->orderBy('mes_referencia')
-            ->orderBy('descricao')
-            ->get();
-
-        // Chaves SEMPRE como string para evitar conflito int/string no Blade
-        $faturas = [];
-        foreach ($cards as $card) {
-            $cid = 'c' . $card->id; // ex: "c1"
-            foreach ($meses as $mes) {
-                $faturas[$cid][$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
-            }
-        }
-
-        $semCartao = [];
-        foreach ($meses as $mes) {
-            $semCartao[$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
-        }
-
-        foreach ($despesas as $d) {
-            $key = Carbon::parse($d->mes_referencia)->format('Y-m');
-            $cid = 'c' . $d->credit_card_id;
-
-            if ($d->credit_card_id && isset($faturas[$cid][$key])) {
-                $faturas[$cid][$key]['total']  += (float) $d->valor;
-                $faturas[$cid][$key]['itens'][] = $d;
-            } else {
-                if (!isset($semCartao[$key])) {
-                    $semCartao[$key] = ['total' => 0, 'itens' => []];
-                }
-                $semCartao[$key]['total']  += (float) $d->valor;
-                $semCartao[$key]['itens'][] = $d;
-            }
-        }
-
-        $totalPorMes = [];
-        foreach ($meses as $mes) {
-            $key = $mes->format('Y-m');
-            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas['c'.$c->id][$key]['total'] ?? 0)
-                + ($semCartao[$key]['total'] ?? 0);
-        }
-
-        $temSemCartao = collect($semCartao)->contains(fn($v) => $v['total'] > 0);
-
         return view('finance.faturas.index', compact(
-            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao', 'temSemCartao',
-            'hoje', 'mesesAtras', 'mesesFrente'
+            'cards', 'card', 'cardId', 'mes', 'mesStr', 'meses', 'itens', 'total'
         ));
     }
 }
