@@ -123,16 +123,42 @@ class FinanceExpenseController extends Controller
         ]);
 
         if ($data['forma_pagamento'] !== 'credito') {
+            // Não é crédito: salva normalmente, 1 linha
             $data['credit_card_id'] = null;
             $data['parcelas_total'] = 1;
+            $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
+            $data['origem']         = 'manual';
+            FinanceExpense::create($data);
         } else {
-            $data['parcelas_total'] = $data['parcelas_total'] ?? 1;
+            // Crédito parcelado: gera uma linha por parcela em meses consecutivos
+            $parcelas    = max(1, (int)($data['parcelas_total'] ?? 1));
+            $valorParc   = round((float)$data['valor'] / $parcelas, 2);
+            $mesBase     = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
+            $cardId      = $data['credit_card_id'];
+
+            // Grupo único para identificar as parcelas juntas
+            $grupoId = uniqid('parc_', true);
+
+            for ($i = 0; $i < $parcelas; $i++) {
+                $mes = $mesBase->copy()->addMonths($i);
+                FinanceExpense::create([
+                    'descricao'       => $data['descricao'] . ($parcelas > 1 ? ' (' . ($i + 1) . '/' . $parcelas . ')' : ''),
+                    'tipo_despesa'    => $data['tipo_despesa'],
+                    'categoria'       => $data['categoria'] ?? null,
+                    'forma_pagamento' => 'credito',
+                    'credit_card_id'  => $cardId,
+                    'parcelas_total'  => $parcelas,
+                    'pessoa'          => $data['pessoa'],
+                    'valor'           => $valorParc,
+                    'mes_referencia'  => $mes,
+                    'data_vencimento' => $data['data_vencimento'] ?? null,
+                    'data_pagamento'  => $i === 0 ? ($data['data_pagamento'] ?? null) : null,
+                    'status'          => $i === 0 ? $data['status'] : 'pendente',
+                    'observacao'      => $data['observacao'] ?? null,
+                    'origem'          => 'manual',
+                ]);
+            }
         }
-
-        $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
-        $data['origem']         = 'manual';
-
-        FinanceExpense::create($data);
 
         return redirect()
             ->route('finance.expenses.index', ['mes' => $request->mes_referencia])

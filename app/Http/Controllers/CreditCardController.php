@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\CreditCard;
+use App\Models\FinanceExpense;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class CreditCardController extends Controller
@@ -10,7 +12,30 @@ class CreditCardController extends Controller
     public function index()
     {
         $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
-        return view('finance.credit_cards.index', compact('cards'));
+
+        // Previsão de fatura: próximos 3 meses por cartão
+        $hoje        = Carbon::now();
+        $mesesFuturos = collect();
+        for ($i = 0; $i <= 2; $i++) {
+            $mesesFuturos->push($hoje->copy()->addMonths($i)->startOfMonth());
+        }
+
+        $previsaoFatura = [];
+        foreach ($cards as $card) {
+            $previsaoFatura[$card->id] = [];
+            foreach ($mesesFuturos as $mes) {
+                $total = FinanceExpense::where('credit_card_id', $card->id)
+                    ->whereYear('mes_referencia', $mes->year)
+                    ->whereMonth('mes_referencia', $mes->month)
+                    ->sum('valor');
+                $previsaoFatura[$card->id][] = [
+                    'mes'   => $mes->translatedFormat('M/Y'),
+                    'valor' => (float) $total,
+                ];
+            }
+        }
+
+        return view('finance.credit_cards.index', compact('cards', 'previsaoFatura'));
     }
 
     public function store(Request $request)

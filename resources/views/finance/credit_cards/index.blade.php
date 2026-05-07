@@ -67,6 +67,24 @@
                 @endif
             </div>
 
+            {{-- PREVISÃO DE FATURA --}}
+            @php $prev = $previsaoFatura[$card->id] ?? []; @endphp
+            @if(collect($prev)->sum('valor') > 0)
+            <div class="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">📊 Previsão de Fatura</p>
+                <div class="flex gap-4">
+                    @foreach($prev as $p)
+                        @if($p['valor'] > 0)
+                        <div class="text-center">
+                            <p class="text-xs text-gray-400">{{ $p['mes'] }}</p>
+                            <p class="text-sm font-bold text-gray-800">R$ {{ number_format($p['valor'], 2, ',', '.') }}</p>
+                        </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- AÇÕES --}}
             <div class="px-5 py-3 bg-gray-50 flex items-center gap-2 border-t border-gray-100">
                 {{-- Editar --}}
