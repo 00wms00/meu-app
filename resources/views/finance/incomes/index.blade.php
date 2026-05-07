@@ -8,8 +8,8 @@
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">💰 Receitas</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Salários, freelances e outras entradas —
-            <span class="font-medium text-gray-700">{{ $mes->translatedFormat('F \d\e Y') }}</span>
+        <p class="text-sm text-gray-500 mt-0.5">Salários, freelances e outras entradas &mdash;
+            <span class="font-medium text-gray-700">{{ $mes->translatedFormat('F \\d\\e Y') }}</span>
         </p>
     </div>
     <a href="{{ route('dashboard') }}" class="btn-back self-start sm:self-auto">← Dashboard</a>
@@ -85,108 +85,131 @@
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($incomes as $income)
-                    <div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 group" x-data="{ editing: false }">
+                    <div x-data="{ editing: false }">
 
-                        {{-- Indicador de pessoa --}}
-                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0
-                            {{ $income->pessoa === 'WIL' ? 'bg-blue-100 text-blue-700'
-                             : ($income->pessoa === 'MAY' ? 'bg-pink-100 text-pink-700'
-                             : 'bg-purple-100 text-purple-700') }}">
-                            {{ $income->pessoa === 'compartilhado' ? 'C' : substr($income->pessoa, 0, 1) }}
-                        </span>
+                        {{-- LINHA PRINCIPAL --}}
+                        <div class="px-5 py-3 flex items-center gap-3 hover:bg-gray-50"
+                             :class="editing ? '!bg-blue-50' : ''">
 
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900 truncate">{{ $income->descricao }}</p>
-                            <p class="text-xs text-gray-400">
-                                {{ ['salario'=>'Salário','freelance'=>'Freelance','presente'=>'Presente','aluguel'=>'Aluguel','outros'=>'Outros'][$income->tipo] }}
-                                @if($income->recorrente)
-                                    <span class="ml-1 text-green-600">↻ recorrente</span>
-                                @endif
-                                @if($income->data_recebimento)
-                                    &middot; recebido {{ $income->data_recebimento->format('d/m') }}
-                                @endif
-                            </p>
-                        </div>
+                            {{-- Indicador de pessoa --}}
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0
+                                {{ $income->pessoa === 'WIL' ? 'bg-blue-100 text-blue-700'
+                                 : ($income->pessoa === 'MAY' ? 'bg-pink-100 text-pink-700'
+                                 : 'bg-purple-100 text-purple-700') }}">
+                                {{ $income->pessoa === 'compartilhado' ? 'C' : substr($income->pessoa, 0, 1) }}
+                            </span>
 
-                        <span class="text-sm font-bold text-green-700 tabular-nums whitespace-nowrap">
-                            R$ {{ number_format($income->valor, 2, ',', '.') }}
-                        </span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">{{ $income->descricao }}</p>
+                                <p class="text-xs text-gray-400">
+                                    {{ ['salario'=>'Salário','freelance'=>'Freelance','presente'=>'Presente','aluguel'=>'Aluguel','outros'=>'Outros'][$income->tipo] }}
+                                    @if($income->recorrente)
+                                        <span class="ml-1 text-green-600">↻ recorrente</span>
+                                    @endif
+                                    @if($income->data_recebimento)
+                                        &middot; recebido {{ $income->data_recebimento->format('d/m') }}
+                                    @endif
+                                </p>
+                            </div>
 
-                        {{-- Ações --}}
-                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
-                            <button @click="editing = !editing"
-                                    class="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                                    title="Editar">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                            </button>
-                            <form method="POST" action="{{ route('finance.incomes.destroy', $income) }}">
-                                @csrf @method('DELETE')
-                                <button type="submit" onclick="return confirm('Remover esta receita?')"
-                                        class="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                                        title="Remover">
+                            <span class="text-sm font-bold text-green-700 tabular-nums whitespace-nowrap">
+                                R$ {{ number_format($income->valor, 2, ',', '.') }}
+                            </span>
+
+                            {{-- Botões ação — SEMPRE VISÍVEIS --}}
+                            <div class="flex gap-1 shrink-0">
+                                {{-- Editar --}}
+                                <button @click="editing = !editing"
+                                        :title="editing ? 'Fechar edição' : 'Editar'"
+                                        :class="editing ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'"
+                                        class="p-1.5 rounded transition">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                     </svg>
                                 </button>
+
+                                {{-- Excluir --}}
+                                <form method="POST" action="{{ route('finance.incomes.destroy', $income) }}" id="del-inc-{{ $income->id }}">
+                                    @csrf @method('DELETE')
+                                    <button type="button"
+                                            onclick="if(confirm('Remover \'{{ addslashes($income->descricao) }}\'?')) document.getElementById('del-inc-{{ $income->id }}').submit()"
+                                            class="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                            title="Remover">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {{-- FORMULÁRIO INLINE DE EDIÇÃO --}}
+                        <div x-show="editing"
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 -translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 -translate-y-1"
+                             style="display:none"
+                             class="px-5 pb-5 pt-4 bg-blue-50 border-t border-blue-100">
+
+                            <form method="POST" action="{{ route('finance.incomes.update', $income) }}" class="grid grid-cols-2 gap-3">
+                                @csrf @method('PUT')
+                                <input type="hidden" name="mes_referencia" value="{{ $mes->format('Y-m') }}">
+
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
+                                    <input type="text" name="descricao" value="{{ $income->descricao }}" required
+                                           class="form-control text-sm w-full">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
+                                    <input type="number" name="valor" value="{{ $income->valor }}" step="0.01" min="0.01" required
+                                           class="form-control text-sm w-full">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Pessoa</label>
+                                    <select name="pessoa" class="form-control text-sm w-full">
+                                        <option value="WIL"           {{ $income->pessoa==='WIL'          ?'selected':'' }}>Willian</option>
+                                        <option value="MAY"           {{ $income->pessoa==='MAY'          ?'selected':'' }}>Mayara</option>
+                                        <option value="compartilhado" {{ $income->pessoa==='compartilhado'?'selected':'' }}>Compartilhado</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                                    <select name="tipo" class="form-control text-sm w-full">
+                                        <option value="salario"   {{ $income->tipo==='salario'  ?'selected':'' }}>Salário</option>
+                                        <option value="freelance" {{ $income->tipo==='freelance'?'selected':'' }}>Freelance</option>
+                                        <option value="presente"  {{ $income->tipo==='presente' ?'selected':'' }}>Presente</option>
+                                        <option value="aluguel"   {{ $income->tipo==='aluguel'  ?'selected':'' }}>Aluguel</option>
+                                        <option value="outros"    {{ $income->tipo==='outros'   ?'selected':'' }}>Outros</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Data recebimento</label>
+                                    <input type="date" name="data_recebimento"
+                                           value="{{ $income->data_recebimento?->format('Y-m-d') }}"
+                                           class="form-control text-sm w-full">
+                                </div>
+                                <div class="flex items-center">
+                                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer mt-4">
+                                        <input type="checkbox" name="recorrente" value="1"
+                                               {{ $income->recorrente ? 'checked' : '' }}
+                                               class="rounded">
+                                        Recorrente
+                                    </label>
+                                </div>
+                                <div class="col-span-2 flex gap-2 pt-1">
+                                    <button type="submit" class="btn-primary text-sm px-5 py-2">Salvar</button>
+                                    <button type="button" @click="editing = false"
+                                            class="text-sm px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+                                        Cancelar
+                                    </button>
+                                </div>
                             </form>
                         </div>
-                    </div>
 
-                    {{-- Formulário inline de edição --}}
-                    <div x-show="editing" x-cloak class="px-5 pb-4 bg-blue-50 border-t border-blue-100">
-                        <form method="POST" action="{{ route('finance.incomes.update', $income) }}" class="grid grid-cols-2 gap-3 pt-3">
-                            @csrf @method('PUT')
-                            <input type="hidden" name="mes_referencia" value="{{ $mes->format('Y-m') }}">
-
-                            <div class="col-span-2">
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
-                                <input type="text" name="descricao" value="{{ $income->descricao }}" required
-                                       class="form-control text-sm w-full">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
-                                <input type="number" name="valor" value="{{ $income->valor }}" step="0.01" min="0.01" required
-                                       class="form-control text-sm w-full">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Pessoa</label>
-                                <select name="pessoa" class="form-control text-sm w-full">
-                                    <option value="WIL" {{ $income->pessoa==='WIL'?'selected':'' }}>Willian</option>
-                                    <option value="MAY" {{ $income->pessoa==='MAY'?'selected':'' }}>Mayara</option>
-                                    <option value="compartilhado" {{ $income->pessoa==='compartilhado'?'selected':'' }}>Compartilhado</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
-                                <select name="tipo" class="form-control text-sm w-full">
-                                    <option value="salario" {{ $income->tipo==='salario'?'selected':'' }}>Salário</option>
-                                    <option value="freelance" {{ $income->tipo==='freelance'?'selected':'' }}>Freelance</option>
-                                    <option value="presente" {{ $income->tipo==='presente'?'selected':'' }}>Presente</option>
-                                    <option value="aluguel" {{ $income->tipo==='aluguel'?'selected':'' }}>Aluguel</option>
-                                    <option value="outros" {{ $income->tipo==='outros'?'selected':'' }}>Outros</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Data recebimento</label>
-                                <input type="date" name="data_recebimento"
-                                       value="{{ $income->data_recebimento?->format('Y-m-d') }}"
-                                       class="form-control text-sm w-full">
-                            </div>
-                            <div class="col-span-2 flex items-center gap-4 pt-1">
-                                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                                    <input type="checkbox" name="recorrente" value="1" {{ $income->recorrente?'checked':'' }}
-                                           class="rounded">
-                                    Recorrente (repete todo mês)
-                                </label>
-                            </div>
-                            <div class="col-span-2 flex gap-2">
-                                <button type="submit" class="btn-primary text-sm px-4 py-2">Salvar</button>
-                                <button type="button" @click="editing=false"
-                                        class="text-sm px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50">Cancelar</button>
-                            </div>
-                        </form>
                     </div>
                     @endforeach
                 </div>
@@ -277,7 +300,7 @@
 
                 @if($errors->any())
                     <div class="text-xs text-red-600">
-                        @foreach($errors->all() as $e) <p>• {{ $e }}</p> @endforeach
+                        @foreach($errors->all() as $e) <p>&bull; {{ $e }}</p> @endforeach
                     </div>
                 @endif
 
