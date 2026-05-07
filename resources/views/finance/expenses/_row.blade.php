@@ -1,5 +1,5 @@
 {{-- Linha de uma despesa --}}
-<div x-data="{ editing: false }">
+<div x-data="{ editing: false, formaPgto: '{{ $expense->forma_pagamento }}' }">
 
     {{-- === LINHA PRINCIPAL === --}}
     <div class="px-5 py-3 flex items-center gap-3
@@ -45,7 +45,13 @@
                 @if($expense->categoria)
                     <span class="bg-white/60 rounded px-1">{{ $expense->categoria }}</span>
                 @endif
-                <span>{{ ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro'][$expense->forma_pagamento] }}</span>
+                @php
+                    $formaLabel = ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro','credito'=>'💳 Crédito'];
+                @endphp
+                <span>{{ $formaLabel[$expense->forma_pagamento] ?? $expense->forma_pagamento }}</span>
+                @if($expense->forma_pagamento === 'credito' && $expense->creditCard)
+                    <span class="text-indigo-600 font-medium">{{ $expense->creditCard->nome }}</span>
+                @endif
                 @if($expense->data_vencimento)
                     <span class="{{ $expense->isAtrasada() ? 'text-red-600 font-semibold' : '' }}">
                         vence {{ $expense->data_vencimento->format('d/m') }}
@@ -131,12 +137,27 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Forma pagamento</label>
-                <select name="forma_pagamento" class="form-control text-sm w-full">
+                <select name="forma_pagamento" class="form-control text-sm w-full" x-model="formaPgto">
                     <option value="pix"      {{ $expense->forma_pagamento==='pix'     ?'selected':'' }}>Pix</option>
                     <option value="debito"   {{ $expense->forma_pagamento==='debito'  ?'selected':'' }}>Débito</option>
                     <option value="dinheiro" {{ $expense->forma_pagamento==='dinheiro'?'selected':'' }}>Dinheiro</option>
+                    <option value="credito"  {{ $expense->forma_pagamento==='credito' ?'selected':'' }}>💳 Crédito</option>
                 </select>
             </div>
+
+            {{-- Cartão inline (só ao editar com crédito) --}}
+            <div class="col-span-2" x-show="formaPgto === 'credito'" x-cloak>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Cartão de crédito</label>
+                <select name="credit_card_id" class="form-control text-sm w-full">
+                    <option value="">Selecione o cartão...</option>
+                    @foreach($creditCards as $card)
+                        <option value="{{ $card->id }}" {{ $expense->credit_card_id == $card->id ? 'selected' : '' }}>
+                            {{ $card->nome }} @if($card->bandeira)({{ $card->bandeira }})@endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Pessoa</label>
                 <select name="pessoa" class="form-control text-sm w-full">

@@ -90,7 +90,7 @@
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($fixas as $expense)
-                        @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes])
+                        @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards])
                     @endforeach
                 </div>
                 <div class="px-5 py-3 bg-orange-50 border-t border-orange-100 flex justify-between">
@@ -129,7 +129,7 @@
                 @if($variaveis->isNotEmpty())
                     <div class="divide-y divide-gray-100">
                         @foreach($variaveis as $expense)
-                            @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes])
+                            @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards])
                         @endforeach
                     </div>
                 @endif
@@ -211,7 +211,7 @@
 
     {{-- FORMULÁRIO NOVA DESPESA --}}
     <div>
-        <div class="bg-white rounded-lg shadow p-5 sticky top-4">
+        <div class="bg-white rounded-lg shadow p-5 sticky top-4" x-data="{ formaPgto: '{{ old('forma_pagamento', 'pix') }}' }">
             <h2 class="text-base font-semibold text-gray-800 mb-4">➕ Nova Despesa</h2>
             <form method="POST" action="{{ route('finance.expenses.store') }}" class="space-y-3">
                 @csrf
@@ -270,12 +270,27 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Pagamento *</label>
-                        <select name="forma_pagamento" required class="form-control text-sm w-full">
-                            <option value="pix" {{ old('forma_pagamento','pix')==='pix'?'selected':'' }}>Pix</option>
-                            <option value="debito" {{ old('forma_pagamento')==='debito'?'selected':'' }}>Débito</option>
-                            <option value="dinheiro" {{ old('forma_pagamento')==='dinheiro'?'selected':'' }}>Dinheiro</option>
+                        <select name="forma_pagamento" required class="form-control text-sm w-full"
+                                x-model="formaPgto">
+                            <option value="pix"     {{ old('forma_pagamento','pix')==='pix'    ?'selected':'' }}>Pix</option>
+                            <option value="debito"  {{ old('forma_pagamento')==='debito' ?'selected':'' }}>Débito</option>
+                            <option value="dinheiro"{{ old('forma_pagamento')==='dinheiro'?'selected':'' }}>Dinheiro</option>
+                            <option value="credito" {{ old('forma_pagamento')==='credito'?'selected':'' }}>💳 Crédito</option>
                         </select>
                     </div>
+                </div>
+
+                {{-- Cartão de crédito (só aparece quando forma = crédito) --}}
+                <div x-show="formaPgto === 'credito'" x-cloak>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Cartão de crédito</label>
+                    <select name="credit_card_id" class="form-control text-sm w-full">
+                        <option value="">Selecione o cartão...</option>
+                        @foreach($creditCards as $card)
+                            <option value="{{ $card->id }}" {{ old('credit_card_id')==$card->id?'selected':'' }}>
+                                {{ $card->nome }} @if($card->bandeira)({{ $card->bandeira }})@endif
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">

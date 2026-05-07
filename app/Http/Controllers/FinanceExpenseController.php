@@ -6,6 +6,7 @@ use App\Models\FinanceExpense;
 use App\Models\FuelEntry;
 use App\Models\Invoice;
 use App\Models\VehicleExpense;
+use App\Models\CreditCard;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,11 @@ class FinanceExpenseController extends Controller
         $fixas     = $expenses->where('tipo_despesa', 'fixa');
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
+        // ---- Cartões de crédito (para select) -----------------------
+        $creditCards = CreditCard::where('user_id', Auth::id())
+            ->orderBy('nome')
+            ->get();
+
         // ---- Mercado: invoices do mês --------------------------------
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
@@ -46,19 +52,16 @@ class FinanceExpenseController extends Controller
         $totalMercado = $invoicesDoMes->sum('valor');
 
         // ---- Veículos: vehicle_expenses + fuel_entries ---------------
-        // VehicleExpense não tem user_id direto — filtra via vehicle
         $vexpRaw = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
             ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
             ->with('vehicle')
             ->get();
 
-        // FuelEntry tem user_id direto
         $fuelRaw = FuelEntry::whereBetween('data', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->with('vehicle')
             ->get();
 
-        // Agrupa tudo por vehicle_id
         $vehicleIds = $vexpRaw->pluck('vehicle_id')
             ->merge($fuelRaw->pluck('vehicle_id'))
             ->unique();
@@ -67,7 +70,6 @@ class FinanceExpenseController extends Controller
             $vexps = $vexpRaw->where('vehicle_id', $vehicleId);
             $fuels = $fuelRaw->where('vehicle_id', $vehicleId);
 
-            // Nome do veículo
             $primeiroVexp = $vexps->first();
             $primeiroFuel = $fuels->first();
             $nomeVeiculo  = ($primeiroVexp->vehicle->nome ?? null)
@@ -139,7 +141,8 @@ class FinanceExpenseController extends Controller
             'totalFixas', 'totalVariaveis', 'totalGeral',
             'totalPago', 'totalPendente', 'porCategoria', 'meses',
             'invoicesDoMes', 'totalMercado',
-            'vehicleExpensesDoMes', 'totalVeiculos'
+            'vehicleExpensesDoMes', 'totalVeiculos',
+            'creditCards'
         ));
     }
 
@@ -149,7 +152,8 @@ class FinanceExpenseController extends Controller
             'descricao'       => 'required|string|max:255',
             'tipo_despesa'    => 'required|in:fixa,variavel',
             'categoria'       => 'nullable|string|max:100',
-            'forma_pagamento' => 'required|in:debito,pix,dinheiro',
+            'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
+            'credit_card_id'  => 'nullable|exists:finance_credit_cards,id',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',
@@ -158,6 +162,11 @@ class FinanceExpenseController extends Controller
             'status'          => 'required|in:pago,pendente',
             'observacao'      => 'nullable|string|max:500',
         ]);
+
+        // Se não for crédito, limpa o cartão
+        if ($data['forma_pagamento'] !== 'credito') {
+            $data['credit_card_id'] = null;
+        }
 
         $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
         $data['origem']         = 'manual';
@@ -175,7 +184,8 @@ class FinanceExpenseController extends Controller
             'descricao'       => 'required|string|max:255',
             'tipo_despesa'    => 'required|in:fixa,variavel',
             'categoria'       => 'nullable|string|max:100',
-            'forma_pagamento' => 'required|in:debito,pix,dinheiro',
+            'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
+            'credit_card_id'  => 'nullable|exists:finance_credit_cards,id',
             'pessoa'          => 'required|in:WIL,MAY,compartilhado',
             'valor'           => 'required|numeric|min:0.01',
             'mes_referencia'  => 'required|date_format:Y-m',
@@ -184,6 +194,10 @@ class FinanceExpenseController extends Controller
             'status'          => 'required|in:pago,pendente',
             'observacao'      => 'nullable|string|max:500',
         ]);
+
+        if ($data['forma_pagamento'] !== 'credito') {
+            $data['credit_card_id'] = null;
+        }
 
         $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
 
@@ -235,6 +249,7 @@ class FinanceExpenseController extends Controller
                     'tipo_despesa'    => 'fixa',
                     'categoria'       => $f->categoria,
                     'forma_pagamento' => $f->forma_pagamento,
+                    'credit_card_id'  => $f->credit_card_id,
                     'pessoa'          => $f->pessoa,
                     'valor'           => $f->valor,
                     'mes_referencia'  => $mes,
