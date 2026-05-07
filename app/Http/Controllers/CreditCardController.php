@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CreditCard;
+use Illuminate\Http\Request;
+
+class CreditCardController extends Controller
+{
+    public function index()
+    {
+        $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
+        return view('finance.credit_cards.index', compact('cards'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'nome'            => 'required|string|max:60',
+            'bandeira'        => 'required|in:visa,mastercard,elo,amex,hipercard,outro',
+            'pessoa'          => 'required|in:WIL,MAY,compartilhado',
+            'limite'          => 'nullable|numeric|min:0',
+            'dia_vencimento'  => 'required|integer|min:1|max:31',
+            'dia_fechamento'  => 'required|integer|min:1|max:31',
+            'cor'             => 'required|string|max:20',
+        ]);
+
+        CreditCard::create($data);
+
+        return back()->with('success', 'Cartão cadastrado com sucesso!');
+    }
+
+    public function update(Request $request, CreditCard $creditCard)
+    {
+        $data = $request->validate([
+            'nome'            => 'required|string|max:60',
+            'bandeira'        => 'required|in:visa,mastercard,elo,amex,hipercard,outro',
+            'pessoa'          => 'required|in:WIL,MAY,compartilhado',
+            'limite'          => 'nullable|numeric|min:0',
+            'dia_vencimento'  => 'required|integer|min:1|max:31',
+            'dia_fechamento'  => 'required|integer|min:1|max:31',
+            'cor'             => 'required|string|max:20',
+        ]);
+
+        $creditCard->update($data);
+
+        return back()->with('success', 'Cartão atualizado!');
+    }
+
+    public function toggleAtivo(CreditCard $creditCard)
+    {
+        $creditCard->update(['ativo' => !$creditCard->ativo]);
+        return back()->with('success', $creditCard->ativo ? 'Cartão ativado.' : 'Cartão desativado.');
+    }
+
+    public function destroy(CreditCard $creditCard)
+    {
+        $creditCard->delete();
+        return back()->with('success', 'Cartão removido.');
+    }
+}
