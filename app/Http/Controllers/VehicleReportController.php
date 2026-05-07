@@ -109,12 +109,13 @@ class VehicleReportController extends Controller
             return collect();
         }
 
+        // EXTRACT é padrão SQL e compatível com PostgreSQL (e MySQL >= 5.x)
         $mesesFuel = FuelEntry::whereIn('vehicle_id', $vehicleIds)
-            ->selectRaw('YEAR(data) as ano, MONTH(data) as mes')
+            ->selectRaw('EXTRACT(YEAR FROM data)::int as ano, EXTRACT(MONTH FROM data)::int as mes')
             ->distinct()->get();
 
         $mesesExp = VehicleExpense::whereIn('vehicle_id', $vehicleIds)
-            ->selectRaw('YEAR(data) as ano, MONTH(data) as mes')
+            ->selectRaw('EXTRACT(YEAR FROM data)::int as ano, EXTRACT(MONTH FROM data)::int as mes')
             ->distinct()->get();
 
         return $mesesFuel->concat($mesesExp)
