@@ -20,7 +20,7 @@ class MaintenanceReminderController extends Controller
         $validated = $request->validate([
             'descricao'           => ['required', 'string', 'max:120'],
             'km_ultimo_servico'   => ['nullable', 'integer', 'min:0'],
-            'intervalo_km'        => ['required', 'integer', 'min:100', 'max:200000'],
+            'intervalo_km'        => ['required', 'integer', 'min:100'],
             'data_ultimo_servico' => ['nullable', 'date'],
         ]);
 
