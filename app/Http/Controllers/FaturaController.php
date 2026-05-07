@@ -29,8 +29,8 @@ class FaturaController extends Controller
 
         $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
 
-        // Busca TODAS as despesas com cartao no periodo
-        $despesas = FinanceExpense::where('forma_pagamento', 'cartao')
+        // forma_pagamento salvo como 'credito' pelo FinanceExpenseController
+        $despesas = FinanceExpense::where('forma_pagamento', 'credito')
             ->where('mes_referencia', '>=', $mesInicio->format('Y-m-01'))
             ->where('mes_referencia', '<=', $mesFim->format('Y-m-t'))
             ->with('creditCard')
@@ -50,7 +50,7 @@ class FaturaController extends Controller
             }
         }
 
-        // Despesas sem credit_card_id
+        // Despesas sem credit_card_id vinculado
         $semCartao = [];
         foreach ($meses as $mes) {
             $semCartao[$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
