@@ -14,12 +14,12 @@ class FaturaController extends Controller
         $mesesAtras  = max(0, min(11, (int)($request->get('passados', 2))));
         $mesesFrente = max(0, min(11, (int)($request->get('futuros',  3))));
 
-        $hoje     = Carbon::now()->startOfMonth();
+        $hoje      = Carbon::now()->startOfMonth();
         $mesInicio = $hoje->copy()->subMonths($mesesAtras);
         $mesFim    = $hoje->copy()->addMonths($mesesFrente);
 
-        // Gera lista de meses no intervalo
-        $meses = collect();
+        // Lista de meses no intervalo
+        $meses  = collect();
         $cursor = $mesInicio->copy();
         while ($cursor->lte($mesFim)) {
             $meses->push($cursor->copy());
@@ -28,9 +28,12 @@ class FaturaController extends Controller
 
         $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
 
-        // Busca todas as despesas de crédito no período de uma vez
-        $despesas = FinanceExpense::where('forma_pagamento', 'credito')
-            ->whereIn('credit_card_id', $cards->pluck('id'))
+        // forma_pagamento = 'cartao' (nao 'credito')
+        // inclui despesas com credit_card_id preenchido OU forma_pagamento = 'cartao'
+        $despesas = FinanceExpense::where(function ($q) use ($cards) {
+                $q->where('forma_pagamento', 'cartao')
+                  ->orWhereIn('credit_card_id', $cards->pluck('id'));
+            })
             ->whereBetween('mes_referencia', [$mesInicio, $mesFim])
             ->orderBy('mes_referencia')
             ->orderBy('descricao')
@@ -45,22 +48,33 @@ class FaturaController extends Controller
             }
         }
 
-        foreach ($despesas as $d) {
-            $key = $d->mes_referencia->format('Y-m');
-            if (!isset($faturas[$d->credit_card_id][$key])) continue;
-            $faturas[$d->credit_card_id][$key]['total']  += (float) $d->valor;
-            $faturas[$d->credit_card_id][$key]['itens'][] = $d;
+        // Chave especial para despesas 'cartao' sem credit_card_id
+        $semCartao = [];
+        foreach ($meses as $mes) {
+            $semCartao[$mes->format('Y-m')] = ['total' => 0, 'itens' => []];
         }
 
-        // Total geral por mês (todos os cartões)
+        foreach ($despesas as $d) {
+            $key = $d->mes_referencia->format('Y-m');
+            if ($d->credit_card_id && isset($faturas[$d->credit_card_id][$key])) {
+                $faturas[$d->credit_card_id][$key]['total']  += (float) $d->valor;
+                $faturas[$d->credit_card_id][$key]['itens'][] = $d;
+            } elseif (!$d->credit_card_id && isset($semCartao[$key])) {
+                $semCartao[$key]['total']  += (float) $d->valor;
+                $semCartao[$key]['itens'][] = $d;
+            }
+        }
+
+        // Total geral por mes
         $totalPorMes = [];
         foreach ($meses as $mes) {
             $key = $mes->format('Y-m');
-            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas[$c->id][$key]['total'] ?? 0);
+            $totalPorMes[$key] = collect($cards)->sum(fn($c) => $faturas[$c->id][$key]['total'] ?? 0)
+                + ($semCartao[$key]['total'] ?? 0);
         }
 
         return view('finance.faturas.index', compact(
-            'cards', 'meses', 'faturas', 'totalPorMes',
+            'cards', 'meses', 'faturas', 'totalPorMes', 'semCartao',
             'hoje', 'mesesAtras', 'mesesFrente'
         ));
     }
