@@ -372,7 +372,7 @@
                                     <label class="block text-sm font-medium text-gray-700">Km</label>
                                     <input type="number" name="lembrete_intervalo_km"
                                            value="{{ old('lembrete_intervalo_km') }}"
-                                           class="form-control mt-1" min="100" max="200000"
+                                           class="form-control mt-1" min="100"
                                            placeholder="Ex: 10000">
                                 </div>
                                 <div>
@@ -414,12 +414,6 @@
                                     </tr>
                                 </thead>
 
-                                {{--
-                                    FIX Alpine.js: cada despesa recebe seu próprio <tbody x-data>.
-                                    HTML permite múltiplos <tbody> numa <table> — isso é válido.
-                                    Assim a <tr> de edição fica no MESMO escopo que a <tr> normal
-                                    e o x-show="editando" funciona corretamente.
-                                --}}
                                 @php $labExp = ['manutencao'=>'Manutenção','seguro'=>'Seguro','impostos'=>'Impostos/IPVA','pedagio'=>'Pedágio/Estacionamento','outros'=>'Outros']; @endphp
 
                                 @foreach($expenses as $exp)
@@ -435,14 +429,12 @@
                                         </td>
                                         <td class="px-4 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($exp->valor, 2, ',', '.') }}</td>
                                         <td class="px-4 py-2 text-right text-sm whitespace-nowrap">
-                                            {{-- Botão Editar --}}
                                             <button type="button"
                                                     @click="editando = !editando"
                                                     :class="editando ? 'text-orange-600 hover:text-orange-800' : 'text-blue-500 hover:text-blue-700'"
                                                     class="text-xs mr-2">
                                                 <span x-text="editando ? '✕ Fechar' : '✏️ Editar'"></span>
                                             </button>
-                                            {{-- Botão Remover --}}
                                             <form action="{{ route('vehicles.expenses.destroy', [$vehicle, $exp]) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta despesa?')">
                                                 @csrf
                                                 @method('DELETE')
@@ -451,7 +443,7 @@
                                         </td>
                                     </tr>
 
-                                    {{-- Linha de edição inline — mesmo tbody, escopo compartilhado --}}
+                                    {{-- Linha de edição inline --}}
                                     <tr x-show="editando" x-cloak class="bg-orange-50">
                                         <td colspan="6" class="px-4 py-4 border-l-4 border-orange-400">
                                             <form action="{{ route('vehicles.expenses.update', [$vehicle, $exp]) }}"
