@@ -1,39 +1,89 @@
-# Meu App — Gestão de Compras Domésticas
+# 🏠 Meu App — Gestão Doméstica Integrada
 
-Aplicativo web para controle inteligente de compras domésticas. Permite importar notas fiscais, categorizar produtos, monitorar preços, criar listas de compras e analisar encartes com inteligência artificial.
+Aplicativo web para gestão doméstica completa: compras de supermercado, finanças pessoais e controle de veículos.
 
-## Funcionalidades
+---
 
-- 📄 **Importação de Notas Fiscais** — parse e armazenamento de NF-e
-- 📦 **Catálogo de Produtos** — agrupamento automático e manual de produtos similares
-- 🏷️ **Categorias** — classificação por categoria com atualização em lote
-- 📊 **Dashboard** — visão geral dos gastos e compras
-- 📈 **Relatórios** — relatório mensal e por período
-- 💰 **Orçamento** — definição e controle de orçamento por categoria
-- 🔔 **Alertas de Preço** — notificação quando produto atingir preço-alvo
-- 🛒 **Listas de Compras** — criação inteligente com sugestões baseadas no histórico
-- 🤖 **ML de Agrupamento** — machine learning para identificar produtos similares
-- 🖼️ **Encartes com IA** — upload e análise de encartes de supermercado via IA
-- 📸 **Fotos de Produtos** — upload de imagens por produto
+## 🎯 Funcionalidades
 
-## Stack
+### 📄 Notas Fiscais
+- **Importação de NFC-e** — parse e armazenamento automático
+- **Lançamento Manual** — registro de compras sem nota fiscal
+- **Histórico de Notas** — visualização e edição de notas importadas
+
+### 📦 Produtos
+- **Catálogo de Produtos** — todos os produtos comprados
+- **Normalização** — nomes padronizados com sugestão automática
+- **Categorização** — classificação por categoria (individual ou em lote)
+- **Agrupamento Inteligente** — produtos iguais com nomes diferentes
+- **Histórico de Preços** — evolução do preço com gráficos
+- **Fotos** — upload de imagem por produto
+- **Similares** — algoritmo de similaridade entre produtos
+
+### 🛒 Compras
+- **Listas de Compras** — criação manual ou rápida por categoria
+- **Planejamento Inteligente** — sugestões baseadas no histórico
+- **Tendências** — análise de gastos e frequência
+- **Sazonalidade** — histórico mensal de compras
+
+### 🏷️ Ofertas e Alertas
+- **Ofertas** — cadastro manual de promoções
+- **Encartes com IA** — upload e análise via Google Gemini
+- **Comparação de Preços** — oferta vs histórico
+- **Alertas de Preço** — notificação quando produto atinge limite
+
+### 💰 Finanças
+- **Receitas** — salários, freelances, outras entradas
+- **Despesas Fixas** — contas recorrentes mensais
+- **Despesas Variáveis** — gastos do dia a dia
+- **Cartões de Crédito** — cadastro com limite, fechamento e vencimento
+- **Compras Parceladas** — geração automática de parcelas
+- **Faturas** — visão detalhada por cartão e mês
+- **Orçamento** — definição e controle por categoria
+- **Fluxo de Caixa** — visão consolidada de receitas e despesas
+
+### 🚗 Veículos
+- **Cadastro de Veículos** — apelido, marca, modelo, ano, placa
+- **Abastecimentos** — valor, litros, km, posto, tipo de combustível
+- **Cálculo Automático** — consumo médio (km/L) e custo por km
+- **Despesas** — manutenção, seguro, impostos, pedágio
+- **Lembretes** — alertas de manutenção por km e/ou data
+- **Relatório Mensal** — combustível, manutenção, outros gastos
+- **Comparativo de Postos** — ranking de preço por litro
+- **Gráficos** — evolução de consumo, custo e preços
+
+### 📊 Dashboard e Relatórios
+- **Dashboard** — visão geral de gastos, notas e alertas
+- **Relatório Mensal** — produtos, categorias, gastos
+- **Relatório por Período** — datas flexíveis
+- **Gráficos** — evolução de gastos e consumo
+
+---
+
+## 🏗️ Stack
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | PHP 8.3 + Laravel 13 |
+| Backend | PHP 8.3+ + Laravel 13 |
 | Banco de dados | PostgreSQL 18 |
-| Frontend | Blade + Tailwind CSS + Vite |
+| Frontend | Blade + Tailwind CSS + Alpine.js + Vite |
+| Gráficos | Chart.js |
 | Infraestrutura | Docker (Laravel Sail) |
 | Testes | PHPUnit 12 |
-| Autenticao | Laravel Breeze |
+| Autenticação | Laravel Breeze |
+| IA | Google Gemini (análise de encartes) |
 
-## Pré-requisitos
+---
 
-- Docker e Docker Compose instalados
+## 📋 Pré-requisitos
+
+- Docker e Docker Compose
 - PHP 8.3+ e Composer (para rodar sem Docker)
 - Node.js 20+ e npm
 
-## Instalação rápida (recomendado)
+---
+
+## 🚀 Instalação rápida (recomendado)
 
 ```bash
 # 1. Clone o repositório
@@ -42,88 +92,3 @@ cd meu-app
 
 # 2. Instale tudo com um comando só
 composer setup
-```
-
-O comando `composer setup` executa automaticamente:
-- `composer install`
-- Cria o `.env` a partir do `.env.example`
-- Gera a `APP_KEY`
-- Executa as migrations
-- `npm install` + `npm run build`
-
-## Executando com Docker (Laravel Sail)
-
-```bash
-# Suba os containers (app + PostgreSQL)
-./vendor/bin/sail up -d
-
-# Rode as migrations
-./vendor/bin/sail artisan migrate
-
-# Inicie o servidor de desenvolvimento
-./vendor/bin/sail npm run dev
-```
-
-Acesse em: [http://localhost](http://localhost)
-
-## Executando sem Docker
-
-```bash
-# Configure o .env com suas credenciais do banco
-cp .env.example .env
-php artisan key:generate
-
-# Rode as migrations
-php artisan migrate
-
-# Inicie tudo em paralelo (servidor, queue, logs e Vite)
-composer dev
-```
-
-## Configuração do `.env`
-
-Copie `.env.example` e ajuste as variáveis principais:
-
-```env
-APP_NAME="Meu App"
-APP_URL=http://localhost
-
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=meu_app
-DB_USERNAME=seu_usuario
-DB_PASSWORD=sua_senha
-```
-
-## Estrutura do Projeto
-
-```
-app/
-├── Http/Controllers/   # Controllers da aplicação
-├── Models/             # Eloquent Models
-├── Services/           # Lógica de negócio
-├── Observers/          # Observadores de Model
-└── Policies/           # Autorizações
-database/
-├── migrations/         # Migrations do banco
-└── seeders/            # Seeders
-resources/
-├── views/              # Templates Blade
-└── js/ + css/          # Assets do frontend
-routes/
-├── web.php             # Rotas web (todas protegidas por auth)
-└── auth.php            # Rotas de autenticao
-```
-
-## Testes
-
-```bash
-composer test
-# ou
-php artisan test
-```
-
-## Licença
-
-Este projeto é de uso pessoal.
