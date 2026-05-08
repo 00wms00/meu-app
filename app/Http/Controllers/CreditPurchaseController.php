@@ -69,4 +69,34 @@ class CreditPurchaseController extends Controller
         ]);
         return back()->with('success', 'Parcela atualizada.');
     }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'credit_card_id' => 'required|exists:credit_cards,id',
+            'descricao'      => 'required|string|max:120',
+            'categoria'      => 'nullable|string|max:60',
+            'pessoa'         => 'required|in:WIL,MAY,compartilhado',
+            'valor_total'    => 'required|numeric|min:0.01',
+            'parcelas_total' => 'required|integer|min:1|max:48',
+            'data_compra'    => 'required|date',
+            'observacao'     => 'nullable|string|max:255',
+        ]);
+
+        // Validação de limite do cartão
+        $card = CreditCard::find($data['credit_card_id']);
+        if ($card && $card->limite > 0) {
+            $limiteDisponivel = $card->limiteDisponivel();
+            if ($data['valor_total'] > $limiteDisponivel) {
+                return back()
+                    ->withErrors(['valor_total' => "Limite insuficiente! Disponível: R$ " . number_format($limiteDisponivel, 2, ',', '.')])
+                    ->withInput();
+            }
+        }
+
+        $purchase = FinanceCreditPurchase::create($data);
+        $purchase->gerarParcelas();
+
+        return back()->with('success', "Compra lançada! {$purchase->parcelas_total}x de R$ " . number_format($purchase->valor_parcela, 2, ',', '.'));
+    }
 }

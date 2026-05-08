@@ -106,6 +106,7 @@ class FinanceExpenseController extends Controller
 
     public function store(Request $request)
     {
+
         $data = $request->validate([
             'descricao'       => 'required|string|max:255',
             'tipo_despesa'    => 'required|in:fixa,variavel',
@@ -121,6 +122,16 @@ class FinanceExpenseController extends Controller
             'status'          => 'required|in:pago,pendente',
             'observacao'      => 'nullable|string|max:500',
         ]);
+
+        // Validação de limite do cartão
+        if ($data['forma_pagamento'] === 'credito' && !empty($data['credit_card_id'])) {
+            $card = CreditCard::find($data['credit_card_id']);
+            if ($card && $card->limiteEstourado()) {
+                return back()
+                    ->withErrors(['credit_card_id' => 'Limite do cartão estourado!'])
+                    ->withInput();
+            }
+        }
 
         if ($data['forma_pagamento'] !== 'credito') {
             // Não é crédito: salva normalmente, 1 linha

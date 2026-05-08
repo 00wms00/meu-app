@@ -14,7 +14,7 @@ class CreditCardController extends Controller
         $cards = CreditCard::orderBy('pessoa')->orderBy('nome')->get();
 
         // Previsão de fatura: próximos 3 meses por cartão
-        $hoje        = Carbon::now();
+        $hoje = Carbon::now();
         $mesesFuturos = collect();
         for ($i = 0; $i <= 2; $i++) {
             $mesesFuturos->push($hoje->copy()->addMonths($i)->startOfMonth());
@@ -24,13 +24,9 @@ class CreditCardController extends Controller
         foreach ($cards as $card) {
             $previsaoFatura[$card->id] = [];
             foreach ($mesesFuturos as $mes) {
-                $total = FinanceExpense::where('credit_card_id', $card->id)
-                    ->whereYear('mes_referencia', $mes->year)
-                    ->whereMonth('mes_referencia', $mes->month)
-                    ->sum('valor');
                 $previsaoFatura[$card->id][] = [
                     'mes'   => $mes->translatedFormat('M/Y'),
-                    'valor' => (float) $total,
+                    'valor' => $card->previsaoFatura($mes),
                 ];
             }
         }
