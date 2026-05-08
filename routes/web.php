@@ -12,6 +12,10 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MaintenanceReminderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductAgrupamentoController;
+use App\Http\Controllers\ProductFotoController;
+use App\Http\Controllers\ProductMlController;
+use App\Http\Controllers\PriceAlertController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CategoryController;
@@ -50,41 +54,52 @@ Route::middleware(['auth'])->group(function () {
 
     // ==================== PRODUTOS ====================
     Route::prefix('products')->name('products.')->group(function () {
+        // Normalização
         Route::get('/normalizacao', [ProductController::class, 'normalizacao'])->name('normalizacao');
         Route::post('/{product}/normalizar', [ProductController::class, 'aprovarNormalizacao'])->name('normalizar');
         Route::post('/normalizar-todos', [ProductController::class, 'aprovarTodasNormalizacoes'])->name('normalizar-todos');
+
+        // Categorias
         Route::get('/categorias', [ProductController::class, 'categorias'])->name('categorias');
         Route::post('/categorizar-lote', [ProductController::class, 'categorizarLote'])->name('categorizar-lote');
-        Route::get('/agrupamentos', [ProductController::class, 'agrupamentos'])->name('agrupamentos');
-        Route::post('/agrupar-automatico', [ProductController::class, 'agruparAutomatico'])->name('agrupar-automatico');
-        Route::post('/criar-grupo', [ProductController::class, 'criarGrupo'])->name('criar-grupo');
-        Route::get('/ml-sugestoes', [ProductController::class, 'mlSugestoes'])->name('ml-sugestoes');
-        Route::post('/ml-agrupar', [ProductController::class, 'mlAgrupar'])->name('ml-agrupar');
-        Route::post('/{product}/agrupar', [ProductController::class, 'agrupar'])->name('agrupar');
-        Route::post('/{product}/desagrupar', [ProductController::class, 'desagrupar'])->name('desagrupar');
-        Route::post('/{product}/tornar-canonico', [ProductController::class, 'tornarCanonico'])->name('tornar-canonico');
-        Route::post('/{product}/renomear-grupo', [ProductController::class, 'renomearGrupo'])->name('renomear-grupo');
-        Route::post('/{product}/desfazer-grupo', [ProductController::class, 'desfazerGrupo'])->name('desfazer-grupo');
-        Route::post('/{product}/adicionar-ao-grupo', [ProductController::class, 'adicionarAoGrupo'])->name('adicionar-ao-grupo');
         Route::post('/{product}/categoria', [ProductController::class, 'atualizarCategoria'])->name('atualizar-categoria');
+
+        // Agrupamentos → ProductAgrupamentoController
+        Route::get('/agrupamentos', [ProductAgrupamentoController::class, 'agrupamentos'])->name('agrupamentos');
+        Route::post('/agrupar-automatico', [ProductAgrupamentoController::class, 'agruparAutomatico'])->name('agrupar-automatico');
+        Route::post('/criar-grupo', [ProductAgrupamentoController::class, 'criarGrupo'])->name('criar-grupo');
+        Route::post('/{product}/agrupar', [ProductAgrupamentoController::class, 'agrupar'])->name('agrupar');
+        Route::post('/{product}/desagrupar', [ProductAgrupamentoController::class, 'desagrupar'])->name('desagrupar');
+        Route::post('/{product}/tornar-canonico', [ProductAgrupamentoController::class, 'tornarCanonico'])->name('tornar-canonico');
+        Route::post('/{product}/renomear-grupo', [ProductAgrupamentoController::class, 'renomearGrupo'])->name('renomear-grupo');
+        Route::post('/{product}/desfazer-grupo', [ProductAgrupamentoController::class, 'desfazerGrupo'])->name('desfazer-grupo');
+        Route::post('/{product}/adicionar-ao-grupo', [ProductAgrupamentoController::class, 'adicionarAoGrupo'])->name('adicionar-ao-grupo');
+
+        // ML Interativo → ProductMlController
+        Route::get('/ml-sugestoes', [ProductMlController::class, 'sugestoesInterativo'])->name('ml-sugestoes');
+        Route::post('/ml-agrupar', [ProductMlController::class, 'confirmarAgrupamento'])->name('ml-agrupar');
+        Route::get('/ml-interativo', [ProductMlController::class, 'sugestoesInterativo'])->name('ml-interativo');
+        Route::post('/ml-confirmar', [ProductMlController::class, 'confirmarAgrupamento'])->name('ml-confirmar');
+        Route::get('/{product}/similares', [ProductMlController::class, 'similares'])->name('similares');
+
+        // Fotos → ProductController
         Route::post('/{product}/foto', [ProductController::class, 'uploadFoto'])->name('foto');
         Route::delete('/{product}/foto', [ProductController::class, 'removerFoto'])->name('foto.remover');
-        Route::post('/{product}/alerta', [ProductController::class, 'criarAlerta'])->name('alerta.criar');
-        Route::get('/{product}/similares', [ProductController::class, 'similares'])->name('similares');
+
+        // Alerta de preço → PriceAlertController
+        Route::post('/{product}/alerta', [PriceAlertController::class, 'criar'])->name('alerta.criar');
+
+        // CRUD Produtos
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/{product}', [ProductController::class, 'show'])->name('show');
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
     });
 
-    // Alertas de preço
-    Route::get('/alertas', [ProductController::class, 'alertas'])->name('alertas.index');
-    Route::delete('/alertas/{alerta}', [ProductController::class, 'removerAlerta'])->name('alertas.remover');
-    Route::post('/alertas/{alerta}/toggle', [ProductController::class, 'toggleAlerta'])->name('alertas.toggle');
-
-    // ML Interativo
-    Route::get('/ml-interativo', [ProductController::class, 'mlSugestoesInterativo'])->name('products.ml-interativo');
-    Route::post('/ml-confirmar', [ProductController::class, 'mlConfirmarAgrupamento'])->name('products.ml-confirmar');
+    // Alertas de preço → PriceAlertController
+    Route::get('/alertas', [PriceAlertController::class, 'index'])->name('alertas.index');
+    Route::delete('/alertas/{alerta}', [PriceAlertController::class, 'remover'])->name('alertas.remover');
+    Route::post('/alertas/{alerta}/toggle', [PriceAlertController::class, 'toggle'])->name('alertas.toggle');
 
     // Relatórios (compras)
     Route::get('/relatorio-mensal', [RelatorioController::class, 'mensal'])->name('relatorio.mensal');
