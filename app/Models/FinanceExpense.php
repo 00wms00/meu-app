@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class FinanceExpense extends Model
 {
     protected $fillable = [
+        'grupo_parcelas',
         'descricao',
         'tipo_despesa',
         'categoria',
@@ -31,7 +33,20 @@ class FinanceExpense extends Model
         'data_vencimento' => 'date',
         'data_pagamento'  => 'date',
         'valor'           => 'decimal:2',
+        'grupo_parcelas'  => 'string',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (FinanceExpense $expense) {
+            // Gera UUID automaticamente se for crédito parcelado e não tiver grupo
+            if ($expense->forma_pagamento === 'credito' 
+                && ($expense->parcelas_total > 1) 
+                && empty($expense->grupo_parcelas)) {
+                $expense->grupo_parcelas = (string) Str::uuid();
+            }
+        });
+    }
 
     // ---- Relacionamentos ------------------------------------------------
 
@@ -67,6 +82,11 @@ class FinanceExpense extends Model
     public function scopePendentes($query)
     {
         return $query->where('status', 'pendente');
+    }
+
+    public function scopeDoGrupo($query, string $grupoUuid)
+    {
+        return $query->where('grupo_parcelas', $grupoUuid);
     }
 
     // ---- Helpers --------------------------------------------------------
@@ -107,5 +127,36 @@ class FinanceExpense extends Model
     public function isParcelada(): bool
     {
         return $this->parcelas_total > 1;
+    }
+
+    public function getParcelasIrma(): \Illuminate\Database\Eloquent\Collection
+    {
+        if (! $this->grupo_parcelas) {
+            return collect([$this]);
+        }
+
+        return self::doGrupo($this->grupo_parcelas)
+            ->orderBy('mes_referencia')
+            ->get();
+    }
+
+    public function getNumeroParcelaAttribute(): string
+    {
+        if (! $this->isParcelada()) {
+            return 'à vista';
+        }
+
+        if ($this->grupo_parcelas) {
+            $irmas = $this->getParcelasIrma();
+            $index = $irmas->search(fn($item) => $item->id === $this->id);
+            return ($index !== false ? $index + 1 : '?') . '/' . $this->parcelas_total;
+        }
+
+        // Fallback: tenta extrair do nome
+        if (preg_match('/\((\d+)\/(\d+)\)/', $this->descricao, $m)) {
+            return $m[1] . '/' . $m[2];
+        }
+
+        return '?/' . $this->parcelas_total;
     }
 }

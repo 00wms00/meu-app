@@ -66,7 +66,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Agrupamentos → ProductAgrupamentoController
         Route::get('/agrupamentos', [ProductAgrupamentoController::class, 'agrupamentos'])->name('agrupamentos');
-        Route::post('/agrupar-automatico', [ProductAgrupamentoController::class, 'agruparAutomatico'])->name('agrupar-automatico');
+      //  Route::post('/agrupar-automatico', [ProductAgrupamentoController::class, 'agruparAutomatico'])->name('agrupar-automatico');
         Route::post('/criar-grupo', [ProductAgrupamentoController::class, 'criarGrupo'])->name('criar-grupo');
         Route::post('/{product}/agrupar', [ProductAgrupamentoController::class, 'agrupar'])->name('agrupar');
         Route::post('/{product}/desagrupar', [ProductAgrupamentoController::class, 'desagrupar'])->name('desagrupar');

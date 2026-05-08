@@ -23,12 +23,7 @@
                     📊 Mercado e Finanças
                 </a>
 
-                {{-- ====================================================
-                     MENU DESKTOP
-                     Grupos: Dashboard | Notas | Produtos | Compras | Finanças | Sair
-                     "Finanças" reúne: Orçamento + Alertas + Ofertas + Categorias
-                     (itens que não cabem na barra sem dropdown próprio)
-                     ==================================================== --}}
+                {{-- MENU DESKTOP --}}
                 <div class="hidden md:flex items-center space-x-1">
                     @auth
 
@@ -61,13 +56,13 @@
                                  @keydown.escape.window="openDropdown = null"
                                  class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('import.create') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4E5; Importar NFC-e</a>
-                                <a href="{{ route('lancamento.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x270D; Lançamento Manual</a>
+                                <a href="{{ route('import.create') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📥 Importar NFC-e</a>
+                                <a href="{{ route('lancamento.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">✍️ Lançamento Manual</a>
                                 <hr class="my-1 border-gray-100">
-                                <a href="{{ route('invoices.index') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Ver Notas</a>
+                                <a href="{{ route('invoices.index') }}"    class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📋 Ver Notas</a>
                                 <hr class="my-1 border-gray-100">
-                                <a href="{{ route('relatorio.mensal') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CA; Relatório Mensal</a>
-                                <a href="{{ route('relatorio.periodo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4C5; Relatório por Período</a>
+                                <a href="{{ route('relatorio.mensal') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📊 Relatório Mensal</a>
+                                <a href="{{ route('relatorio.periodo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📅 Relatório por Período</a>
                             </div>
                         </div>
 
@@ -77,7 +72,7 @@
                                     :aria-expanded="openDropdown === 'produtos'"
                                     aria-haspopup="true"
                                     class="px-3 py-2 rounded text-sm inline-flex items-center gap-1 transition
-                                           {{ request()->routeIs('products.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                                           {{ request()->routeIs('products.*','categories.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
                                 📦 Produtos
                                 <svg class="w-4 h-4 transition-transform" :class="openDropdown === 'produtos' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -94,13 +89,13 @@
                                  @keydown.escape.window="openDropdown = null"
                                  class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('products.index') }}"        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Todos os Produtos</a>
+                                <a href="{{ route('products.index') }}"        class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📋 Todos os Produtos</a>
                                 <hr class="my-1 border-gray-100">
-                                <a href="{{ route('products.categorias') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F3F7; Categorizar</a>
-                                <a href="{{ route('categories.index') }}"      class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x2699; Gerenciar Categorias</a>
+                                <a href="{{ route('products.categorias') }}"   class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🏷️ Categorizar</a>
+                                <a href="{{ route('categories.index') }}"      class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">⚙️ Gerenciar Categorias</a>
                                 <hr class="my-1 border-gray-100">
-                                <a href="{{ route('products.agrupamentos') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F517; Agrupamentos</a>
-                                <a href="{{ route('products.ml-interativo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F916; ML Interativo</a>
+                                <a href="{{ route('products.agrupamentos') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🔗 Agrupamentos</a>
+                                <a href="{{ route('products.ml-interativo') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🤖 ML Interativo</a>
                             </div>
                         </div>
 
@@ -127,8 +122,39 @@
                                  @keydown.escape.window="openDropdown = null"
                                  class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('shopping-lists.index') }}"       class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4CB; Listas de Compras</a>
-                                <a href="{{ route('shopping-lists.planejamento') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F5D3; Planejamento</a>
+                                <a href="{{ route('shopping-lists.index') }}"       class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📋 Listas de Compras</a>
+                                <a href="{{ route('shopping-lists.planejamento') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🗓️ Planejamento</a>
+                            </div>
+                        </div>
+
+                        {{-- Dropdown: Veículos (NOVO) --}}
+                        <div class="relative">
+                            <button @click="openDropdown = openDropdown === 'veiculos' ? null : 'veiculos'"
+                                    :aria-expanded="openDropdown === 'veiculos'"
+                                    aria-haspopup="true"
+                                    class="px-3 py-2 rounded text-sm inline-flex items-center gap-1 transition
+                                           {{ request()->routeIs('vehicles.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                                🚗 Veículos
+                                <svg class="w-4 h-4 transition-transform" :class="openDropdown === 'veiculos' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="openDropdown === 'veiculos'"
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 @click.outside="openDropdown = null"
+                                 @keydown.escape.window="openDropdown = null"
+                                 class="absolute left-0 mt-1 w-52 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 role="menu">
+                                <a href="{{ route('vehicles.index') }}"              class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🚗 Meus Veículos</a>
+                                <a href="{{ route('vehicles.create') }}"             class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">➕ Novo Veículo</a>
+                                <hr class="my-1 border-gray-100">
+                                <a href="{{ route('vehicles.report.monthly') }}"     class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📊 Relatório Mensal</a>
+                                <a href="{{ route('vehicles.report.fuel-stations') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">⛽ Comparativo de Postos</a>
                             </div>
                         </div>
 
@@ -138,7 +164,7 @@
                                     :aria-expanded="openDropdown === 'financas'"
                                     aria-haspopup="true"
                                     class="px-3 py-2 rounded text-sm inline-flex items-center gap-1 transition
-                                           {{ request()->routeIs('budgets.*','alertas.*','offers.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                                           {{ request()->routeIs('finance.*','budgets.*','alertas.*','offers.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
                                 💰 Finanças
                                 <svg class="w-4 h-4 transition-transform" :class="openDropdown === 'financas' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -153,11 +179,26 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  @click.outside="openDropdown = null"
                                  @keydown.escape.window="openDropdown = null"
-                                 class="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                                 class="absolute left-0 mt-1 w-56 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
                                  role="menu">
-                                <a href="{{ route('budgets.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F4B0; Orçamento</a>
-                                <a href="{{ route('alertas.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F514; Alertas de Preço</a>
-                                <a href="{{ route('offers.index') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">&#x1F3F7; Ofertas / Encartes</a>
+                                {{-- Seção: Fluxo de Caixa --}}
+                                <p class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Fluxo de Caixa</p>
+                                <a href="{{ route('finance.incomes.index') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700" role="menuitem">💰 Receitas</a>
+                                <a href="{{ route('finance.expenses.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700" role="menuitem">📋 Despesas</a>
+
+                                {{-- Seção: Cartões --}}
+                                <hr class="my-1 border-gray-100">
+                                <p class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartões de Crédito</p>
+                                <a href="{{ route('finance.credit_cards.index') }}"     class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">💳 Gerenciar Cartões</a>
+                                <a href="{{ route('finance.credit_purchases.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🛍️ Compras no Crédito</a>
+                                <a href="{{ route('finance.faturas.index') }}"          class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📄 Faturas</a>
+
+                                {{-- Seção: Planejamento --}}
+                                <hr class="my-1 border-gray-100">
+                                <p class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Planejamento</p>
+                                <a href="{{ route('budgets.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🎯 Orçamento</a>
+                                <a href="{{ route('alertas.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🔔 Alertas de Preço</a>
+                                <a href="{{ route('offers.index') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🏷️ Ofertas / Encartes</a>
                             </div>
                         </div>
 
@@ -187,10 +228,7 @@
                 </button>
             </div>
 
-            {{-- ====================================================
-                 MENU MOBILE
-                 Mesmos grupos do desktop, na mesma ordem, sem omissões.
-                 ==================================================== --}}
+            {{-- MENU MOBILE --}}
             <div id="mobile-menu" x-show="mobileOpen" class="md:hidden pb-3" x-transition>
                 @auth
                     {{-- Dashboard --}}
@@ -217,11 +255,29 @@
                     <a href="{{ route('shopping-lists.index') }}"       class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📋 Listas de Compras</a>
                     <a href="{{ route('shopping-lists.planejamento') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🗓️ Planejamento</a>
 
+                    {{-- Veículos (NOVO) --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Veículos</p>
+                    <a href="{{ route('vehicles.index') }}"                 class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🚗 Meus Veículos</a>
+                    <a href="{{ route('vehicles.create') }}"                class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">➕ Novo Veículo</a>
+                    <a href="{{ route('vehicles.report.monthly') }}"        class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📊 Relatório Mensal</a>
+                    <a href="{{ route('vehicles.report.fuel-stations') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">⛽ Comparativo de Postos</a>
+
                     {{-- Finanças --}}
                     <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Finanças</p>
-                    <a href="{{ route('budgets.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">💰 Orçamento</a>
-                    <a href="{{ route('alertas.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🔔 Alertas de Preço</a>
-                    <a href="{{ route('offers.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🏷️ Ofertas / Encartes</a>
+
+                    <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Fluxo de Caixa</p>
+                    <a href="{{ route('finance.incomes.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">💰 Receitas</a>
+                    <a href="{{ route('finance.expenses.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">📋 Despesas</a>
+
+                    <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Cartões de Crédito</p>
+                    <a href="{{ route('finance.credit_cards.index') }}"     class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">💳 Gerenciar Cartões</a>
+                    <a href="{{ route('finance.credit_purchases.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🛍️ Compras no Crédito</a>
+                    <a href="{{ route('finance.faturas.index') }}"          class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">📄 Faturas</a>
+
+                    <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Planejamento</p>
+                    <a href="{{ route('budgets.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🎯 Orçamento</a>
+                    <a href="{{ route('alertas.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🔔 Alertas de Preço</a>
+                    <a href="{{ route('offers.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🏷️ Ofertas / Encartes</a>
 
                     {{-- Sair --}}
                     <div class="pt-2">
