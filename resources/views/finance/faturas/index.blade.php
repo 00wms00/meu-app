@@ -1,4 +1,12 @@
 <x-app-layout>
+    <div style="background:yellow; padding:20px; margin:20px;">
+    DEBUG: Itens count = {{ $itens->count() }}<br>
+    Card ID = {{ $cardId }}<br>
+    Mês = {{ $mesStr }}<br>
+    @foreach($itens as $item)
+        Item: {{ $item['nome'] }} - {{ $item['parcela'] }} - R$ {{ number_format($item['valor'], 2, ',', '.') }}<br>
+    @endforeach
+</div>
     <x-slot name="header">
         <h2 class="text-xl font-semibold">Faturas de Cartão</h2>
     </x-slot>
