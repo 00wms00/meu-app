@@ -187,6 +187,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Faturas
         Route::get('/faturas', [FaturaController::class, 'index'])->name('faturas.index');
+        
 
         // Compras no Crédito + Parcelas
         Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');

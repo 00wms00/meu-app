@@ -1,111 +1,111 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="text-xl font-semibold">Faturas de Cartão</h2>
+    </x-slot>
 
-@section('title', 'Faturas de Cartões')
+    <div class="py-6">
+        <div class="max-w-5xl mx-auto px-4">
+            
+            {{-- Filtros --}}
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <form method="GET" class="flex flex-wrap gap-4 items-end">
+                    {{-- Cartão --}}
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cartão</label>
+                        <select name="card_id" class="w-full rounded-md border-gray-300">
+                            @foreach($cards as $c)
+                                <option value="{{ $c->id }}" {{ $cardId == $c->id ? 'selected' : '' }}>
+                                    {{ $c->bandeira_label }} - {{ $c->nome }} ({{ $c->pessoa_label }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-@section('content')
+                    {{-- Mês --}}
+                    <div class="w-[160px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+                        <select name="mes" class="w-full rounded-md border-gray-300">
+                            @foreach($meses as $m)
+                                <option value="{{ $m->format('Y-m') }}" {{ $mesStr == $m->format('Y-m') ? 'selected' : '' }}>
+                                    {{ $m->translatedFormat('F/Y') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">💳 Faturas de Cartões</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Despesas do cartão no mês selecionado</p>
-    </div>
-    <a href="{{ route('finance.credit_cards.index') }}" class="btn-back self-start sm:self-auto">← Cartões</a>
-</div>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        Filtrar
+                    </button>
+                </form>
+            </div>
 
-{{-- Filtros --}}
-<form method="GET" class="mb-6 flex flex-wrap gap-3 items-end bg-white rounded-xl shadow p-4">
-    <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Cartão</label>
-        <select name="card_id" class="form-control text-sm" onchange="this.form.submit()">
-            @foreach($cards as $c)
-                <option value="{{ $c->id }}" {{ $c->id == $cardId ? 'selected' : '' }}>
-                    {{ $c->nome }} &mdash; {{ $c->pessoa_label }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs font-medium text-gray-600 mb-1">Mês</label>
-        <select name="mes" class="form-control text-sm" onchange="this.form.submit()">
-            @foreach($meses as $m)
-                <option value="{{ $m->format('Y-m') }}" {{ $m->format('Y-m') === $mesStr ? 'selected' : '' }}>
-                    {{ ucfirst($m->translatedFormat('F \d\e Y')) }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-</form>
+            {{-- Detalhes do Cartão --}}
+            @if($card)
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 rounded-full" style="background-color: {{ $card->cor }}"></div>
+                    <div>
+                        <h3 class="text-lg font-semibold">{{ $card->bandeira_label }} - {{ $card->nome }}</h3>
+                        <p class="text-sm text-gray-500">
+                            Fechamento: dia {{ $card->dia_fechamento }} | 
+                            Vencimento: dia {{ $card->dia_vencimento }} |
+                            Limite: R$ {{ number_format($card->limite, 2, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endif
 
-{{-- Cabeçalho da fatura --}}
-@if($card)
-<div class="flex items-center gap-3 mb-4">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:{{ $card->cor ?? '#888' }}"></span>
-    <h2 class="text-lg font-bold text-gray-800">{{ $card->nome }}</h2>
-    <span class="text-sm text-gray-400">{{ ucfirst($mes->translatedFormat('F \d\e Y')) }}</span>
-</div>
-@endif
+            {{-- Itens da Fatura --}}
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-4 border-b">
+                    <h3 class="text-lg font-semibold">
+                        Fatura {{ \Carbon\Carbon::createFromFormat('Y-m', $mesStr)->translatedFormat('F/Y') }}
+                    </h3>
+                </div>
 
-{{-- Tabela desktop --}}
-<div class="hidden md:block bg-white rounded-xl shadow overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead>
-            <tr class="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
-                <th class="text-left px-5 py-3">Descrição</th>
-                <th class="text-center px-4 py-3 w-28">Parcela</th>
-                <th class="text-right px-5 py-3 w-36">Valor</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            @forelse($itens as $item)
-            <tr class="hover:bg-gray-50">
-                <td class="px-5 py-3 text-gray-800">{{ $item['descricao'] }}</td>
-                <td class="px-4 py-3 text-center text-gray-500">{{ $item['parcela'] }}</td>
-                <td class="px-5 py-3 text-right font-medium text-gray-900">
-                    R$ {{ number_format($item['valor'], 2, ',', '.') }}
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="3" class="px-5 py-10 text-center text-gray-400">
-                    Nenhuma despesa encontrada para este cartão neste mês.
-                </td>
-            </tr>
-            @endforelse
-        </tbody>
-        <tfoot>
-            <tr class="bg-gray-50 border-t-2 border-gray-300 font-bold">
-                <td colspan="2" class="px-5 py-3 text-gray-700">Total da fatura</td>
-                <td class="px-5 py-3 text-right text-gray-900">R$ {{ number_format($total, 2, ',', '.') }}</td>
-            </tr>
-        </tfoot>
-    </table>
-</div>
+                @if($itens->isEmpty())
+                    <div class="p-8 text-center text-gray-500">
+                        Nenhuma despesa encontrada nesta fatura.
+                    </div>
+                @else
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="text-left px-4 py-3 text-sm font-medium text-gray-700">Descrição</th>
+                                <th class="text-center px-4 py-3 text-sm font-medium text-gray-700 w-[100px]">Parcela</th>
+                                <th class="text-center px-4 py-3 text-sm font-medium text-gray-700 w-[80px]">Status</th>
+                                <th class="text-right px-4 py-3 text-sm font-medium text-gray-700 w-[120px]">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach($itens as $item)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">{{ $item['nome'] }}</td>
+                                <td class="px-4 py-3 text-center text-sm">{{ $item['parcela'] }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="px-2 py-1 text-xs rounded-full {{ $item['status'] === 'pago' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
+                                        {{ $item['status'] === 'pago' ? 'Pago' : 'Pendente' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right font-medium">
+                                    R$ {{ number_format($item['valor'], 2, ',', '.') }}
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="bg-gray-50 font-semibold">
+                            <tr>
+                                <td class="px-4 py-3" colspan="3">Total da Fatura</td>
+                                <td class="px-4 py-3 text-right text-blue-600">
+                                    R$ {{ number_format($itens->sum('valor'), 2, ',', '.') }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                @endif
+            </div>
 
-{{-- Cards mobile --}}
-<div class="md:hidden space-y-3">
-    @forelse($itens as $item)
-    <div class="bg-white rounded-xl shadow px-4 py-3 flex items-center justify-between gap-3">
-        <div class="min-w-0">
-            <p class="font-medium text-gray-800 truncate">{{ $item['descricao'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Parcela: {{ $item['parcela'] }}</p>
         </div>
-        <span class="font-semibold text-gray-900 whitespace-nowrap">
-            R$ {{ number_format($item['valor'], 2, ',', '.') }}
-        </span>
     </div>
-    @empty
-    <div class="bg-white rounded-xl shadow px-4 py-10 text-center text-gray-400">
-        Nenhuma despesa encontrada.
-    </div>
-    @endforelse
-
-    {{-- Total mobile --}}
-    @if($itens->count() > 0)
-    <div class="bg-gray-100 rounded-xl px-4 py-3 flex justify-between font-bold text-gray-800">
-        <span>Total da fatura</span>
-        <span>R$ {{ number_format($total, 2, ',', '.') }}</span>
-    </div>
-    @endif
-</div>
-
-@endsection
+</x-app-layout>
