@@ -11,10 +11,20 @@
                 O algoritmo encontrou <strong>{{ count($sugestoes) }}</strong> sugestões de agrupamento
             </p>
         </div>
-        <div class="flex gap-2">
-            {{-- type="button": estes botões não estão dentro de form, mas o atributo
-                 explícito documenta a intenção e é boa prática defensiva --}}
-            <button type="button" onclick="confirmarTodos()" class="btn-success text-sm">✅ Confirmar Todos</button>
+        <div class="flex flex-wrap gap-2">
+            {{-- Filtros por confiança --}}
+            <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                <button type="button" onclick="filtrarConfianca('todos')" id="filtro-todos"
+                    class="filtro-btn px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition">Todos</button>
+                <button type="button" onclick="filtrarConfianca('Alta')" id="filtro-Alta"
+                    class="filtro-btn px-3 py-1.5 bg-white text-green-700 hover:bg-green-50 transition">✅ Alta</button>
+                <button type="button" onclick="filtrarConfianca('Média')" id="filtro-Média"
+                    class="filtro-btn px-3 py-1.5 bg-white text-yellow-700 hover:bg-yellow-50 transition">⚡ Média</button>
+                <button type="button" onclick="filtrarConfianca('Baixa')" id="filtro-Baixa"
+                    class="filtro-btn px-3 py-1.5 bg-white text-gray-500 hover:bg-gray-50 transition">🔵 Baixa</button>
+            </div>
+            <button type="button" onclick="confirmarAltaConfianca()" class="btn-success text-sm">✅ Confirmar Alta Confiança</button>
+            <button type="button" onclick="confirmarTodos()" class="btn-outline-secondary text-sm">✅ Confirmar Todos</button>
             <button type="button" onclick="pularTodos()" class="btn-outline-secondary text-sm">⏭️ Pular Todos</button>
             <a href="{{ route('products.agrupamentos') }}" class="btn-outline-secondary">← Voltar</a>
         </div>
@@ -27,8 +37,23 @@
 
 <div id="sugestoesContainer" class="space-y-4">
     @forelse($sugestoes as $index => $sugestao)
+    @php
+        $match = $sugestao['melhor_match']['match'] ?? 'Baixa';
+        $sim   = $sugestao['melhor_match']['similaridade'];
+        $badgeClass = match($match) {
+            'Alta'  => 'bg-green-100 text-green-700',
+            'Média' => 'bg-yellow-100 text-yellow-700',
+            default => 'bg-gray-100 text-gray-500',
+        };
+        $barClass = match(true) {
+            $sim > 70 => 'bg-green-500',
+            $sim > 50 => 'bg-yellow-500',
+            default   => 'bg-gray-400',
+        };
+    @endphp
     <div class="sugestao-card bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition"
-         id="card-{{ $sugestao['produto']->id }}">
+         id="card-{{ $sugestao['produto']->id }}"
+         data-confianca="{{ $match }}">
         <div class="flex items-start justify-between gap-4">
             <!-- Produto Original -->
             <div class="flex-1">
@@ -37,7 +62,7 @@
                     @if($sugestao['produto']->foto)
                     <img src="{{ asset('storage/' . $sugestao['produto']->foto) }}"
                          alt="Foto de {{ $sugestao['produto']->nome }}"
-                         style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px;"
+                         style="width:30px;height:30px;object-fit:cover;border-radius:4px;"
                          loading="lazy" width="30" height="30">
                     @endif
                 </div>
@@ -54,8 +79,9 @@
             <div class="flex-1">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Sugestão</span>
-                    <span class="text-xs font-bold {{ $sugestao['melhor_match']['similaridade'] > 70 ? 'text-green-600' : 'text-yellow-600' }}">
-                        {{ $sugestao['melhor_match']['similaridade'] }}%
+                    {{-- Badge de confiança --}}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full {{ $badgeClass }}">
+                        {{ $match }} · {{ $sim }}%
                     </span>
                 </div>
                 <p class="text-sm font-medium text-gray-800">
@@ -65,11 +91,17 @@
                     {{ $sugestao['melhor_match']['product']->invoiceItems->count() }} compras
                 </p>
 
+                {{-- Razões da similaridade --}}
+                @if(!empty($sugestao['melhor_match']['detalhes']))
+                <p class="text-xs text-gray-400 mt-1 italic">
+                    {{ implode(' · ', $sugestao['melhor_match']['detalhes']) }}
+                </p>
+                @endif
+
                 @if(count($sugestao['similares']) > 1)
                 <div class="mt-2">
                     <p class="text-xs text-gray-400 mb-1">Outras opções:</p>
                     @foreach(array_slice($sugestao['similares'], 1, 3) as $alt)
-                    {{-- @json() escapa corretamente strings em contexto JS; addslashes() não é suficiente --}}
                     <button type="button"
                             onclick="selecionarAlternativa(@json($sugestao['produto']->id), @json($alt['product']->id), @json($alt['product']->nome))"
                             class="text-xs text-blue-500 hover:text-blue-700 block">
@@ -106,11 +138,10 @@
         <!-- Barra de Similaridade -->
         <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3"
              role="progressbar"
-             aria-valuenow="{{ $sugestao['melhor_match']['similaridade'] }}"
+             aria-valuenow="{{ $sim }}"
              aria-valuemin="0" aria-valuemax="100"
-             aria-label="Similaridade: {{ $sugestao['melhor_match']['similaridade'] }}%">
-            <div class="h-1.5 rounded-full {{ $sugestao['melhor_match']['similaridade'] > 70 ? 'bg-green-500' : ($sugestao['melhor_match']['similaridade'] > 50 ? 'bg-yellow-500' : 'bg-gray-400') }}"
-                 style="width: {{ $sugestao['melhor_match']['similaridade'] }}%"></div>
+             aria-label="Similaridade: {{ $sim }}%">
+            <div class="h-1.5 rounded-full {{ $barClass }}" style="width: {{ $sim }}%"></div>
         </div>
 
         <!-- Status (oculto inicialmente) -->
@@ -153,6 +184,7 @@
 @push('scripts')
 <script>
 let contador = { agrupados: 0, pulados: 0, ignorados: 0 };
+let filtroAtivo = 'todos';
 
 function mostrarToast(mensagem, tipo = 'success') {
     const toast = document.getElementById('toast');
@@ -161,6 +193,25 @@ function mostrarToast(mensagem, tipo = 'success') {
         (tipo === 'success' ? 'bg-green-600' : tipo === 'error' ? 'bg-red-600' : 'bg-gray-600');
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+function filtrarConfianca(nivel) {
+    filtroAtivo = nivel;
+
+    // Atualiza estilo dos botões de filtro
+    document.querySelectorAll('.filtro-btn').forEach(b => {
+        b.classList.remove('ring-2', 'ring-offset-1', 'ring-gray-400', 'font-semibold');
+    });
+    const btnAtivo = document.getElementById('filtro-' + nivel);
+    if (btnAtivo) btnAtivo.classList.add('ring-2', 'ring-offset-1', 'ring-gray-400', 'font-semibold');
+
+    document.querySelectorAll('.sugestao-card').forEach(card => {
+        if (nivel === 'todos') {
+            card.style.display = '';
+        } else {
+            card.style.display = card.dataset.confianca === nivel ? '' : 'none';
+        }
+    });
 }
 
 function processarAcao(produtoId, canonicoId, acao, botao) {
@@ -230,12 +281,32 @@ function selecionarAlternativa(produtoId, novoCanonicoId, nome) {
     }
 }
 
+function confirmarAltaConfianca() {
+    const cards = document.querySelectorAll('.sugestao-card[data-confianca="Alta"]');
+    if (cards.length === 0) {
+        mostrarToast('Nenhuma sugestão de Alta confiança disponível', 'warning');
+        return;
+    }
+    if (confirm('Confirmar todos os ' + cards.length + ' agrupamentos de Alta confiança?')) {
+        cards.forEach(card => {
+            const btn = card.querySelector('button[onclick*="confirmarAgrupamento"]');
+            if (btn && !btn.disabled) {
+                // extrai IDs do onclick sem executar confirm novamente
+                const match = btn.getAttribute('onclick').match(/confirmarAgrupamento\((\d+),\s*(\d+)/);
+                if (match) processarAcao(parseInt(match[1]), parseInt(match[2]), 'agrupar', btn);
+            }
+        });
+    }
+}
+
 function confirmarTodos() {
-    if (confirm('Deseja confirmar TODAS as sugestões de uma vez?')) {
+    if (confirm('Deseja confirmar TODAS as sugestões visíveis?')) {
         document.querySelectorAll('.sugestao-card').forEach(card => {
+            if (card.style.display === 'none') return;
             const btnAgrupar = card.querySelector('button[onclick*="confirmarAgrupamento"]');
             if (btnAgrupar && !btnAgrupar.disabled) {
-                btnAgrupar.click();
+                const match = btnAgrupar.getAttribute('onclick').match(/confirmarAgrupamento\((\d+),\s*(\d+)/);
+                if (match) processarAcao(parseInt(match[1]), parseInt(match[2]), 'agrupar', btnAgrupar);
             }
         });
     }
@@ -243,10 +314,9 @@ function confirmarTodos() {
 
 function pularTodos() {
     document.querySelectorAll('.sugestao-card').forEach(card => {
+        if (card.style.display === 'none') return;
         const btnPular = card.querySelector('button[onclick*="pularSugestao"]');
-        if (btnPular && !btnPular.disabled) {
-            btnPular.click();
-        }
+        if (btnPular && !btnPular.disabled) btnPular.click();
     });
 }
 
@@ -256,8 +326,10 @@ function atualizarResumo() {
     document.getElementById('countIgnorados').textContent = contador.ignorados;
 
     const total = contador.agrupados + contador.pulados + contador.ignorados;
-    const totalCards = document.querySelectorAll('.sugestao-card').length;
     if (total > 0) document.getElementById('resumo').classList.remove('hidden');
 }
+
+// Ativa filtro "todos" por padrão
+document.addEventListener('DOMContentLoaded', () => filtrarConfianca('todos'));
 </script>
 @endpush
