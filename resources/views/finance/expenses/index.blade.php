@@ -120,6 +120,7 @@
             @if($variaveis->isEmpty() && $invoicesDoMes->isEmpty() && $vehicleExpensesDoMes->isEmpty())
                 <div class="p-8 text-center text-gray-400 text-sm">Nenhuma despesa variável neste mês.</div>
             @else
+                {{-- Despesas Variáveis Manuais --}}
                 @if($variaveis->isNotEmpty())
                     <div class="divide-y divide-gray-100">
                         @foreach($variaveis as $expense)
@@ -128,84 +129,88 @@
                     </div>
                 @endif
 
- @if($invoicesDoMes->isNotEmpty())
-    <div class="border-t border-gray-200" x-data="{ openMercado: false }">
-        {{-- Cabeçalho clicável --}}
-        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openMercado = !openMercado">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado — notas importadas</span>
-                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $invoicesDoMes->count() }} nota(s)</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalMercado, 2, ',', '.') }}</span>
-                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openMercado ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </div>
-        </div>
-
-        {{-- Lista de notas (expandida/recolhida) --}}
-        <div x-show="openMercado" x-cloak>
-            @foreach($invoicesDoMes as $inv)
-                <div class="px-5 py-3 flex items-center gap-3 border-t border-gray-50 hover:bg-green-50/30">
-                    <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🛒</span>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800 truncate">{{ $inv['descricao'] }}</p>
-                        <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s) • Mercado / Alimentação</p>
-                    </div>
-                    <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($inv['valor'], 2, ',', '.') }}</span>
-                    <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
-                </div>
-            @endforeach
-        </div>
-    <
-    
-@if($vehicleExpensesDoMes->isNotEmpty())
-    <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
-        {{-- Cabeçalho clicável --}}
-        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openVeiculos = !openVeiculos">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos — despesas importadas</span>
-                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $vehicleExpensesDoMes->sum('quantidade') }} lançamento(s)</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalVeiculos, 2, ',', '.') }}</span>
-                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openVeiculos ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </div>
-        </div>
-
-        {{-- Lista de veículos (expandida/recolhida) --}}
-        <div x-show="openVeiculos" x-cloak>
-            @foreach($vehicleExpensesDoMes as $vexp)
-                <div class="border-t border-gray-50" x-data="{ open: false }">
-                    <div class="px-5 py-3 flex items-center gap-3 hover:bg-green-50/30 cursor-pointer select-none" @click="open = !open">
-                        <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🚗</span>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ $vexp['descricao'] }}</p>
-                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) • Carro</p>
-                        </div>
-                        <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($vexp['valor'], 2, ',', '.') }}</span>
-                        <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
-                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </div>
-                    <div x-show="open" x-cloak class="pl-14 pr-5 pb-3 space-y-1 bg-green-50/20">
-                        @foreach($vexp['itens'] as $item)
-                            <div class="flex justify-between text-xs text-gray-500 py-1 border-b border-gray-50 last:border-0">
-                                <span class="truncate mr-4">{{ $item['data'] }} — {{ $item['tipo'] }}@if($item['descricao']) • {{ $item['descricao'] }}@endif</span>
-                                <span class="tabular-nums whitespace-nowrap font-medium">R$ {{ number_format($item['valor'], 2, ',', '.') }}</span>
+                {{-- Mercado (acordeon) --}}
+                @if($invoicesDoMes->isNotEmpty())
+                    <div class="border-t border-gray-200" x-data="{ openMercado: false }">
+                        {{-- Cabeçalho clicável --}}
+                        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openMercado = !openMercado">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado — notas importadas</span>
+                                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $invoicesDoMes->count() }} nota(s)</span>
                             </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-@endif
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalMercado, 2, ',', '.') }}</span>
+                                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openMercado ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
 
+                        {{-- Lista de notas (expandida/recolhida) --}}
+                        <div x-show="openMercado" x-cloak>
+                            @foreach($invoicesDoMes as $inv)
+                                <div class="px-5 py-3 flex items-center gap-3 border-t border-gray-50 hover:bg-green-50/30">
+                                    <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🛒</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-800 truncate">{{ $inv['descricao'] }}</p>
+                                        <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s) • Mercado / Alimentação</p>
+                                    </div>
+                                    <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($inv['valor'], 2, ',', '.') }}</span>
+                                    <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Veículos (acordeon) --}}
+                @if($vehicleExpensesDoMes->isNotEmpty())
+                    <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
+                        {{-- Cabeçalho clicável --}}
+                        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openVeiculos = !openVeiculos">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos — despesas importadas</span>
+                                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $vehicleExpensesDoMes->sum('quantidade') }} lançamento(s)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalVeiculos, 2, ',', '.') }}</span>
+                                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openVeiculos ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        {{-- Lista de veículos (expandida/recolhida) --}}
+                        <div x-show="openVeiculos" x-cloak>
+                            @foreach($vehicleExpensesDoMes as $vexp)
+                                <div class="border-t border-gray-50" x-data="{ open: false }">
+                                    <div class="px-5 py-3 flex items-center gap-3 hover:bg-green-50/30 cursor-pointer select-none" @click="open = !open">
+                                        <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🚗</span>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate">{{ $vexp['descricao'] }}</p>
+                                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) • Carro</p>
+                                        </div>
+                                        <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($vexp['valor'], 2, ',', '.') }}</span>
+                                        <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
+                                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
+                                    <div x-show="open" x-cloak class="pl-14 pr-5 pb-3 space-y-1 bg-green-50/20">
+                                        @foreach($vexp['itens'] as $item)
+                                            <div class="flex justify-between text-xs text-gray-500 py-1 border-b border-gray-50 last:border-0">
+                                                <span class="truncate mr-4">{{ $item['data'] }} — {{ $item['tipo'] }}@if($item['descricao']) • {{ $item['descricao'] }}@endif</span>
+                                                <span class="tabular-nums whitespace-nowrap font-medium">R$ {{ number_format($item['valor'], 2, ',', '.') }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Subtotal Variáveis --}}
                 <div class="px-5 py-3 bg-blue-50 border-t border-blue-100 flex justify-between">
                     <span class="text-sm font-semibold text-gray-700">Subtotal variáveis</span>
                     <span class="text-sm font-bold text-blue-700 tabular-nums">R$ {{ number_format($totalVariaveis, 2, ',', '.') }}</span>
