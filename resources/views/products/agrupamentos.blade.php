@@ -72,13 +72,13 @@
                         <span class="text-2xl">📌</span>
                         <div>
                             <div class="flex items-center gap-2">
-                                <span class="font-semibold text-gray-800 text-lg">{{ $grupo->nome }}</span>
+                                <span class="font-semibold text-gray-800 text-lg">{{ \App\Helpers\ProductHelper::displayName($grupo) }}</span>
                                 <button type="button"
                                         onclick="editarNomeGrupo('{{ $grupo->id }}', '{{ $grupo->nome }}')"
                                         class="text-gray-400 hover:text-blue-600 text-sm">✏️</button>
                             </div>
                             <span class="text-xs text-gray-500">
-                                {{ $grupo->groupedProducts->count() }} agrupado(s) &middot; {{ $grupo->invoiceItems->count() }} compras
+                                {{ $grupo->groupedProducts->count() }} agrupado(s) &middot; {{ $grupo->invoice_items_count }} compras
                             </span>
                         </div>
                     </div>
@@ -110,16 +110,16 @@
                     <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
                         <div class="flex items-center gap-3">
                             <span class="text-gray-300">↳</span>
-                            <span class="text-sm text-gray-700">{{ $agrupado->nome }}</span>
+                            <span class="text-sm text-gray-700">{{ \App\Helpers\ProductHelper::displayName($agrupado) }}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button"
-                                    onclick="tornarPrincipal('{{ $agrupado->id }}', '{{ $agrupado->nome }}')"
+                                    onclick="tornarPrincipal('{{ $agrupado->id }}', '{{ \App\Helpers\ProductHelper::displayName($agrupado) }}')"
                                     class="inline-flex items-center px-3 py-1.5 border border-green-300 text-green-600 hover:bg-green-50 text-xs font-semibold rounded-md transition">
                                 📌 Principal
                             </button>
                             <form action="{{ route('products.desagrupar', $agrupado) }}" method="POST" class="inline"
-                                  data-confirm="Soltar '{{ $agrupado->nome }}' do grupo?">
+                                  data-confirm="Soltar '{{ \App\Helpers\ProductHelper::displayName($agrupado) }}' do grupo?">
                                 @csrf
                                 <button type="submit" class="text-red-400 hover:text-red-600 text-xs">✕ Soltar</button>
                             </form>
@@ -137,7 +137,7 @@
                                 <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 p-1 rounded">
                                     <input type="checkbox" name="produto_ids[]" value="{{ $prod->id }}"
                                            class="rounded border-gray-300 text-blue-600">
-                                    {{ $prod->nome }}
+                                    {{ \App\Helpers\ProductHelper::displayName($prod) }}
                                 </label>
                             @endforeach
                         </div>
@@ -198,13 +198,13 @@
                             <label class="flex items-center gap-3 flex-1 cursor-pointer">
                                 <input type="checkbox" name="produto_ids[]" value="{{ $prod->id }}"
                                        class="produtoCheck rounded border-gray-300 text-blue-600">
-                                <span class="text-sm text-gray-700">{{ $prod->nome }}</span>
-                                <span class="text-xs text-gray-400">({{ $prod->invoiceItems->count() }}x)</span>
+                                <span class="text-sm text-gray-700">{{ \App\Helpers\ProductHelper::displayName($prod) }}</span>
+                                <span class="text-xs text-gray-400">({{ $prod->invoice_items_count }}x)</span>
                             </label>
 
                             {{-- Botão Tornar Principal (type=button, NÃO submete o formulário) --}}
                             <button type="button"
-                                    onclick="tornarPrincipal('{{ $prod->id }}', '{{ $prod->nome }}')"
+                                    onclick="tornarPrincipal('{{ $prod->id }}', '{{ \App\Helpers\ProductHelper::displayName($prod) }}')"
                                     class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">
                                 📌 Tornar Principal
                             </button>

@@ -24,12 +24,14 @@ class ProductAgrupamentoController extends Controller
         $grupos = Product::where('user_id', $userId)
             ->where('is_canonical', true)
             ->with(['groupedProducts' => fn ($q) => $q->orderBy('nome')])
+            ->withCount('invoiceItems')
             ->orderBy('nome')
             ->get();
 
         $naoAgrupados = Product::where('user_id', $userId)
             ->where('is_canonical', false)
             ->whereNull('canonical_product_id')
+            ->withCount('invoiceItems')
             ->orderBy('nome')
             ->get();
 
@@ -135,11 +137,6 @@ class ProductAgrupamentoController extends Controller
 
     /**
      * Despacha o agrupamento automático para uma fila assíncrona.
-     *
-     * ANTES: loop síncrono sobre todos os produtos do usuário — trava
-     * o request por vários segundos em bases grandes.
-     * AGORA: job na fila 'default' com timeout de 5 min. O response
-     * é imediato; a view pode exibir um spinner ou polling de status.
      */
     public function agruparAutomatico(): RedirectResponse
     {
