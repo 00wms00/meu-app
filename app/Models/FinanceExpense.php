@@ -101,13 +101,17 @@ class FinanceExpense extends Model
         };
     }
 
+    /**
+     * Retorna o label amigável da forma de pagamento.
+     * ATENÇÃO: o banco armazena 'credito' (não 'cartao').
+     */
     public function getFormaPagamentoLabelAttribute(): string
     {
         return match ($this->forma_pagamento) {
             'debito'   => 'Débito',
             'pix'      => 'Pix',
             'dinheiro' => 'Dinheiro',
-            'cartao'   => $this->creditCard ? $this->creditCard->nome : 'Cartão',
+            'credito'  => $this->creditCard ? '💳 ' . $this->creditCard->nome : '💳 Crédito',
             default    => $this->forma_pagamento,
         };
     }
@@ -129,6 +133,9 @@ class FinanceExpense extends Model
         return $this->parcelas_total > 1;
     }
 
+    /**
+     * Retorna todas as parcelas irmãs (mesmo grupo_parcelas).
+     */
     public function getParcelasIrma(): \Illuminate\Database\Eloquent\Collection
     {
         if (! $this->grupo_parcelas) {
@@ -140,6 +147,9 @@ class FinanceExpense extends Model
             ->get();
     }
 
+    /**
+     * Retorna o número da parcela formatado (ex: "2/3").
+     */
     public function getNumeroParcelaAttribute(): string
     {
         if (! $this->isParcelada()) {

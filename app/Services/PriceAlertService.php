@@ -116,7 +116,7 @@ class PriceAlertService
             return [
                 'produto' => $alerta->product->nome,
                 'preco_ref' => $alerta->preco_referencia,
-                'preco_atual' => $altera->preco_atual,
+                'preco_atual' => $alerta->preco_atual,
                 'variacao' => $alerta->variacao_percentual,
                 'status' => $alerta->variacao_percentual >= $alerta->limite_alerta ? 'disparado' : 'normal',
             ];

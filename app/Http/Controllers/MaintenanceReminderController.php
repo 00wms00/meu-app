@@ -20,11 +20,20 @@ class MaintenanceReminderController extends Controller
         $validated = $request->validate([
             'descricao'           => ['required', 'string', 'max:120'],
             'km_ultimo_servico'   => ['nullable', 'integer', 'min:0'],
-            'intervalo_km'        => ['required', 'integer', 'min:100'],
+            'intervalo_km'        => ['nullable', 'integer', 'min:100'],
+            'intervalo_meses'     => ['nullable', 'integer', 'min:1', 'max:120'],
             'data_ultimo_servico' => ['nullable', 'date'],
         ]);
 
+        // Validação: pelo menos um dos intervalos deve ser informado
+        if (empty($validated['intervalo_km']) && empty($validated['intervalo_meses'])) {
+            return back()
+                ->withErrors(['intervalo_km' => 'Informe pelo menos o intervalo em KM ou em Meses.'])
+                ->withInput();
+        }
+
         $validated['vehicle_id'] = $vehicle->id;
+        $validated['ativo'] = true;
 
         MaintenanceReminder::create($validated);
 
