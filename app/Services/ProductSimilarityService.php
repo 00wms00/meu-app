@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 class ProductSimilarityService
 {
-    // Stop words otimizadas
+    // Stop words otimizadas — inclui ruídos comuns de cupom fiscal
     private array $stopWords = [
         'kg', 'g', 'gr', 'l', 'ml', 'un', 'und', 'cx', 'pc', 'pct', 'fd', 'lt', 'dz',
         'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'com', 'sem',
@@ -18,6 +18,9 @@ class ProductSimilarityService
         'trad', 'almof', 'mini', 'tixan', 'ype', 'omo', 'cola',
         'tipo', 'marca', 'qualidade', 'original', 'tamanho', 'grande', 'pequeno',
         'medio', 'media', 'pack', 'kit', 'lev', 'cada', 'unidade',
+        // Ruídos adicionais de cupom fiscal
+        'lv', 'pague', 'leve', 'pg', 'promo', 'promocao', 'oferta',
+        'kgf', 'kgfr', 'emb',
     ];
 
     // Mapeamento de sinônimos e variações
@@ -31,23 +34,23 @@ class ProductSimilarityService
         'macarrao' => ['macarrao', 'macarrao', 'espaguete', 'penne', 'fusilli', 'parafuso'],
         'sabao' => ['sabao', 'sabao', 'detergente', 'saponaceo'],
         'amaciante' => ['amaciante', 'amac', 'confort', 'downy', 'ype'],
-        'agua' => ['agua', 'mineral', 'copo', 'garrafa', 'galão'],
+        'agua' => ['agua', 'mineral', 'copo', 'garrafa', 'galao'],
         'cerveja' => ['cerveja', 'cervej', 'chopp', 'lata', 'longneck', 'garrafa'],
         'pao' => ['pao', 'paozinho', 'frances', 'integral', 'forma', 'leite'],
         'queijo' => ['queijo', 'queij', 'mussarela', 'mozarela', 'prato', 'cheddar', 'coalho'],
         'presunto' => ['presunto', 'presunt', 'apresuntado', 'mortadela'],
     ];
 
-    // Pesos configuráveis
+    // Pesos configuráveis — categoria tem mais peso, estabelecimento menos
     private array $weights = [
-        'tfidf' => 0.40,        // 40% - similaridade textual (TF-IDF + Cosseno)
-        'categoria' => 0.15,     // 15% - mesma categoria
-        'unidade' => 0.05,       // 5% - mesma unidade
-        'marca' => 0.10,         // 10% - mesma marca detectada
-        'embalagem' => 0.10,     // 10% - mesmo tipo de embalagem (PET, LATA, SACHE)
-        'faixa_preco' => 0.10,   // 10% - faixa de preço similar
-        'frequencia' => 0.05,    // 5% - frequência de compra similar
-        'estabelecimento' => 0.05, // 5% - comprado no mesmo lugar
+        'tfidf'           => 0.40,  // 40% — similaridade textual (TF-IDF + Cosseno)
+        'categoria'       => 0.20,  // 20% — mesma categoria (aumentado de 0.15)
+        'unidade'         => 0.08,  // 8%  — mesma unidade (aumentado de 0.05)
+        'marca'           => 0.10,  // 10% — mesma marca detectada
+        'embalagem'       => 0.10,  // 10% — mesmo tipo de embalagem
+        'faixa_preco'     => 0.10,  // 10% — faixa de preço similar
+        'frequencia'      => 0.05,  // 5%  — frequência de compra similar
+        'estabelecimento' => 0.02,  // 2%  — comprado no mesmo lugar (reduzido de 0.05)
     ];
 
     // Tipos de embalagem
@@ -83,15 +86,19 @@ class ProductSimilarityService
 
         foreach ($todosProdutos as $p) {
             $score = $this->calcularScoreCompleto($produto, $p);
-            
-            if ($score > 0.25) {
-                $similares[] = [
-                    'product' => $p,
-                    'similaridade' => round(min($score, 1) * 100, 1),
-                    'match' => $score > 0.70 ? 'Alta' : ($score > 0.45 ? 'Média' : 'Baixa'),
-                    'detalhes' => $this->explicarSimilaridade($produto, $p),
-                ];
+
+            // Corte mínimo elevado de 0.25 para 0.35
+            if ($score < 0.35) {
+                continue;
             }
+
+            $similares[] = [
+                'product'      => $p,
+                'similaridade' => round(min($score, 1) * 100, 1),
+                // Threshold de Média ajustado de 0.45 para 0.50
+                'match'        => $score > 0.70 ? 'Alta' : ($score > 0.50 ? 'Média' : 'Baixa'),
+                'detalhes'     => $this->explicarSimilaridade($produto, $p),
+            ];
         }
 
         usort($similares, fn($a, $b) => $b['similaridade'] <=> $a['similaridade']);
@@ -103,19 +110,29 @@ class ProductSimilarityService
     private function calcularScoreCompleto(Product $p1, Product $p2): float
     {
         $scores = [
-            'tfidf' => $this->similaridadeTextual($p1->nome, $p2->nome),
-            'categoria' => $this->mesmaCategoria($p1, $p2),
-            'unidade' => $this->mesmaUnidade($p1, $p2),
-            'marca' => $this->mesmaMarca($p1->nome, $p2->nome),
-            'embalagem' => $this->mesmoTipoEmbalagem($p1->nome, $p2->nome),
-            'faixa_preco' => $this->faixaPrecoSimilar($p1, $p2),
-            'frequencia' => $this->frequenciaSimilar($p1, $p2),
+            'tfidf'           => $this->similaridadeTextual($p1->nome, $p2->nome),
+            'categoria'       => $this->mesmaCategoria($p1, $p2),
+            'unidade'         => $this->mesmaUnidade($p1, $p2),
+            'marca'           => $this->mesmaMarca($p1->nome, $p2->nome),
+            'embalagem'       => $this->mesmoTipoEmbalagem($p1->nome, $p2->nome),
+            'faixa_preco'     => $this->faixaPrecoSimilar($p1, $p2),
+            'frequencia'      => $this->frequenciaSimilar($p1, $p2),
             'estabelecimento' => $this->mesmoEstabelecimento($p1, $p2),
         ];
 
         $scoreFinal = 0;
         foreach ($scores as $key => $value) {
             $scoreFinal += $value * $this->weights[$key];
+        }
+
+        // PENALIZAÇÃO: categoria E unidade divergem — produto provavelmente diferente
+        if ($scores['categoria'] === 0.0 && $scores['unidade'] === 0.0) {
+            $scoreFinal *= 0.4;
+        }
+
+        // PENALIZAÇÃO: preço sem sobreposição + texto fraco — evita falso positivo
+        if ($scores['faixa_preco'] === 0.0 && $scores['tfidf'] < 0.6) {
+            $scoreFinal = 0.0;
         }
 
         return $scoreFinal;
@@ -133,14 +150,13 @@ class ProductSimilarityService
 
         if (empty($tokens1) || empty($tokens2)) return 0;
 
-        // TF-IDF simplificado
         $tf1 = array_count_values($tokens1);
         $tf2 = array_count_values($tokens2);
-        
+
         $todosTermos = array_unique(array_merge(array_keys($tf1), array_keys($tf2)));
-        
+
         $dotProduct = 0; $norm1 = 0; $norm2 = 0;
-        
+
         foreach ($todosTermos as $termo) {
             $v1 = ($tf1[$termo] ?? 0) / max(count($tokens1), 1);
             $v2 = ($tf2[$termo] ?? 0) / max(count($tokens2), 1);
@@ -150,17 +166,15 @@ class ProductSimilarityService
         }
 
         if ($norm1 == 0 || $norm2 == 0) return 0;
-        
-        $cosseno = $dotProduct / (sqrt($norm1) * sqrt($norm2));
 
-        // Bônus por sinônimos
+        $cosseno = $dotProduct / (sqrt($norm1) * sqrt($norm2));
         $bonusSinonimos = $this->bonusSinonimos($tokens1, $tokens2);
 
         return ($cosseno * 0.8) + ($bonusSinonimos * 0.2);
     }
 
     /**
-     * 2. Mesma categoria - 15%
+     * 2. Mesma categoria - 20%
      */
     private function mesmaCategoria(Product $p1, Product $p2): float
     {
@@ -171,11 +185,11 @@ class ProductSimilarityService
     }
 
     /**
-     * 3. Mesma unidade - 5%
+     * 3. Mesma unidade - 8%
      */
     private function mesmaUnidade(Product $p1, Product $p2): float
     {
-        if ($p1->unidade_padrao && $p2->unidade_padrao && 
+        if ($p1->unidade_padrao && $p2->unidade_padrao &&
             strtoupper($p1->unidade_padrao) === strtoupper($p2->unidade_padrao)) {
             return 1.0;
         }
@@ -219,10 +233,10 @@ class ProductSimilarityService
         if ($preco1 <= 0 || $preco2 <= 0) return 0;
 
         $diferenca = abs($preco1 - $preco2) / max($preco1, $preco2);
-        
-        if ($diferenca <= 0.10) return 1.0;      // Até 10% de diferença
-        if ($diferenca <= 0.25) return 0.7;       // Até 25%
-        if ($diferenca <= 0.50) return 0.3;       // Até 50%
+
+        if ($diferenca <= 0.10) return 1.0;
+        if ($diferenca <= 0.25) return 0.7;
+        if ($diferenca <= 0.50) return 0.3;
         return 0;
     }
 
@@ -236,12 +250,11 @@ class ProductSimilarityService
 
         if ($freq1 == 0 || $freq2 == 0) return 0;
 
-        $razao = min($freq1, $freq2) / max($freq1, $freq2);
-        return $razao; // 0 a 1
+        return min($freq1, $freq2) / max($freq1, $freq2);
     }
 
     /**
-     * 8. Mesmo estabelecimento - 5%
+     * 8. Mesmo estabelecimento - 2%
      */
     private function mesmoEstabelecimento(Product $p1, Product $p2): float
     {
@@ -295,22 +308,21 @@ class ProductSimilarityService
     {
         $nome = Str::upper(trim($nome));
         if (empty($nome)) return [];
-        
+
         $nome = $this->removerAcentos($nome);
-        
-        // Extrair números (quantidades) e removê-los
-        $nome = preg_replace('/\d+[.,]?\d*\s*(kg|g|l|ml|un|cx|pc|lt|dz)?/i', ' ', $nome);
-        
-        // Remover caracteres especiais
+
+        // Remove quantidades com unidades: 500G, 2L, CX C/12, X UN, etc.
+        $nome = preg_replace('/\d+[.,]?\d*\s*(kg|g|l|ml|un|cx|pc|lt|dz|x)?/i', ' ', $nome);
+        $nome = preg_replace('/C\/\d+/i', ' ', $nome);
+
         $nome = preg_replace('/[^A-Z0-9\s]/', ' ', $nome);
         $nome = preg_replace('/\s+/', ' ', trim($nome));
-        
+
         if (empty($nome)) return [];
-        
+
         $tokens = explode(' ', $nome);
-        
-        // Filtrar stop words, tokens curtos e números
-        $tokens = array_filter($tokens, function($token) {
+
+        $tokens = array_filter($tokens, function ($token) {
             $token = trim($token);
             if (strlen($token) <= 1) return false;
             if (is_numeric($token)) return false;
@@ -318,7 +330,6 @@ class ProductSimilarityService
             return true;
         });
 
-        // Adicionar bigramas (pares de palavras consecutivas)
         $bigramas = [];
         $tokensArray = array_values($tokens);
         for ($i = 0; $i < count($tokensArray) - 1; $i++) {
@@ -330,9 +341,9 @@ class ProductSimilarityService
 
     private function tokenizarBasico(string $nome): array
     {
-        $nome = Str::upper(trim($nome));
+        $nome = Str::lower(trim($nome));
         $nome = $this->removerAcentos($nome);
-        $nome = preg_replace('/[^A-Z0-9\s]/', ' ', $nome);
+        $nome = preg_replace('/[^a-z0-9\s]/', ' ', $nome);
         $nome = preg_replace('/\s+/', ' ', trim($nome));
         return array_filter(explode(' ', $nome), fn($t) => strlen($t) > 1);
     }
@@ -349,50 +360,97 @@ class ProductSimilarityService
 
     private function removerAcentos(string $texto): string
     {
-        $map = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
-                'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','õ'=>'o','ô'=>'o','ö'=>'o',
-                'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n'];
+        $map = [
+            'a' => 'a', 'a' => 'a', 'a' => 'a', 'a' => 'a', 'a' => 'a',
+            'e' => 'e', 'e' => 'e', 'e' => 'e', 'e' => 'e',
+            'i' => 'i', 'i' => 'i', 'i' => 'i', 'i' => 'i',
+            'o' => 'o', 'o' => 'o', 'o' => 'o', 'o' => 'o', 'o' => 'o',
+            'u' => 'u', 'u' => 'u', 'u' => 'u', 'u' => 'u',
+            'c' => 'c', 'n' => 'n',
+            'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'ä' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'õ' => 'o', 'ô' => 'o', 'ö' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c', 'ñ' => 'n',
+        ];
         return strtr(Str::lower($texto), $map);
     }
 
     /**
-     * Explica por que dois produtos são similares
+     * Explica por que dois produtos são similares (inclui unidade e preço)
      */
     public function explicarSimilaridade(Product $p1, Product $p2): array
     {
         $razoes = [];
-        
+
         $tokens1 = $this->tokenizarAvancado($p1->nome);
         $tokens2 = $this->tokenizarAvancado($p2->nome);
-        $comuns = array_intersect($tokens1, $tokens2);
-        
+        $comuns  = array_intersect($tokens1, $tokens2);
+
         if (count($comuns) > 0) {
-            $razoes[] = "Palavras em comum: " . implode(', ', array_slice($comuns, 0, 5));
+            $razoes[] = 'Palavras em comum: ' . implode(', ', array_slice($comuns, 0, 5));
         }
-        
+
         if ($p1->category_id && $p2->category_id && $p1->category_id === $p2->category_id) {
-            $razoes[] = "Mesma categoria";
+            $razoes[] = 'Mesma categoria';
         }
-        
+
         $marcas1 = $this->detectarMarcas($p1->nome);
         $marcas2 = $this->detectarMarcas($p2->nome);
         if (array_intersect($marcas1, $marcas2)) {
-            $razoes[] = "Mesma marca: " . implode(', ', array_intersect($marcas1, $marcas2));
+            $razoes[] = 'Mesma marca: ' . implode(', ', array_intersect($marcas1, $marcas2));
         }
-        
+
+        if ($p1->unidade_padrao && $p2->unidade_padrao &&
+            strtoupper($p1->unidade_padrao) === strtoupper($p2->unidade_padrao)) {
+            $razoes[] = 'Mesma unidade (' . strtoupper($p1->unidade_padrao) . ')';
+        }
+
+        $preco1 = $this->getPrecoMedio($p1);
+        $preco2 = $this->getPrecoMedio($p2);
+        if ($preco1 > 0 && $preco2 > 0) {
+            $dif = abs($preco1 - $preco2) / max($preco1, $preco2);
+            if ($dif <= 0.25) {
+                $razoes[] = 'Preço similar (R$ ' . number_format($preco1, 2, ',', '.') . ' / R$ ' . number_format($preco2, 2, ',', '.') . ')';
+            }
+        }
+
         return $razoes;
     }
 
-    // Manter métodos existentes para compatibilidade
     public function sugerirAgrupamentosML(int $userId): array
     {
-        $orfao = Product::where('user_id', $userId)->whereNull('canonical_product_id')->where('is_canonical', false)->get();
+        $orfao = Product::where('user_id', $userId)
+            ->whereNull('canonical_product_id')
+            ->where('is_canonical', false)
+            ->get();
+
         $sugestoes = [];
+
         foreach ($orfao as $produto) {
             $similares = $this->encontrarSimilares($produto, 3);
-            if (!empty($similares)) $sugestoes[] = ['produto' => $produto, 'similares' => $similares, 'melhor_match' => $similares[0]];
+
+            if (empty($similares)) {
+                continue;
+            }
+
+            $melhor = $similares[0];
+
+            // Só exibe sugestões com similaridade mínima de 60%
+            if ($melhor['similaridade'] < 60) {
+                continue;
+            }
+
+            $sugestoes[] = [
+                'produto'      => $produto,
+                'similares'    => $similares,
+                'melhor_match' => $melhor,
+            ];
         }
+
         usort($sugestoes, fn($a, $b) => $b['melhor_match']['similaridade'] <=> $a['melhor_match']['similaridade']);
+
         return $sugestoes;
     }
 
@@ -402,10 +460,19 @@ class ProductSimilarityService
         $agrupados = 0;
         foreach ($sugestoes as $s) {
             if ($s['melhor_match']['similaridade'] >= 70) {
-                $p = $s['produto']; $sim = $s['melhor_match']['product'];
-                $c = $sim->canonical_product_id ? Product::find($sim->canonical_product_id) : ($sim->is_canonical ? $sim : null);
-                if (!$c) { $g = app(ProductGrouperService::class); $g->tornarCanonico($sim); $c = $sim; }
-                $g = app(ProductGrouperService::class); $g->agrupar($p, $c); $agrupados++;
+                $p   = $s['produto'];
+                $sim = $s['melhor_match']['product'];
+                $c   = $sim->canonical_product_id
+                    ? Product::find($sim->canonical_product_id)
+                    : ($sim->is_canonical ? $sim : null);
+                if (!$c) {
+                    $g = app(ProductGrouperService::class);
+                    $g->tornarCanonico($sim);
+                    $c = $sim;
+                }
+                $g = app(ProductGrouperService::class);
+                $g->agrupar($p, $c);
+                $agrupados++;
             }
         }
         return ['total_sugestoes' => count($sugestoes), 'agrupados' => $agrupados];
