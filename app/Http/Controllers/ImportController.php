@@ -25,16 +25,15 @@ class ImportController extends Controller
     public function parse(Request $request, InvoiceParser $parser): RedirectResponse
     {
         $request->validate([
-            'html'    => 'nullable|string|required_without:arquivo',
-            'arquivo' => 'nullable|file|mimes:html,htm',
+            'arquivo' => 'required|file|mimes:html,htm',
         ]);
 
-        $html = $request->html ?? file_get_contents($request->file('arquivo')->path());
+        $html = file_get_contents($request->file('arquivo')->path());
 
         try {
             $data = $parser->parse($html);
         } catch (\Exception $e) {
-            return back()->withErrors(['html' => 'Erro ao processar o HTML: ' . $e->getMessage()]);
+            return back()->withErrors(['arquivo' => 'Erro ao processar o HTML: ' . $e->getMessage()]);
         }
 
         session(['parsed_invoice' => $data]);
@@ -48,7 +47,7 @@ class ImportController extends Controller
 
         if (! $data) {
             return redirect()->route('import.create')
-                ->withErrors(['html' => 'Nenhum dado para exibir.']);
+                ->withErrors(['arquivo' => 'Nenhum dado para exibir.']);
         }
 
         $vehicles = Vehicle::where('user_id', Auth::id())
@@ -67,7 +66,7 @@ class ImportController extends Controller
 
         if (! $data) {
             return redirect()->route('import.create')
-                ->withErrors(['html' => 'Sessão expirada.']);
+                ->withErrors(['arquivo' => 'Sessão expirada.']);
         }
 
         $destino = $request->input('destino', 'mercado');
@@ -89,8 +88,6 @@ class ImportController extends Controller
 
             $fuel = $data['fuel'];
 
-            // O KM vem do campo editável do formulário (pode ter sido ajustado pelo usuário)
-            // Se o campo foi enviado em branco, usa null
             $km = $request->filled('km_abastecimento')
                 ? (int) $request->km_abastecimento
                 : null;
@@ -108,7 +105,6 @@ class ImportController extends Controller
                 'descricao'        => 'Importado da NFC-e ' . ($data['numero'] ?? ''),
             ]);
 
-            // Atualiza km_atual do veículo apenas se km foi informado e é maior que o atual
             if ($km && $km > $vehicle->km_atual) {
                 $vehicle->update(['km_atual' => $km]);
             }
