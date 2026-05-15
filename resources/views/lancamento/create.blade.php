@@ -16,6 +16,24 @@
     </div>
 </div>
 
+{{-- Banner de erros gerais --}}
+@if($errors->any())
+<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    <p class="font-semibold mb-1">⚠️ Corrija os erros abaixo antes de salvar:</p>
+    <ul class="list-disc list-inside space-y-0.5">
+        @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+{{-- Banner inline: mínimo 1 item (JS) --}}
+<div id="bannerMinItem" hidden
+     class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+    ⚠️ A compra precisa ter pelo menos 1 item.
+</div>
+
 <form id="formLancamento" action="{{ route('lancamento.store') }}" method="POST">
     @csrf
 
@@ -60,11 +78,11 @@
                             <select name="forma_pagamento" id="formaPagamento"
                                     class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                                 <option value="">Selecionar...</option>
-                                <option value="Dinheiro"         {{ old('forma_pagamento') === 'Dinheiro'           ? 'selected' : '' }}>💵 Dinheiro</option>
-                                <option value="Pix"              {{ old('forma_pagamento') === 'Pix'                ? 'selected' : '' }}>📱 Pix</option>
-                                <option value="Cartão de Débito" {{ old('forma_pagamento') === 'Cartão de Débito'  ? 'selected' : '' }}>💳 Cartão de Débito</option>
+                                <option value="Dinheiro"          {{ old('forma_pagamento') === 'Dinheiro'          ? 'selected' : '' }}>💵 Dinheiro</option>
+                                <option value="Pix"               {{ old('forma_pagamento') === 'Pix'               ? 'selected' : '' }}>📱 Pix</option>
+                                <option value="Cartão de Débito"  {{ old('forma_pagamento') === 'Cartão de Débito'  ? 'selected' : '' }}>💳 Cartão de Débito</option>
                                 <option value="Cartão de Crédito" {{ old('forma_pagamento') === 'Cartão de Crédito' ? 'selected' : '' }}>💳 Cartão de Crédito</option>
-                                <option value="Outros"            {{ old('forma_pagamento') === 'Outros'             ? 'selected' : '' }}>📦 Outros</option>
+                                <option value="Outros"             {{ old('forma_pagamento') === 'Outros'            ? 'selected' : '' }}>📦 Outros</option>
                             </select>
                         </div>
 
@@ -114,7 +132,7 @@
                             </tr>
                         </thead>
                         <tbody id="itensTableBody" class="bg-white divide-y divide-gray-200">
-                            {{-- linha inicial gerada pelo JS via criarLinhaItem(0) --}}
+                            {{-- linhas geradas pelo JS --}}
                         </tbody>
                     </table>
                 </div>
@@ -149,23 +167,29 @@
                         </div>
                     </div>
 
-                    <button type="submit"
-                            class="w-full inline-flex items-center justify-center mt-6 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-md transition">
-                        💾 Registrar Compra
+                    <button type="submit" id="btnSubmit"
+                            class="w-full inline-flex items-center justify-center gap-2 mt-6 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-lg font-semibold rounded-md transition">
+                        <span id="btnIcon">💾</span>
+                        <span id="btnLabel">Registrar Compra</span>
+                        <svg id="btnSpinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 </form>
+
+{{-- Itens salvos pelo old() para repopular após erro de validação --}}
+<script id="oldItens" type="application/json">
+    {!! json_encode(old('itens', []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+</script>
 @endsection
 
 @push('scripts')
 <script>
-{{--
-    Módulo encapsulado: sem variáveis globais expostas, sem oninput inline,
-    sem dois blocos <script> separados, sem alert() nativo.
---}}
 (function () {
     'use strict';
 
@@ -186,13 +210,21 @@
     }
 
     /* ── Criação de linha ────────────────────────────────────── */
-    function opcoesUnidade(idx) {
+    function opcoesUnidade(selecionada) {
+        const UNIDADES = ['UN','KG','L','CX','PC','FD','LT','DZ','Bandeja','Pacote','Maço'];
         return UNIDADES.map(u =>
-            `<option value="${u}">${u}</option>`
+            `<option value="${u}"${u === selecionada ? ' selected' : ''}>${u}</option>`
         ).join('');
     }
 
-    function criarLinhaItem(idx) {
+    function criarLinhaItem(idx, dados) {
+        dados = dados || {};
+        const nome     = dados.nome           || '';
+        const qtd      = dados.quantidade     || '1';
+        const unidade  = dados.unidade        || 'UN';
+        const unitario = dados.valor_unitario !== undefined ? String(dados.valor_unitario).replace('.', ',') : '0,00';
+        const total    = dados.valor_total    !== undefined ? String(dados.valor_total).replace('.', ',')    : '0,00';
+
         const tr = document.createElement('tr');
         tr.className = 'item-row' + (idx > 0 ? ' bg-yellow-50' : '');
         tr.dataset.index = idx;
@@ -200,12 +232,13 @@
             <td class="px-3 py-2">
                 <label for="item_nome_${idx}" class="sr-only">Nome do produto (item ${idx + 1})</label>
                 <input type="text" name="itens[${idx}][nome]" id="item_nome_${idx}"
+                       value="${nome.replace(/"/g, '&quot;')}"
                        class="w-full border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm"
                        placeholder="Nome do produto" required>
             </td>
             <td class="px-3 py-2">
                 <label for="item_qtd_${idx}" class="sr-only">Quantidade (item ${idx + 1})</label>
-                <input type="text" name="itens[${idx}][quantidade]" id="item_qtd_${idx}" value="1"
+                <input type="text" name="itens[${idx}][quantidade]" id="item_qtd_${idx}" value="${qtd}"
                        class="w-16 text-center border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm quantidade-input"
                        inputmode="decimal">
             </td>
@@ -213,14 +246,14 @@
                 <label for="item_unid_${idx}" class="sr-only">Unidade (item ${idx + 1})</label>
                 <select name="itens[${idx}][unidade]" id="item_unid_${idx}"
                         class="w-16 text-center border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-1 py-1 text-xs">
-                    ${opcoesUnidade(idx)}
+                    ${opcoesUnidade(unidade)}
                 </select>
             </td>
             <td class="px-3 py-2">
                 <div class="flex items-center justify-end">
                     <span class="text-gray-400 text-sm mr-1" aria-hidden="true">R$</span>
                     <label for="item_unit_${idx}" class="sr-only">Valor unitário (item ${idx + 1})</label>
-                    <input type="text" name="itens[${idx}][valor_unitario]" id="item_unit_${idx}" value="0,00"
+                    <input type="text" name="itens[${idx}][valor_unitario]" id="item_unit_${idx}" value="${unitario}"
                            class="w-20 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm unitario-input"
                            inputmode="decimal">
                 </div>
@@ -229,7 +262,7 @@
                 <div class="flex items-center justify-end">
                     <span class="text-gray-400 text-sm mr-1" aria-hidden="true">R$</span>
                     <label for="item_total_${idx}" class="sr-only">Valor total (item ${idx + 1})</label>
-                    <input type="text" name="itens[${idx}][valor_total]" id="item_total_${idx}" value="0,00"
+                    <input type="text" name="itens[${idx}][valor_total]" id="item_total_${idx}" value="${total}"
                            class="w-20 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm font-semibold total-input"
                            inputmode="decimal">
                 </div>
@@ -287,27 +320,28 @@
         const descontos = parseFloatBR(document.getElementById('descontos').value || '0');
         const valorPago = Math.max(0, valorTotal - descontos);
 
-        document.getElementById('totalItens').textContent    = qtdItens;
+        document.getElementById('totalItens').textContent      = qtdItens;
         document.getElementById('valorTotalLabel').textContent = 'R$ ' + formatMoney(valorTotal);
         document.getElementById('descontosLabel').textContent  = 'R$ ' + formatMoney(descontos);
         document.getElementById('valorPagoLabel').textContent  = 'R$ ' + formatMoney(valorPago);
     }
 
     /* ── Adicionar / Remover linhas ───────────────────────────────── */
-    function adicionarItem() {
+    function adicionarItem(dados) {
         const tbody = document.getElementById('itensTableBody');
-        const row   = criarLinhaItem(itemIndex);
+        const row   = criarLinhaItem(itemIndex, dados || null);
         tbody.appendChild(row);
         itemIndex++;
         atualizarTotais();
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        row.querySelector('input[type="text"]').focus();
+        if (!dados) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.querySelector('input[type="text"]').focus();
+        }
     }
 
     function removerItem(btn) {
         const rows = document.querySelectorAll('.item-row');
         if (rows.length <= 1) {
-            /* Substituído alert() por banner inline não bloqueante */
             const banner = document.getElementById('bannerMinItem');
             if (banner) { banner.hidden = false; setTimeout(() => { banner.hidden = true; }, 3000); }
             return;
@@ -333,28 +367,54 @@
         });
     }
 
-    /* ── Submit: normalizar vírgula → ponto ──────────────────────────── */
+    /* ── Submit: normalizar vírgula → ponto + loading ──────────────── */
     function bindSubmit() {
-        document.getElementById('formLancamento').addEventListener('submit', function () {
+        const form       = document.getElementById('formLancamento');
+        const btnSubmit  = document.getElementById('btnSubmit');
+        const btnIcon    = document.getElementById('btnIcon');
+        const btnLabel   = document.getElementById('btnLabel');
+        const btnSpinner = document.getElementById('btnSpinner');
+
+        form.addEventListener('submit', function () {
             this.querySelectorAll('input').forEach(function (input) {
                 if (input.name.includes('valor') ||
-                    input.name.includes('quantidade') ||
                     input.name === 'descontos') {
                     input.value = input.value.replace(/\./g, '').replace(',', '.');
                 }
+                if (input.name.includes('quantidade')) {
+                    // Normalizar vírgula decimal sem remover ponto de milhar separadamente
+                    const v = input.value.replace(/\./g, '').replace(',', '.');
+                    input.value = isNaN(parseFloat(v)) ? input.value : v;
+                }
             });
+
+            btnSubmit.disabled = true;
+            btnIcon.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
+            btnLabel.textContent = 'Salvando...';
         });
     }
 
-    /* ── Init ───────────────────────────────────────────────────────────── */
+    /* ── Init: repopular com old('itens') se houver ─────────────────── */
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btnAdicionarItem')
-                .addEventListener('click', adicionarItem);
+                .addEventListener('click', () => adicionarItem(null));
         document.getElementById('descontos')
                 .addEventListener('input', atualizarTotais);
         bindTabela();
         bindSubmit();
-        adicionarItem(); /* cria a primeira linha */
+
+        // Repopular itens salvos pelo withInput() após erro de validação
+        let oldItens = [];
+        try {
+            oldItens = JSON.parse(document.getElementById('oldItens').textContent || '[]');
+        } catch (e) { oldItens = []; }
+
+        if (oldItens.length > 0) {
+            oldItens.forEach(function (item) { adicionarItem(item); });
+        } else {
+            adicionarItem(null); // linha inicial vazia
+        }
     });
 }());
 </script>
