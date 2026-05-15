@@ -50,25 +50,6 @@ class CreditCard extends Model
 
     // ==================== RELACIONAMENTOS ====================
 
-    /**
-     * Compras parceladas registradas via CreditPurchaseController
-     */
-    public function purchases()
-    {
-        return $this->hasMany(FinanceCreditPurchase::class, 'credit_card_id');
-    }
-
-    /**
-     * Parcelas individuais (geradas a partir das compras)
-     */
-    public function installments()
-    {
-        return $this->hasMany(FinanceInstallment::class, 'credit_card_id');
-    }
-
-    /**
-     * Despesas avulsas pagas com este cartão (FinanceExpense)
-     */
     public function expenses()
     {
         return $this->hasMany(FinanceExpense::class, 'credit_card_id');
@@ -77,56 +58,35 @@ class CreditCard extends Model
     // ==================== MÉTODOS DE NEGÓCIO ====================
 
     /**
-     * Calcula a previsão de fatura para um mês de referência,
-     * somando parcelas de compras + despesas avulsas do cartão.
+     * Calcula a previsão de fatura para um mês de referência.
      */
     public function previsaoFatura(?Carbon $mes = null): float
     {
         $mes ??= Carbon::now();
-
-        $totalParcelas = (float) $this->installments()
+        return (float) $this->expenses()
             ->whereYear('mes_referencia', $mes->year)
             ->whereMonth('mes_referencia', $mes->month)
             ->sum('valor');
-
-        $totalAvulsas = (float) $this->expenses()
-            ->whereYear('mes_referencia', $mes->year)
-            ->whereMonth('mes_referencia', $mes->month)
-            ->where('forma_pagamento', 'credito')
-            ->sum('valor');
-
-        return $totalParcelas + $totalAvulsas;
     }
 
     /**
-     * Retorna a data de fechamento da fatura para um determinado mês.
-     * Ex: se dia_fechamento = 15 e mês = 2026-05, retorna 2026-05-15
+     * Retorna a data de fechamento da fatura para uma data base.
      */
-    public function dataFechamento(?Carbon $mes = null): Carbon
+    public function dataFechamento(?Carbon $dataBase = null): Carbon
     {
-        $mes ??= Carbon::now();
-        return Carbon::create($mes->year, $mes->month, $this->dia_fechamento);
+        $dataBase = $dataBase ?? Carbon::now();
+        return Carbon::create($dataBase->year, $dataBase->month, $this->dia_fechamento);
     }
 
-    /**
-     * Retorna a data de vencimento da fatura para um determinado mês.
-     * Regra: se dia_vencimento <= dia_fechamento, o vencimento cai no mês seguinte.
-     */
-    public function dataVencimento(?Carbon $mes = null): Carbon
-    {
-        $mes ??= Carbon::now();
-        $venc = Carbon::create($mes->year, $mes->month, $this->dia_vencimento);
 
-        if ($this->dia_vencimento <= $this->dia_fechamento) {
-            $venc->addMonth();
-        }
-
-        return $venc;
-    }
+public function dataVencimento(?Carbon $mes = null): Carbon
+{
+    $mes = $mes ?? Carbon::now();
+    return Carbon::create($mes->year, $mes->month, $this->dia_vencimento);
+}
 
     /**
-     * Retorna o status da fatura do mês:
-     * 'aberta' (ainda não fechou), 'fechada' (fechou mas não venceu), 'vencida'
+     * Status da fatura: aberta, fechada ou vencida.
      */
     public function statusFatura(?Carbon $mes = null): string
     {
@@ -137,58 +97,54 @@ class CreditCard extends Model
         if ($hoje->lt($fechamento)) {
             return 'aberta';
         }
-
         if ($hoje->lte($vencimento)) {
             return 'fechada';
         }
-
         return 'vencida';
     }
 
     /**
-     * Verifica se o limite do cartão está estourado.
-     * Considera compras parceladas (todas as parcelas) + despesas avulsas.
-     */
-    public function limiteEstourado(): bool
-    {
-        if (! $this->limite || $this->limite <= 0) {
-            return false;
-        }
-
-        $gastoTotal = (float) $this->purchases()
-            ->whereHas('installments', fn($q) => $q->where('status', 'pendente'))
-            ->sum('valor_total');
-
-        return $gastoTotal >= $this->limite;
-    }
-
-    /**
-     * Retorna o limite disponível (limite - gastos pendentes).
+     * Calcula o limite disponível subtraindo TODAS as despesas de crédito pendentes.
      */
     public function limiteDisponivel(): float
     {
-        if (! $this->limite || $this->limite <= 0) {
+        if (!$this->limite || $this->limite <= 0) {
             return 0;
         }
 
-        $gastoPendente = (float) $this->purchases()
-            ->whereHas('installments', fn($q) => $q->where('status', 'pendente'))
-            ->sum('valor_total');
+        $totalPendente = $this->expenses()
+            ->where('forma_pagamento', 'credito')
+            ->where('status', 'pendente')
+            ->sum('valor');
 
-        return max(0, $this->limite - $gastoPendente);
+        return max(0, $this->limite - $totalPendente);
     }
 
     /**
-     * Scope para cartões ativos.
+     * Verifica se o limite está estourado.
      */
+    public function limiteEstourado(): bool
+    {
+        return $this->limiteDisponivel() <= 0;
+    }
+
+    /**
+     * Determina o mês de referência correto para uma compra com base no ciclo de faturamento.
+     * Se a compra ocorrer após o fechamento, a 1ª parcela cai no mês seguinte.
+     */
+    public function mesReferencia(Carbon $dataCompra): Carbon
+    {
+        $fechamento = $this->dataFechamento($dataCompra);
+        return $dataCompra->gt($fechamento)
+            ? $dataCompra->copy()->addMonth()->startOfMonth()
+            : $dataCompra->copy()->startOfMonth();
+    }
+
     public function scopeAtivos($query)
     {
         return $query->where('ativo', true);
     }
 
-    /**
-     * Scope para cartões de uma pessoa específica.
-     */
     public function scopeDaPessoa($query, string $pessoa)
     {
         return $query->where('pessoa', $pessoa);

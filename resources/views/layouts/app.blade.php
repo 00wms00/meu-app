@@ -190,7 +190,6 @@
                                 <hr class="my-1 border-gray-100">
                                 <p class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartões de Crédito</p>
                                 <a href="{{ route('finance.credit_cards.index') }}"     class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">💳 Gerenciar Cartões</a>
-                                <a href="{{ route('finance.credit_purchases.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🛍️ Compras no Crédito</a>
                                 <a href="{{ route('finance.faturas.index') }}"          class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📄 Faturas</a>
 
                                 {{-- Seção: Planejamento --}}
@@ -271,7 +270,6 @@
 
                     <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Cartões de Crédito</p>
                     <a href="{{ route('finance.credit_cards.index') }}"     class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">💳 Gerenciar Cartões</a>
-                    <a href="{{ route('finance.credit_purchases.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🛍️ Compras no Crédito</a>
                     <a href="{{ route('finance.faturas.index') }}"          class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">📄 Faturas</a>
 
                     <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Planejamento</p>

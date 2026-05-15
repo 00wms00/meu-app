@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\CreditCardController;
-use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FaturaController;
 use App\Http\Controllers\FinanceExpenseController;
@@ -189,11 +188,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/faturas', [FaturaController::class, 'index'])->name('faturas.index');
         
 
-        // Compras no Crédito + Parcelas
-        Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');
-        Route::post('/compras-credito', [CreditPurchaseController::class, 'store'])->name('credit_purchases.store');
-        Route::delete('/compras-credito/{creditPurchase}', [CreditPurchaseController::class, 'destroy'])->name('credit_purchases.destroy');
-        Route::patch('/compras-credito/parcela/{installment}/toggle', [CreditPurchaseController::class, 'toggleInstallment'])->name('credit_purchases.toggle_installment');
 
     });
 

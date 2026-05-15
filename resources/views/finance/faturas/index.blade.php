@@ -83,11 +83,15 @@
     <div class="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide">Fechamento</p>
-            <p class="text-sm font-semibold text-gray-800">Dia {{ $card->dia_fechamento }}</p>
+            <p class="text-sm font-semibold text-gray-800">
+                {{ $card->dataFechamento($mes)->format('d/m/Y') }}
+            </p>
         </div>
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide">Vencimento</p>
-            <p class="text-sm font-semibold text-gray-800">Dia {{ $card->dia_vencimento }}</p>
+            <p class="text-sm font-semibold text-gray-800">
+                {{ $card->dataVencimento($mes)->format('d/m/Y') }}
+            </p>
         </div>
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide">Total da Fatura</p>
@@ -96,16 +100,7 @@
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide">Status</p>
             @php
-                $statusFatura = 'aberta';
-                $hoje = \Carbon\Carbon::now();
-                $fechamento = \Carbon\Carbon::create($mes->year, $mes->month, $card->dia_fechamento);
-                $vencimento = \Carbon\Carbon::create($mes->year, $mes->month, $card->dia_vencimento);
-                if ($card->dia_vencimento <= $card->dia_fechamento) {
-                    $vencimento->addMonth();
-                }
-                if ($hoje->gt($fechamento)) {
-                    $statusFatura = $hoje->lte($vencimento) ? 'fechada' : 'vencida';
-                }
+                $statusFatura = $card->statusFatura($mes);
             @endphp
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
                 {{ $statusFatura === 'aberta' ? 'bg-green-100 text-green-700' : '' }}
@@ -117,12 +112,16 @@
     </div>
 
     {{-- Barra de progresso do limite --}}
-    @if($card->limite && $total > 0)
-    @php $pctLimite = min(100, round($total / $card->limite * 100)) @endphp
+    @if($card->limite)
+    @php 
+        $limiteDisponivel = $card->limiteDisponivel(); 
+        $limiteUsado = $card->limite - $limiteDisponivel;
+        $pctLimite = $card->limite > 0 ? min(100, round(($limiteUsado / $card->limite) * 100)) : 0;
+    @endphp
     <div class="px-6 pb-4">
         <div class="flex justify-between text-xs text-gray-400 mb-1">
             <span>{{ $pctLimite }}% do limite utilizado</span>
-            <span>Disponível: R$ {{ number_format(max(0, $card->limite - $total), 2, ',', '.') }}</span>
+            <span>Disponível: R$ {{ number_format($limiteDisponivel, 2, ',', '.') }}</span>
         </div>
         <div class="w-full bg-gray-100 rounded-full h-2">
             <div class="h-2 rounded-full transition-all {{ $pctLimite >= 80 ? 'bg-red-500' : ($pctLimite >= 50 ? 'bg-yellow-500' : 'bg-green-500') }}"
@@ -222,10 +221,6 @@
 
 {{-- Links úteis --}}
 <div class="mt-6 flex flex-wrap gap-3">
-    <a href="{{ route('finance.credit_purchases.index', ['mes' => $mesStr]) }}"
-       class="text-sm px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 transition">
-        🛍️ Ver Compras no Crédito
-    </a>
     <a href="{{ route('finance.expenses.index', ['mes' => $mesStr]) }}"
        class="text-sm px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-gray-50 transition">
         📋 Ver Todas as Despesas
