@@ -51,13 +51,15 @@
     </div>
 </div>
 
-{{-- Gráfico 1: Receitas x Despesas por mês --}}
+{{-- Gráfico 1: Receitas x Despesas por mês (só aparece com mais de 1 mês) --}}
+@if ($labelsMeses->count() > 1)
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
     <h2 class="text-sm font-semibold text-gray-800 mb-3">Receitas x Despesas por mês</h2>
     <div style="position:relative; height:260px">
         <canvas id="chartMeses"></canvas>
     </div>
 </div>
+@endif
 
 {{-- Gráfico 2: Despesas por categoria --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -105,8 +107,8 @@
     const labelsVariaveisCat = @json($labelsVariaveisCat ?? []);
     const serieVariaveisCat  = @json($serieVariaveisCat ?? []);
 
-    // 1. Linha: Receitas x Despesas por mês
-    if (labelsMeses.length) {
+    // 1. Linha: Receitas x Despesas por mês (canvas só existe quando > 1 mês)
+    if (labelsMeses.length > 1) {
         new Chart(document.getElementById('chartMeses'), {
             type: 'line',
             data: {
