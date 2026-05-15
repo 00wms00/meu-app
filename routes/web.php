@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\CreditCardController;
+use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FaturaController;
 use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
+use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\FuelEntryController;
 use App\Http\Controllers\FuelStationReportController;
 use App\Http\Controllers\ImportController;
@@ -177,6 +179,9 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
         Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
 
+        // Relatório financeiro (receitas x despesas por período)
+        Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('report.index');
+
         // Cartões de Crédito (cadastro)
         Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
         Route::post('/cartoes', [CreditCardController::class, 'store'])->name('credit_cards.store');
@@ -188,6 +193,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/faturas', [FaturaController::class, 'index'])->name('faturas.index');
         
 
+        // Compras no Crédito + Parcelas
+        Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');
+        Route::post('/compras-credito', [CreditPurchaseController::class, 'store'])->name('credit_purchases.store');
+        Route::delete('/compras-credito/{creditPurchase}', [CreditPurchaseController::class, 'destroy'])->name('credit_purchases.destroy');
+        Route::patch('/compras-credito/parcela/{installment}/toggle', [CreditPurchaseController::class, 'toggleInstallment'])->name('credit_purchases.toggle_installment');
 
     });
 
