@@ -53,5 +53,119 @@
     </div>
 </div>
 
-{{-- Se quiser, abaixo você pode listar receitas e despesas detalhadas por categoria/pessoa --}}
+{{-- Gráfico 1: Receitas x Despesas por mês --}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+    <h2 class="text-sm font-semibold text-gray-800 mb-2">Receitas x Despesas por mês</h2>
+    <canvas id="chartMeses" height="120"></canvas>
+</div>
+
+{{-- Gráfico 2: Composição das despesas por categoria --}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+    <h2 class="text-sm font-semibold text-gray-800 mb-2">Despesas por categoria</h2>
+    <canvas id="chartCategorias" height="120"></canvas>
+</div>
+
+{{-- Gráfico 3: Receitas x Despesas por pessoa --}}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+    <h2 class="text-sm font-semibold text-gray-800 mb-2">Receitas x Despesas por pessoa</h2>
+    <canvas id="chartPessoas" height="120"></canvas>
+</div>
+
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labelsMeses        = @json($labelsMeses ?? []);
+    const serieReceitasMes   = @json($serieReceitasMes ?? []);
+    const serieDespesasMes   = @json($serieDespesasMes ?? []);
+
+    const labelsCategorias   = @json($labelsCategorias ?? []);
+    const serieDespesasCat   = @json($serieDespesasCategorias ?? []);
+
+    const labelsPessoas      = @json($labelsPessoas ?? []);
+    const serieReceitasPes   = @json($serieReceitasPessoas ?? []);
+    const serieDespesasPes   = @json($serieDespesasPessoas ?? []);
+
+    // Gráfico 1: linha Receitas x Despesas por mês
+    if (labelsMeses.length) {
+        new Chart(document.getElementById('chartMeses').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labelsMeses,
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: serieReceitasMes,
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22,163,74,0.1)',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Despesas',
+                        data: serieDespesasMes,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220,38,38,0.1)',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Gráfico 2: pizza das despesas por categoria
+    if (labelsCategorias.length) {
+        new Chart(document.getElementById('chartCategorias').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: labelsCategorias,
+                datasets: [{
+                    data: serieDespesasCat,
+                    backgroundColor: ['#0ea5e9','#6366f1','#f97316','#22c55e','#e11d48','#a855f7','#facc15']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    // Gráfico 3: barras Receitas x Despesas por pessoa
+    if (labelsPessoas.length) {
+        new Chart(document.getElementById('chartPessoas').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labelsPessoas,
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: serieReceitasPes,
+                        backgroundColor: '#16a34a'
+                    },
+                    {
+                        label: 'Despesas',
+                        data: serieDespesasPes,
+                        backgroundColor: '#dc2626'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+</script>
+@endpush
