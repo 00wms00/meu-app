@@ -56,19 +56,25 @@
 {{-- Gráfico 1: Receitas x Despesas por mês --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
     <h2 class="text-sm font-semibold text-gray-800 mb-2">Receitas x Despesas por mês</h2>
-    <canvas id="chartMeses" height="120"></canvas>
+    <div class="relative h-72">
+        <canvas id="chartMeses" class="w-full h-full"></canvas>
+    </div>
 </div>
 
 {{-- Gráfico 2: Composição das despesas por categoria --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
     <h2 class="text-sm font-semibold text-gray-800 mb-2">Despesas por categoria</h2>
-    <canvas id="chartCategorias" height="120"></canvas>
+    <div class="relative h-72">
+        <canvas id="chartCategorias" class="w-full h-full"></canvas>
+    </div>
 </div>
 
 {{-- Gráfico 3: Receitas x Despesas por pessoa --}}
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
     <h2 class="text-sm font-semibold text-gray-800 mb-2">Receitas x Despesas por pessoa</h2>
-    <canvas id="chartPessoas" height="120"></canvas>
+    <div class="relative h-72">
+        <canvas id="chartPessoas" class="w-full h-full"></canvas>
+    </div>
 </div>
 
 @endsection
@@ -128,7 +134,7 @@
                 labels: labelsCategorias,
                 datasets: [{
                     data: serieDespesasCat,
-                    backgroundColor: ['#0ea5e9','#6366f1','#f97316','#22c55e','#e11d48','#a855f7','#facc15']
+                    backgroundColor: ['#0ea5e9','#6366f1','#f97316','#22c55e','#e11d48','#a855f7','#facc15','#4b5563','#22d3ee','#a3e635']
                 }]
             },
             options: {
