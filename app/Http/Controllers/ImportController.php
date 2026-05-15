@@ -25,7 +25,7 @@ class ImportController extends Controller
     public function parse(Request $request, InvoiceParser $parser): RedirectResponse
     {
         $request->validate([
-            'arquivo' => 'required|file|mimes:html,htm',
+            'arquivo' => 'required|file|mimetypes:text/html,application/octet-stream,text/plain',
         ]);
 
         $html = file_get_contents($request->file('arquivo')->path());
