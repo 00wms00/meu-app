@@ -15,21 +15,18 @@ class FinanceReportController extends Controller
 {
     public function index(Request $request)
     {
-        // Preset padrão: esse mês
         $preset = $request->input('preset', 'esse-mes');
 
         if ($preset === 'personalizado' && $request->filled(['data_inicio', 'data_fim'])) {
             $inicio = Carbon::createFromFormat('Y-m-d', $request->data_inicio)->startOfDay();
             $fim    = Carbon::createFromFormat('Y-m-d', $request->data_fim)->endOfDay();
         } else {
-            // Esse mês: do 1º ao último dia do mês atual
             $inicio = Carbon::now()->startOfMonth();
             $fim    = Carbon::now()->endOfMonth();
             $preset = 'esse-mes';
         }
 
         // ==================== RECEITAS ====================
-        // Usa mes_referencia entre início e fim (por mês)
         $incomes = FinanceIncome::whereBetween('mes_referencia', [
                 $inicio->copy()->startOfMonth(),
                 $fim->copy()->endOfMonth(),
@@ -53,14 +50,14 @@ class FinanceReportController extends Controller
 
         $totalDespesasManuais = $expenses->sum('valor');
 
-        // ==================== MERCADO (NOTAS IMPORTADAS) ====================
+        // ==================== MERCADO ====================
         $invoices = Invoice::whereBetween('data_emissao', [$inicio, $fim])
             ->where('user_id', Auth::id())
             ->get();
 
         $totalMercadoPeriodo = $invoices->sum('valor_pago');
 
-        // ==================== VEÍCULOS (MANUTENÇÕES + COMBUSTÍVEL) ====================
+        // ==================== VEÍCULOS ====================
         $vehicleMaint = VehicleExpense::whereBetween('data', [$inicio, $fim])
             ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
             ->get();
@@ -71,10 +68,9 @@ class FinanceReportController extends Controller
 
         $totalVeiculosPeriodo = $vehicleMaint->sum('valor') + $fuel->sum('valor');
 
-        // Total geral de despesas considerando tudo
         $totalDespesas = $totalDespesasManuais + $totalMercadoPeriodo + $totalVeiculosPeriodo;
 
-        // ==================== AGRUPAMENTOS AUXILIARES POR MÊS ====================
+        // ==================== GRÁFICO 1: Receitas x Despesas por mês ====================
         $receitasPorMes = $incomes
             ->groupBy(fn($r) => $r->mes_referencia->format('Y-m'))
             ->map->sum('valor');
@@ -83,18 +79,15 @@ class FinanceReportController extends Controller
             ->groupBy(fn($d) => $d->mes_referencia->format('Y-m'))
             ->map->sum('valor');
 
-        // Une chaves de meses para gráfico Receitas x Despesas
         $mesesSerie = $receitasPorMes->keys()
             ->merge($despesasPorMes->keys())
-            ->unique()
-            ->sort()
-            ->values();
+            ->unique()->sort()->values();
 
-        $labelsMeses = $mesesSerie->map(fn($mes) => Carbon::createFromFormat('Y-m', $mes)->format('m/Y'));
-        $serieReceitasMes = $mesesSerie->map(fn($mes) => (float) ($receitasPorMes[$mes] ?? 0))->values();
-        $serieDespesasMes = $mesesSerie->map(fn($mes) => (float) ($despesasPorMes[$mes] ?? 0))->values();
+        $labelsMeses        = $mesesSerie->map(fn($m) => Carbon::createFromFormat('Y-m', $m)->format('m/Y'));
+        $serieReceitasMes   = $mesesSerie->map(fn($m) => (float) ($receitasPorMes[$m] ?? 0))->values();
+        $serieDespesasMes   = $mesesSerie->map(fn($m) => (float) ($despesasPorMes[$m] ?? 0))->values();
 
-        // ==================== DESPESAS POR CATEGORIA (INCLUI MERCADO / VEÍCULOS) ====================
+        // ==================== GRÁFICO 2: Despesas por categoria ====================
         $despesasPorCategoria = $expenses
             ->whereNotNull('categoria')
             ->groupBy('categoria')
@@ -103,66 +96,60 @@ class FinanceReportController extends Controller
         if ($totalMercadoPeriodo > 0) {
             $despesasPorCategoria['Mercado'] = ($despesasPorCategoria['Mercado'] ?? 0) + $totalMercadoPeriodo;
         }
-
         if ($totalVeiculosPeriodo > 0) {
             $despesasPorCategoria['Veículos'] = ($despesasPorCategoria['Veículos'] ?? 0) + $totalVeiculosPeriodo;
         }
 
-        $despesasPorCategoria = $despesasPorCategoria
-            ->sortDesc();
-
-        $labelsCategorias = $despesasPorCategoria->keys()->values();
+        $despesasPorCategoria    = $despesasPorCategoria->sortDesc();
+        $labelsCategorias        = $despesasPorCategoria->keys()->values();
         $serieDespesasCategorias = $despesasPorCategoria->map(fn($v) => (float) $v)->values();
 
-        // ==================== RECEITAS x DESPESAS POR PESSOA ====================
-        $receitasPorPessoa = $incomes
-            ->groupBy('pessoa')
-            ->map->sum('valor');
+        // ==================== GRÁFICO 3: Fixas x Variáveis — totais ====================
+        $fixas    = $expenses->where('tipo_despesa', 'fixa');
+        $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
-        $despesasPorPessoa = $expenses
-            ->groupBy('pessoa')
-            ->map->sum('valor');
+        $totalFixas    = (float) $fixas->sum('valor');
+        $totalVariaveis = (float) $variaveis->sum('valor');
 
-        $pessoas = $receitasPorPessoa->keys()
-            ->merge($despesasPorPessoa->keys())
-            ->unique()
-            ->values();
+        // ==================== GRÁFICO 4: Fixas por categoria ====================
+        $fixasPorCategoria = $fixas
+            ->whereNotNull('categoria')
+            ->groupBy('categoria')
+            ->map(fn($g) => (float) $g->sum('valor'))
+            ->sortDesc();
 
-        $labelsPessoas = $pessoas->map(function ($pessoa) {
-            return match ($pessoa) {
-                'WIL' => 'Willian',
-                'MAY' => 'Mayara',
-                'compartilhado' => 'Compartilhado',
-                default => $pessoa,
-            };
-        });
+        $labelsFixasCat  = $fixasPorCategoria->keys()->values();
+        $serieFixasCat   = $fixasPorCategoria->values();
 
-        $serieReceitasPessoas = $pessoas->map(fn($pessoa) => (float) ($receitasPorPessoa[$pessoa] ?? 0))->values();
-        $serieDespesasPessoas = $pessoas->map(fn($pessoa) => (float) ($despesasPorPessoa[$pessoa] ?? 0))->values();
+        // ==================== GRÁFICO 5: Variáveis por categoria (inclui Mercado + Veículos) ====================
+        $variaveisPorCategoria = $variaveis
+            ->whereNotNull('categoria')
+            ->groupBy('categoria')
+            ->map(fn($g) => (float) $g->sum('valor'));
+
+        if ($totalMercadoPeriodo > 0) {
+            $variaveisPorCategoria['Mercado'] = ($variaveisPorCategoria['Mercado'] ?? 0) + $totalMercadoPeriodo;
+        }
+        if ($totalVeiculosPeriodo > 0) {
+            $variaveisPorCategoria['Veículos'] = ($variaveisPorCategoria['Veículos'] ?? 0) + $totalVeiculosPeriodo;
+        }
+
+        $variaveisPorCategoria = $variaveisPorCategoria->sortDesc();
+        $labelsVariaveisCat    = $variaveisPorCategoria->keys()->values();
+        $serieVariaveisCat     = $variaveisPorCategoria->values();
 
         $saldo = $totalReceitas - $totalDespesas;
 
         return view('finance.report.index', compact(
-            'inicio',
-            'fim',
-            'preset',
-            'incomes',
-            'expenses',
-            'totalReceitas',
-            'totalDespesas',
-            'totalDespesasManuais',
-            'totalMercadoPeriodo',
-            'totalVeiculosPeriodo',
-            'receitasPorMes',
-            'despesasPorMes',
-            'labelsMeses',
-            'serieReceitasMes',
-            'serieDespesasMes',
-            'labelsCategorias',
-            'serieDespesasCategorias',
-            'labelsPessoas',
-            'serieReceitasPessoas',
-            'serieDespesasPessoas',
+            'inicio', 'fim', 'preset',
+            'incomes', 'expenses',
+            'totalReceitas', 'totalDespesas',
+            'totalDespesasManuais', 'totalMercadoPeriodo', 'totalVeiculosPeriodo',
+            'labelsMeses', 'serieReceitasMes', 'serieDespesasMes',
+            'labelsCategorias', 'serieDespesasCategorias',
+            'totalFixas', 'totalVariaveis',
+            'labelsFixasCat', 'serieFixasCat',
+            'labelsVariaveisCat', 'serieVariaveisCat',
             'saldo',
         ));
     }
