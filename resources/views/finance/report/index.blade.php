@@ -92,7 +92,23 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const COLORS = ['#0ea5e9','#6366f1','#f97316','#22c55e','#e11d48','#a855f7','#facc15','#4b5563','#22d3ee','#a3e635','#fb923c','#34d399'];
+    /**
+     * Gera um array de N cores HSL visualmente distintas.
+     * Distribui o matiz uniformemente ao longo de 360° usando o
+     * método da "golden angle" (137.508°), garantindo máxima
+     * separação perceptual independentemente de quantas categorias existam.
+     */
+    function generateColors(n) {
+        const colors = [];
+        const goldenAngle = 137.508;
+        for (let i = 0; i < n; i++) {
+            const hue        = (i * goldenAngle) % 360;
+            const saturation = 65 + (i % 3) * 5;   // varia entre 65%, 70%, 75%
+            const lightness  = 48 + (i % 2) * 6;   // varia entre 48% e 54%
+            colors.push(`hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`);
+        }
+        return colors;
+    }
 
     const labelsMeses      = @json($labelsMeses ?? []);
     const serieReceitasMes = @json($serieReceitasMes ?? []);
@@ -128,7 +144,7 @@
             type: 'doughnut',
             data: {
                 labels: labelsCategorias,
-                datasets: [{ data: serieDespesasCat, backgroundColor: COLORS }]
+                datasets: [{ data: serieDespesasCat, backgroundColor: generateColors(labelsCategorias.length) }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
@@ -140,7 +156,7 @@
             type: 'bar',
             data: {
                 labels: labelsFixasCat,
-                datasets: [{ label: 'Fixas', data: serieFixasCat, backgroundColor: '#6366f1' }]
+                datasets: [{ label: 'Fixas', data: serieFixasCat, backgroundColor: generateColors(labelsFixasCat.length) }]
             },
             options: {
                 indexAxis: 'y',
@@ -158,7 +174,7 @@
             type: 'bar',
             data: {
                 labels: labelsVariaveisCat,
-                datasets: [{ label: 'Variáveis', data: serieVariaveisCat, backgroundColor: '#f97316' }]
+                datasets: [{ label: 'Variáveis', data: serieVariaveisCat, backgroundColor: generateColors(labelsVariaveisCat.length) }]
             },
             options: {
                 indexAxis: 'y',
