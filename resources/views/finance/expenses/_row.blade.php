@@ -1,25 +1,38 @@
 {{-- Linha de uma despesa --}}
-<div x-data="{
-    editing: false,
-    formaPgto: '{{ $expense->forma_pagamento }}',
-    cats: @json($expenseCategories ?? []),
-    selectedCat: '{{ addslashes($expense->categoria ?? '') }}',
-    selectedCatCor: '#e5e7eb',
-    syncCor() {
-        const found = this.cats.find(c => c.nome === this.selectedCat);
-        this.selectedCatCor = found ? found.cor : '#e5e7eb';
-    },
-    init() {
-        this.syncCor();
-        window.addEventListener('categories-updated', async () => {
-            const r = await fetch('{{ route('finance.expense_categories.index') }}', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            this.cats = await r.json();
+<div
+    x-data="{
+        editing: false,
+        formaPgto: '{{ $expense->forma_pagamento }}',
+        cats: [],
+        selectedCat: @js($expense->categoria ?? ''),
+        selectedCatCor: '#e5e7eb',
+        syncCor() {
+            const found = this.cats.find(c => c.nome === this.selectedCat);
+            this.selectedCatCor = found ? '#' + found.cor : '#e5e7eb';
+        },
+        async init() {
+            if (window.__expenseCats) {
+                this.cats = window.__expenseCats;
+            } else {
+                const r = await fetch('{{ route('finance.expense_categories.index') }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                window.__expenseCats = await r.json();
+                this.cats = window.__expenseCats;
+            }
             this.syncCor();
-        });
-    }
-}" x-init="init()">
+            window.addEventListener('categories-updated', async () => {
+                const r = await fetch('{{ route('finance.expense_categories.index') }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                window.__expenseCats = await r.json();
+                this.cats = window.__expenseCats;
+                this.syncCor();
+            });
+        }
+    }"
+    x-init="init()"
+>
 
     {{-- === LINHA PRINCIPAL === --}}
     <div class="px-5 py-3 flex items-center gap-3
@@ -65,7 +78,7 @@
                 @if($expense->categoria)
                     @php
                         $catObj = isset($expenseCategories) ? $expenseCategories->firstWhere('nome', $expense->categoria) : null;
-                        $catCor = $catObj ? $catObj->cor : '#6b7280';
+                        $catCor = $catObj ? '#'.$catObj->cor : '#6b7280';
                         $catEmoji = $catObj ? $catObj->emoji : '';
                     @endphp
                     <span class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5"
@@ -80,7 +93,7 @@
                     @if($expense->creditCard)
                         <span class="text-indigo-600 font-medium">{{ $expense->creditCard->nome }}</span>
                     @endif
-                    @if($expense->parcelas_total > 1)
+                    @if(($expense->parcelas_total ?? 1) > 1)
                         <span class="bg-indigo-50 text-indigo-700 px-1.5 rounded font-semibold">
                             {{ $expense->parcelas_total }}x
                         </span>
@@ -150,7 +163,7 @@
                 <input type="number" name="valor" value="{{ $expense->valor }}" step="0.01" min="0.01" required class="form-control text-sm w-full">
             </div>
 
-            {{-- Campo Categoria: select dinâmico com bolinha de cor --}}
+            {{-- Categoria com bolinha de cor dinâmica --}}
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
                 <div class="flex items-center gap-1.5">
@@ -162,9 +175,11 @@
                             @change="syncCor()">
                         <option value="">-- Sem categoria --</option>
                         <template x-for="cat in cats" :key="cat.id">
-                            <option :value="cat.nome"
-                                    :selected="cat.nome === selectedCat"
-                                    x-text="(cat.emoji ? cat.emoji + ' ' : '') + cat.nome"></option>
+                            <option
+                                :value="cat.nome"
+                                :selected="cat.nome === selectedCat"
+                                x-text="(cat.emoji ? cat.emoji + ' ' : '') + cat.nome"
+                            ></option>
                         </template>
                     </select>
                 </div>
@@ -187,7 +202,7 @@
                 </select>
             </div>
 
-            {{-- Cartão + parcelas (inline edit) --}}
+            {{-- Cartão + parcelas --}}
             <div class="col-span-2" x-show="formaPgto === 'credito'" x-cloak>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
