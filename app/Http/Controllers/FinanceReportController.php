@@ -45,22 +45,20 @@ class FinanceReportController extends Controller
         $totalDespesasManuais = $expenses->sum('valor');
 
         // ==================== MERCADO ====================
-        $invoices = Invoice::whereBetween('data_emissao', [$inicio, $fim])
+        $totalMercadoPeriodo = Invoice::whereBetween('data_emissao', [$inicio, $fim])
             ->where('user_id', Auth::id())
-            ->get();
-
-        $totalMercadoPeriodo = $invoices->sum('valor_pago');
+            ->sum('valor_pago');
 
         // ==================== VEÍCULOS ====================
-        $vehicleMaint = VehicleExpense::whereBetween('data', [$inicio, $fim])
+        $totalManutencoesVeiculos = VehicleExpense::whereBetween('data', [$inicio, $fim])
             ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
-            ->get();
+            ->sum('valor');
 
-        $fuel = FuelEntry::whereBetween('data', [$inicio, $fim])
+        $totalCombustivel = FuelEntry::whereBetween('data', [$inicio, $fim])
             ->where('user_id', Auth::id())
-            ->get();
+            ->sum('valor');
 
-        $totalVeiculosPeriodo = $vehicleMaint->sum('valor') + $fuel->sum('valor');
+        $totalVeiculosPeriodo = $totalManutencoesVeiculos + $totalCombustivel;
 
         $totalDespesas = $totalDespesasManuais + $totalMercadoPeriodo + $totalVeiculosPeriodo;
 
