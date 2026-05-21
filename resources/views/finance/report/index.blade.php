@@ -46,7 +46,7 @@
             🔒 Fixas: <strong>R$ {{ number_format($totalFixas, 2, ',', '.') }}</strong>
         </div>
         <div>
-            🎯 Variáveis: <strong>R$ {{ number_format($totalVariaveis, 2, ',', '.') }}</strong>
+            🎯 Variáveis: <strong>R$ {{ number_format($totalVariaveis + $totalMercadoPeriodo + $totalVeiculosPeriodo, 2, ',', '.') }}</strong>
         </div>
     </div>
 </div>
