@@ -89,10 +89,10 @@
                 <div class="divide-y divide-gray-100">
                     @foreach($fixas as $expense)
                         @include('finance.expenses._row', [
-                            'expense'          => $expense,
-                            'mes'              => $mes,
-                            'creditCards'      => $creditCards,
-                            'expenseCategories'=> $expenseCategories,
+                            'expense'           => $expense,
+                            'mes'               => $mes,
+                            'creditCards'       => $creditCards,
+                            'expenseCategories' => $expenseCategories,
                         ])
                     @endforeach
                 </div>
@@ -112,18 +112,20 @@
                     </span>
                 </h2>
             </div>
+
+            {{-- Badges de categoria com cor + emoji corretos --}}
             @if($porCategoria->isNotEmpty())
                 <div class="px-5 py-3 bg-gray-50 border-b flex flex-wrap gap-2">
                     @foreach($porCategoria as $cat => $val)
                         @php
                             $catObj = $expenseCategories->firstWhere('nome', $cat);
-                            $cor = $catObj ? $catObj->cor : '#6b7280';
-                            $emoji = $catObj ? $catObj->emoji : '';
+                            $cor    = $catObj ? '#' . ltrim($catObj->cor, '#') : '#6b7280';
+                            $emoji  = $catObj ? ($catObj->emoji ?? '') : '';
                         @endphp
                         <span class="text-xs px-2 py-1 rounded-full bg-white border text-gray-700 flex items-center gap-1"
-                              style="border-color:{{ $cor }}20; background:{{ $cor }}15;">
+                              style="border-color:{{ $cor }}33; background:{{ $cor }}18;">
                             @if($emoji)<span>{{ $emoji }}</span>@endif
-                            <span style="color:{{ $cor }}">{{ $cat ?: 'Sem categoria' }}</span>:
+                            <span style="color:{{ $cor }}">{{ $cat ?: 'Sem categoria' }}</span>
                             <strong>R$ {{ number_format($val, 2, ',', '.') }}</strong>
                         </span>
                     @endforeach
@@ -138,10 +140,10 @@
                     <div class="divide-y divide-gray-100">
                         @foreach($variaveis as $expense)
                             @include('finance.expenses._row', [
-                                'expense'          => $expense,
-                                'mes'              => $mes,
-                                'creditCards'      => $creditCards,
-                                'expenseCategories'=> $expenseCategories,
+                                'expense'           => $expense,
+                                'mes'               => $mes,
+                                'creditCards'       => $creditCards,
+                                'expenseCategories' => $expenseCategories,
                             ])
                         @endforeach
                     </div>
@@ -152,7 +154,7 @@
                     <div class="border-t border-gray-200" x-data="{ openMercado: false }">
                         <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openMercado = !openMercado">
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado — notas importadas</span>
+                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado &mdash; notas importadas</span>
                                 <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $invoicesDoMes->count() }} nota(s)</span>
                             </div>
                             <div class="flex items-center gap-2">
@@ -168,7 +170,7 @@
                                     <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🛒</span>
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-medium text-gray-800 truncate">{{ $inv['descricao'] }}</p>
-                                        <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s) • Mercado / Alimentação</p>
+                                        <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s) &bull; Mercado / Alimentação</p>
                                     </div>
                                     <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($inv['valor'], 2, ',', '.') }}</span>
                                     <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
@@ -183,7 +185,7 @@
                     <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
                         <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openVeiculos = !openVeiculos">
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos — despesas importadas</span>
+                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos &mdash; despesas importadas</span>
                                 <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $vehicleExpensesDoMes->sum('quantidade') }} lançamento(s)</span>
                             </div>
                             <div class="flex items-center gap-2">
@@ -200,7 +202,7 @@
                                         <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🚗</span>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate">{{ $vexp['descricao'] }}</p>
-                                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) • Carro</p>
+                                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) &bull; Carro</p>
                                         </div>
                                         <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($vexp['valor'], 2, ',', '.') }}</span>
                                         <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
@@ -211,7 +213,7 @@
                                     <div x-show="open" x-cloak class="pl-14 pr-5 pb-3 space-y-1 bg-green-50/20">
                                         @foreach($vexp['itens'] as $item)
                                             <div class="flex justify-between text-xs text-gray-500 py-1 border-b border-gray-50 last:border-0">
-                                                <span class="truncate mr-4">{{ $item['data'] }} — {{ $item['tipo'] }}@if($item['descricao']) • {{ $item['descricao'] }}@endif</span>
+                                                <span class="truncate mr-4">{{ $item['data'] }} &mdash; {{ $item['tipo'] }}@if($item['descricao']) &bull; {{ $item['descricao'] }}@endif</span>
                                                 <span class="tabular-nums whitespace-nowrap font-medium">R$ {{ number_format($item['valor'], 2, ',', '.') }}</span>
                                             </div>
                                         @endforeach
@@ -275,7 +277,7 @@
                             <select name="categoria"
                                     class="form-control text-sm flex-1"
                                     x-model="selectedCat"
-                                    @change="onCatChange()">
+                                    @change="syncCor()">
                                 <option value="">-- Sem categoria --</option>
                                 <template x-for="cat in cats" :key="cat.id">
                                     <option :value="cat.nome"
@@ -375,7 +377,7 @@
 
                 @if($errors->any())
                     <div class="text-xs text-red-600">
-                        @foreach($errors->all() as $e) <p>• {{ $e }}</p> @endforeach
+                        @foreach($errors->all() as $e) <p>&bull; {{ $e }}</p> @endforeach
                     </div>
                 @endif
 
@@ -392,6 +394,9 @@
 @push('scripts')
 <script>
 function novaDepesaForm() {
+    // normaliza cor: sempre retorna com #
+    function corComHash(c) { return c ? '#' + c.replace('#','') : '#e5e7eb'; }
+
     return {
         formaPgto: '{{ old('forma_pagamento', 'pix') }}',
         cats: @json($expenseCategories),
@@ -405,15 +410,14 @@ function novaDepesaForm() {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 this.cats = await r.json();
+                window.__expenseCats = this.cats;
                 this.syncCor();
             });
         },
 
-        onCatChange() { this.syncCor(); },
-
         syncCor() {
             const found = this.cats.find(c => c.nome === this.selectedCat);
-            this.selectedCatCor = found ? found.cor : '#e5e7eb';
+            this.selectedCatCor = found ? corComHash(found.cor) : '#e5e7eb';
         },
     };
 }
