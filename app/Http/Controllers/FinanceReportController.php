@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FinanceIncome;
 use App\Models\FinanceExpense;
+use App\Models\ExpenseCategory;
 use App\Models\Invoice;
 use App\Models\FuelEntry;
 use App\Models\VehicleExpense;
@@ -61,6 +62,17 @@ class FinanceReportController extends Controller
         $totalVeiculosPeriodo = $totalManutencoesVeiculos + $totalCombustivel;
 
         $totalDespesas = $totalDespesasManuais + $totalMercadoPeriodo + $totalVeiculosPeriodo;
+
+        // ==================== MAPA CATEGORIA -> COR/EMOJI ====================
+        // Gera um mapa [ 'nome' => ['cor' => '#xxxxxx', 'emoji' => '...'] ]
+        // para ser usado nos gráficos do Chart.js
+        $categoryMap = ExpenseCategory::orderBy('nome')
+            ->get()
+            ->keyBy('nome')
+            ->map(fn($cat) => [
+                'cor'   => '#' . ltrim($cat->cor ?? '6b7280', '#'),
+                'emoji' => $cat->emoji ?? '',
+            ]);
 
         // ==================== GRÁFICO 1: Receitas x Despesas por mês ====================
         $receitasPorMes = $incomes
@@ -143,6 +155,7 @@ class FinanceReportController extends Controller
             'labelsFixasCat', 'serieFixasCat',
             'labelsVariaveisCat', 'serieVariaveisCat',
             'saldo',
+            'categoryMap',   // <-- mapa nome->cor/emoji para os gráficos
         ));
     }
 }

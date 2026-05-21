@@ -6,7 +6,7 @@
 <div class="mb-6">
     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Relatório Financeiro</h1>
     <p class="mt-1 text-gray-600">
-        Período: {{ $inicio->format('d/m/Y') }} — {{ $fim->format('d/m/Y') }}
+        Período: {{ $inicio->format('d/m/Y') }} &mdash; {{ $fim->format('d/m/Y') }}
     </p>
 </div>
 
@@ -93,22 +93,39 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     /**
-     * Gera um array de N cores HSL visualmente distintas.
-     * Distribui o matiz uniformemente ao longo de 360° usando o
-     * método da "golden angle" (137.508°), garantindo máxima
-     * separação perceptual independentemente de quantas categorias existam.
+     * Mapa de categorias cadastradas -> cor real.
+     * Formato: { "Nome": { cor: "#rrggbb", emoji: "ð " }, ... }
      */
-    function generateColors(n) {
-        const colors = [];
-        const goldenAngle = 137.508;
-        for (let i = 0; i < n; i++) {
-            const hue        = (i * goldenAngle) % 360;
-            const saturation = 65 + (i % 3) * 5;   // varia entre 65%, 70%, 75%
-            const lightness  = 48 + (i % 2) * 6;   // varia entre 48% e 54%
-            colors.push(`hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`);
+    const categoryMap = @json($categoryMap);
+
+    /**
+     * Retorna a cor cadastrada para uma categoria.
+     * Fallback: gera cor HSL determinística baseada no nome (sempre a mesma cor para o mesmo nome).
+     */
+    function catColor(nome) {
+        if (categoryMap[nome] && categoryMap[nome].cor) {
+            return categoryMap[nome].cor;
         }
-        return colors;
+        // fallback determinístico por hash do nome
+        let hash = 0;
+        for (let i = 0; i < nome.length; i++) hash = nome.charCodeAt(i) + ((hash << 5) - hash);
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 65%, 50%)`;
     }
+
+    /**
+     * Retorna o label com emoji (se cadastrado) para exibir na legenda.
+     */
+    function catLabel(nome) {
+        const emoji = categoryMap[nome]?.emoji;
+        return emoji ? `${emoji} ${nome}` : nome;
+    }
+
+    /**
+     * Gera arrays de cores e labels a partir de uma lista de nomes de categoria.
+     */
+    function catColors(labels) { return labels.map(catColor); }
+    function catLabels(labels) { return labels.map(catLabel); }
 
     const labelsMeses      = @json($labelsMeses ?? []);
     const serieReceitasMes = @json($serieReceitasMes ?? []);
@@ -123,7 +140,7 @@
     const labelsVariaveisCat = @json($labelsVariaveisCat ?? []);
     const serieVariaveisCat  = @json($serieVariaveisCat ?? []);
 
-    // 1. Linha: Receitas x Despesas por mês (canvas só existe quando > 1 mês)
+    // 1. Linha: Receitas x Despesas por mês
     if (labelsMeses.length > 1) {
         new Chart(document.getElementById('chartMeses'), {
             type: 'line',
@@ -138,25 +155,39 @@
         });
     }
 
-    // 2. Doughnut: Todas as despesas por categoria
+    // 2. Doughnut: Todas as despesas por categoria (cores reais)
     if (labelsCategorias.length) {
         new Chart(document.getElementById('chartCategorias'), {
             type: 'doughnut',
             data: {
-                labels: labelsCategorias,
-                datasets: [{ data: serieDespesasCat, backgroundColor: generateColors(labelsCategorias.length) }]
+                labels: catLabels(labelsCategorias),
+                datasets: [{
+                    data: serieDespesasCat,
+                    backgroundColor: catColors(labelsCategorias),
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } } }
+            }
         });
     }
 
-    // 3. Barras horizontais: Fixas por categoria
+    // 3. Barras horizontais: Fixas por categoria (cores reais)
     if (labelsFixasCat.length) {
         new Chart(document.getElementById('chartFixasCat'), {
             type: 'bar',
             data: {
-                labels: labelsFixasCat,
-                datasets: [{ label: 'Fixas', data: serieFixasCat, backgroundColor: generateColors(labelsFixasCat.length) }]
+                labels: catLabels(labelsFixasCat),
+                datasets: [{
+                    label: 'Fixas',
+                    data: serieFixasCat,
+                    backgroundColor: catColors(labelsFixasCat),
+                    borderRadius: 4,
+                }]
             },
             options: {
                 indexAxis: 'y',
@@ -168,13 +199,18 @@
         });
     }
 
-    // 4. Barras horizontais: Variáveis por categoria
+    // 4. Barras horizontais: Variáveis por categoria (cores reais)
     if (labelsVariaveisCat.length) {
         new Chart(document.getElementById('chartVariaveisCat'), {
             type: 'bar',
             data: {
-                labels: labelsVariaveisCat,
-                datasets: [{ label: 'Variáveis', data: serieVariaveisCat, backgroundColor: generateColors(labelsVariaveisCat.length) }]
+                labels: catLabels(labelsVariaveisCat),
+                datasets: [{
+                    label: 'Variáveis',
+                    data: serieVariaveisCat,
+                    backgroundColor: catColors(labelsVariaveisCat),
+                    borderRadius: 4,
+                }]
             },
             options: {
                 indexAxis: 'y',
