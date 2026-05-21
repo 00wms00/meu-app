@@ -88,7 +88,12 @@
             @else
                 <div class="divide-y divide-gray-100">
                     @foreach($fixas as $expense)
-                        @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards])
+                        @include('finance.expenses._row', [
+                            'expense'          => $expense,
+                            'mes'              => $mes,
+                            'creditCards'      => $creditCards,
+                            'expenseCategories'=> $expenseCategories,
+                        ])
                     @endforeach
                 </div>
                 <div class="px-5 py-3 bg-orange-50 border-t border-orange-100 flex justify-between">
@@ -132,7 +137,12 @@
                 @if($variaveis->isNotEmpty())
                     <div class="divide-y divide-gray-100">
                         @foreach($variaveis as $expense)
-                            @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards, 'expenseCategories' => $expenseCategories])
+                            @include('finance.expenses._row', [
+                                'expense'          => $expense,
+                                'mes'              => $mes,
+                                'creditCards'      => $creditCards,
+                                'expenseCategories'=> $expenseCategories,
+                            ])
                         @endforeach
                     </div>
                 @endif
@@ -256,10 +266,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                            Categoria
-                        </label>
-                        {{-- select dinâmico preenchido via Alpine --}}
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
                         <div class="flex items-center gap-1.5">
                             <span
                                 class="w-3 h-3 rounded-full flex-shrink-0 border border-black/10 transition-colors"
@@ -272,10 +279,8 @@
                                 <option value="">-- Sem categoria --</option>
                                 <template x-for="cat in cats" :key="cat.id">
                                     <option :value="cat.nome"
-                                            :selected="cat.nome === '{{ old('categoria') }}'">
-                                        <template x-if="cat.emoji" x-text="cat.emoji + ' '"></template>
-                                        <span x-text="cat.nome"></span>
-                                    </option>
+                                            :selected="cat.nome === '{{ old('categoria') }}'"
+                                            x-text="(cat.emoji ? cat.emoji + ' ' : '') + cat.nome"></option>
                                 </template>
                             </select>
                         </div>
@@ -395,7 +400,6 @@ function novaDepesaForm() {
 
         init() {
             this.syncCor();
-            // Recarrega categorias quando o modal CRUD salvar alguma
             window.addEventListener('categories-updated', async () => {
                 const r = await fetch('{{ route('finance.expense_categories.index') }}', {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }

@@ -1,5 +1,25 @@
 {{-- Linha de uma despesa --}}
-<div x-data="{ editing: false, formaPgto: '{{ $expense->forma_pagamento }}' }">
+<div x-data="{
+    editing: false,
+    formaPgto: '{{ $expense->forma_pagamento }}',
+    cats: @json($expenseCategories ?? []),
+    selectedCat: '{{ addslashes($expense->categoria ?? '') }}',
+    selectedCatCor: '#e5e7eb',
+    syncCor() {
+        const found = this.cats.find(c => c.nome === this.selectedCat);
+        this.selectedCatCor = found ? found.cor : '#e5e7eb';
+    },
+    init() {
+        this.syncCor();
+        window.addEventListener('categories-updated', async () => {
+            const r = await fetch('{{ route('finance.expense_categories.index') }}', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            this.cats = await r.json();
+            this.syncCor();
+        });
+    }
+}" x-init="init()">
 
     {{-- === LINHA PRINCIPAL === --}}
     <div class="px-5 py-3 flex items-center gap-3
@@ -43,7 +63,16 @@
             </p>
             <p class="text-xs text-gray-400 flex gap-2 flex-wrap">
                 @if($expense->categoria)
-                    <span class="bg-white/60 rounded px-1">{{ $expense->categoria }}</span>
+                    @php
+                        $catObj = isset($expenseCategories) ? $expenseCategories->firstWhere('nome', $expense->categoria) : null;
+                        $catCor = $catObj ? $catObj->cor : '#6b7280';
+                        $catEmoji = $catObj ? $catObj->emoji : '';
+                    @endphp
+                    <span class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5"
+                          style="background:{{ $catCor }}18; color:{{ $catCor }}">
+                        @if($catEmoji)<span>{{ $catEmoji }}</span>@endif
+                        {{ $expense->categoria }}
+                    </span>
                 @endif
                 @php $formaLabel = ['debito'=>'Débito','pix'=>'Pix','dinheiro'=>'Dinheiro','credito'=>'💳 Crédito']; @endphp
                 <span>{{ $formaLabel[$expense->forma_pagamento] ?? $expense->forma_pagamento }}</span>
@@ -120,10 +149,27 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
                 <input type="number" name="valor" value="{{ $expense->valor }}" step="0.01" min="0.01" required class="form-control text-sm w-full">
             </div>
+
+            {{-- Campo Categoria: select dinâmico com bolinha de cor --}}
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-                <input type="text" name="categoria" value="{{ $expense->categoria }}" class="form-control text-sm w-full" list="categorias-list">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded-full flex-shrink-0 border border-black/10 transition-colors"
+                          :style="'background:' + selectedCatCor"></span>
+                    <select name="categoria"
+                            class="form-control text-sm flex-1"
+                            x-model="selectedCat"
+                            @change="syncCor()">
+                        <option value="">-- Sem categoria --</option>
+                        <template x-for="cat in cats" :key="cat.id">
+                            <option :value="cat.nome"
+                                    :selected="cat.nome === selectedCat"
+                                    x-text="(cat.emoji ? cat.emoji + ' ' : '') + cat.nome"></option>
+                        </template>
+                    </select>
+                </div>
             </div>
+
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
                 <select name="tipo_despesa" class="form-control text-sm w-full">
