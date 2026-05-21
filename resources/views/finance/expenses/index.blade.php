@@ -110,8 +110,16 @@
             @if($porCategoria->isNotEmpty())
                 <div class="px-5 py-3 bg-gray-50 border-b flex flex-wrap gap-2">
                     @foreach($porCategoria as $cat => $val)
-                        <span class="text-xs px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-600">
-                            {{ $cat ?: 'Sem categoria' }}: <strong>R$ {{ number_format($val, 2, ',', '.') }}</strong>
+                        @php
+                            $catObj = $expenseCategories->firstWhere('nome', $cat);
+                            $cor = $catObj ? $catObj->cor : '#6b7280';
+                            $emoji = $catObj ? $catObj->emoji : '';
+                        @endphp
+                        <span class="text-xs px-2 py-1 rounded-full bg-white border text-gray-700 flex items-center gap-1"
+                              style="border-color:{{ $cor }}20; background:{{ $cor }}15;">
+                            @if($emoji)<span>{{ $emoji }}</span>@endif
+                            <span style="color:{{ $cor }}">{{ $cat ?: 'Sem categoria' }}</span>:
+                            <strong>R$ {{ number_format($val, 2, ',', '.') }}</strong>
                         </span>
                     @endforeach
                 </div>
@@ -124,7 +132,7 @@
                 @if($variaveis->isNotEmpty())
                     <div class="divide-y divide-gray-100">
                         @foreach($variaveis as $expense)
-                            @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards])
+                            @include('finance.expenses._row', ['expense' => $expense, 'mes' => $mes, 'creditCards' => $creditCards, 'expenseCategories' => $expenseCategories])
                         @endforeach
                     </div>
                 @endif
@@ -132,7 +140,6 @@
                 {{-- Mercado (acordeon) --}}
                 @if($invoicesDoMes->isNotEmpty())
                     <div class="border-t border-gray-200" x-data="{ openMercado: false }">
-                        {{-- Cabeçalho clicável --}}
                         <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openMercado = !openMercado">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado — notas importadas</span>
@@ -145,8 +152,6 @@
                                 </svg>
                             </div>
                         </div>
-
-                        {{-- Lista de notas (expandida/recolhida) --}}
                         <div x-show="openMercado" x-cloak>
                             @foreach($invoicesDoMes as $inv)
                                 <div class="px-5 py-3 flex items-center gap-3 border-t border-gray-50 hover:bg-green-50/30">
@@ -166,7 +171,6 @@
                 {{-- Veículos (acordeon) --}}
                 @if($vehicleExpensesDoMes->isNotEmpty())
                     <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
-                        {{-- Cabeçalho clicável --}}
                         <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openVeiculos = !openVeiculos">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos — despesas importadas</span>
@@ -179,8 +183,6 @@
                                 </svg>
                             </div>
                         </div>
-
-                        {{-- Lista de veículos (expandida/recolhida) --}}
                         <div x-show="openVeiculos" x-cloak>
                             @foreach($vehicleExpensesDoMes as $vexp)
                                 <div class="border-t border-gray-50" x-data="{ open: false }">
@@ -221,8 +223,21 @@
 
     {{-- FORMULÁRIO NOVA DESPESA --}}
     <div>
-        <div class="bg-white rounded-lg shadow p-5 sticky top-4" x-data="{ formaPgto: '{{ old('forma_pagamento', 'pix') }}' }">
-            <h2 class="text-base font-semibold text-gray-800 mb-4">➕ Nova Despesa</h2>
+        <div
+            class="bg-white rounded-lg shadow p-5 sticky top-4"
+            x-data="novaDepesaForm()"
+        >
+            {{-- Cabeçalho do form + botão gerenciar categorias --}}
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-gray-800">➕ Nova Despesa</h2>
+                <button type="button"
+                        @click="$dispatch('open-categories')"
+                        class="text-xs px-2.5 py-1.5 rounded border border-gray-200 text-gray-500
+                               hover:border-blue-400 hover:text-blue-600 transition flex items-center gap-1">
+                    🏷️ Categorias
+                </button>
+            </div>
+
             <form method="POST" action="{{ route('finance.expenses.store') }}" class="space-y-3">
                 @csrf
 
@@ -241,16 +256,29 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-                        <input type="text" name="categoria" placeholder="Ex: Moradia, Lazer"
-                               value="{{ old('categoria') }}" class="form-control text-sm w-full" list="categorias-list">
-                        <datalist id="categorias-list">
-                            <option value="Moradia"><option value="Alimentação">
-                            <option value="Transporte"><option value="Saúde">
-                            <option value="Educação"><option value="Lazer">
-                            <option value="Roupas"><option value="Assinaturas">
-                            <option value="Carro"><option value="Outros">
-                        </datalist>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                            Categoria
+                        </label>
+                        {{-- select dinâmico preenchido via Alpine --}}
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                class="w-3 h-3 rounded-full flex-shrink-0 border border-black/10 transition-colors"
+                                :style="'background:' + selectedCatCor"
+                            ></span>
+                            <select name="categoria"
+                                    class="form-control text-sm flex-1"
+                                    x-model="selectedCat"
+                                    @change="onCatChange()">
+                                <option value="">-- Sem categoria --</option>
+                                <template x-for="cat in cats" :key="cat.id">
+                                    <option :value="cat.nome"
+                                            :selected="cat.nome === '{{ old('categoria') }}'">
+                                        <template x-if="cat.emoji" x-text="cat.emoji + ' '"></template>
+                                        <span x-text="cat.nome"></span>
+                                    </option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -352,4 +380,40 @@
     </div>
 
 </div>
+
+{{-- Modal CRUD Categorias --}}
+@include('finance.expenses._categories_crud')
+
+@push('scripts')
+<script>
+function novaDepesaForm() {
+    return {
+        formaPgto: '{{ old('forma_pagamento', 'pix') }}',
+        cats: @json($expenseCategories),
+        selectedCat: '{{ old('categoria') }}',
+        selectedCatCor: '#e5e7eb',
+
+        init() {
+            this.syncCor();
+            // Recarrega categorias quando o modal CRUD salvar alguma
+            window.addEventListener('categories-updated', async () => {
+                const r = await fetch('{{ route('finance.expense_categories.index') }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                this.cats = await r.json();
+                this.syncCor();
+            });
+        },
+
+        onCatChange() { this.syncCor(); },
+
+        syncCor() {
+            const found = this.cats.find(c => c.nome === this.selectedCat);
+            this.selectedCatCor = found ? found.cor : '#e5e7eb';
+        },
+    };
+}
+</script>
+@endpush
+
 @endsection
