@@ -27,10 +27,7 @@ class FinanceReportController extends Controller
         }
 
         // ==================== RECEITAS ====================
-        $incomes = FinanceIncome::whereBetween('mes_referencia', [
-                $inicio->copy()->startOfMonth(),
-                $fim->copy()->endOfMonth(),
-            ])
+        $incomes = FinanceIncome::whereBetween('mes_referencia', [$inicio, $fim])
             ->orderBy('mes_referencia')
             ->orderBy('pessoa')
             ->orderBy('descricao')
@@ -39,10 +36,7 @@ class FinanceReportController extends Controller
         $totalReceitas = $incomes->sum('valor');
 
         // ==================== DESPESAS MANUAIS ====================
-        $expenses = FinanceExpense::whereBetween('mes_referencia', [
-                $inicio->copy()->startOfMonth(),
-                $fim->copy()->endOfMonth(),
-            ])
+        $expenses = FinanceExpense::whereBetween('mes_referencia', [$inicio, $fim])
             ->orderBy('tipo_despesa')
             ->orderBy('categoria')
             ->orderBy('descricao')
