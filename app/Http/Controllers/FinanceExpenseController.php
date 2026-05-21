@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExpenseCategory;
 use App\Models\FinanceExpense;
 use App\Models\FuelEntry;
 use App\Models\Invoice;
@@ -33,6 +34,9 @@ class FinanceExpenseController extends Controller
         $variaveis = $expenses->where('tipo_despesa', 'variavel');
 
         $creditCards = CreditCard::orderBy('nome')->get();
+
+        // Categorias de despesas do usuário (para o select + modal CRUD)
+        $expenseCategories = ExpenseCategory::doUsuario(Auth::id())->get();
 
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
@@ -101,111 +105,104 @@ class FinanceExpenseController extends Controller
             'totalPago', 'totalPendente', 'porCategoria', 'meses',
             'invoicesDoMes', 'totalMercado',
             'vehicleExpensesDoMes', 'totalVeiculos',
-            'creditCards'
+            'creditCards', 'expenseCategories'
         ));
     }
 
-public function store(Request $request)
-{
-    $data = $request->validate([
-        'descricao'       => 'required|string|max:255',
-        'tipo_despesa'    => 'required|in:fixa,variavel',
-        'categoria'       => 'nullable|string|max:100',
-        'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
-        'credit_card_id'  => 'nullable|exists:credit_cards,id',
-        'parcelas_total'  => 'nullable|integer|min:1|max:48',
-        'pessoa'          => 'required|in:WIL,MAY,compartilhado',
-        'valor'           => 'required|numeric|min:0.01',
-        'mes_referencia'  => 'required|date_format:Y-m',
-        'data_vencimento' => 'nullable|date',   // será a data da compra para crédito
-        'data_pagamento'  => 'nullable|date',
-        'status'          => 'required|in:pago,pendente',
-        'observacao'      => 'nullable|string|max:500',
-    ]);
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'descricao'       => 'required|string|max:255',
+            'tipo_despesa'    => 'required|in:fixa,variavel',
+            'categoria'       => 'nullable|string|max:100',
+            'forma_pagamento' => 'required|in:debito,pix,dinheiro,credito',
+            'credit_card_id'  => 'nullable|exists:credit_cards,id',
+            'parcelas_total'  => 'nullable|integer|min:1|max:48',
+            'pessoa'          => 'required|in:WIL,MAY,compartilhado',
+            'valor'           => 'required|numeric|min:0.01',
+            'mes_referencia'  => 'required|date_format:Y-m',
+            'data_vencimento' => 'nullable|date',
+            'data_pagamento'  => 'nullable|date',
+            'status'          => 'required|in:pago,pendente',
+            'observacao'      => 'nullable|string|max:500',
+        ]);
 
-    if ($data['forma_pagamento'] !== 'credito') {
-        // Pagamento à vista
-        $data['credit_card_id'] = null;
-        $data['parcelas_total'] = 1;
-        $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
-        $data['origem']         = 'manual';
-        $data['data_compra']    = $data['data_vencimento'] 
-                                  ? Carbon::parse($data['data_vencimento']) 
-                                  : now();
-        FinanceExpense::create($data);
-        return redirect()
-            ->route('finance.expenses.index', ['mes' => $data['mes_referencia']->format('Y-m')])
-            ->with('success', 'Despesa adicionada!');
-    }
+        if ($data['forma_pagamento'] !== 'credito') {
+            $data['credit_card_id'] = null;
+            $data['parcelas_total'] = 1;
+            $data['mes_referencia'] = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
+            $data['origem']         = 'manual';
+            $data['data_compra']    = $data['data_vencimento']
+                                      ? Carbon::parse($data['data_vencimento'])
+                                      : now();
+            FinanceExpense::create($data);
+            return redirect()
+                ->route('finance.expenses.index', ['mes' => $data['mes_referencia']->format('Y-m')])
+                ->with('success', 'Despesa adicionada!');
+        }
 
-    // Crédito
-    $parcelas   = max(1, (int)($data['parcelas_total'] ?? 1));
-    $valorParc  = round((float)$data['valor'] / $parcelas, 2);
-    $cardId     = $data['credit_card_id'];
-    $grupoId    = (string) Str::uuid();
-    $nomeBase   = $data['descricao'];
+        // Crédito
+        $parcelas   = max(1, (int)($data['parcelas_total'] ?? 1));
+        $valorParc  = round((float)$data['valor'] / $parcelas, 2);
+        $cardId     = $data['credit_card_id'];
+        $grupoId    = (string) Str::uuid();
+        $nomeBase   = $data['descricao'];
 
-    // ⚠️ Data da compra = data_vencimento (ou now como fallback)
-    $dataCompra = $data['data_vencimento'] 
-                  ? Carbon::parse($data['data_vencimento']) 
-                  : now();
+        $dataCompra = $data['data_vencimento']
+                      ? Carbon::parse($data['data_vencimento'])
+                      : now();
 
-    // Validação de limite do cartão
-    if ($cardId) {
-        $card = CreditCard::find($cardId);
-        if ($card && $card->limite > 0) {
-            $limiteDisponivel = $card->limiteDisponivel();
-            if ($data['valor'] > $limiteDisponivel) {
-                return back()
-                    ->withErrors(['valor' => "Limite insuficiente! Disponível: R$ " . number_format($limiteDisponivel, 2, ',', '.')])
-                    ->withInput();
+        if ($cardId) {
+            $card = CreditCard::find($cardId);
+            if ($card && $card->limite > 0) {
+                $limiteDisponivel = $card->limiteDisponivel();
+                if ($data['valor'] > $limiteDisponivel) {
+                    return back()
+                        ->withErrors(['valor' => 'Limite insuficiente! Disponível: R$ ' . number_format($limiteDisponivel, 2, ',', '.')])
+                        ->withInput();
+                }
             }
         }
-    }
 
-    // Determinar mês base da 1ª parcela
-    if ($cardId && $parcelas > 1) {
-        $card = CreditCard::find($cardId);
-        $mesBase = $card->mesReferencia($dataCompra);
-    } else {
-        $mesBase = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
-    }
-
-    // Distribuição de centavos
-    $somaParcelas = $valorParc * $parcelas;
-    $diferenca    = round((float)$data['valor'] - $somaParcelas, 2);
-
-    for ($i = 0; $i < $parcelas; $i++) {
-        $mes = $mesBase->copy()->addMonths($i);
-        $valor = $valorParc;
-        if ($i === 0) {
-            $valor += $diferenca;
+        if ($cardId && $parcelas > 1) {
+            $card = CreditCard::find($cardId);
+            $mesBase = $card->mesReferencia($dataCompra);
+        } else {
+            $mesBase = Carbon::createFromFormat('Y-m', $data['mes_referencia'])->startOfMonth();
         }
 
-        FinanceExpense::create([
-            'grupo_parcelas'  => $grupoId,
-            'descricao'       => $nomeBase . ($parcelas > 1 ? ' (' . ($i + 1) . '/' . $parcelas . ')' : ''),
-            'tipo_despesa'    => $data['tipo_despesa'],
-            'categoria'       => $data['categoria'] ?? null,
-            'forma_pagamento' => 'credito',
-            'credit_card_id'  => $cardId,
-            'parcelas_total'  => $parcelas,
-            'pessoa'          => $data['pessoa'],
-            'valor'           => round($valor, 2),
-            'mes_referencia'  => $mes,
-            'data_compra'     => $i === 0 ? $dataCompra : null,
-            'data_vencimento' => $data['data_vencimento'] ?? null,
-            'data_pagamento'  => $i === 0 ? ($data['data_pagamento'] ?? null) : null,
-            'status'          => $i === 0 ? $data['status'] : 'pendente',
-            'observacao'      => $data['observacao'] ?? null,
-            'origem'          => 'manual',
-        ]);
-    }
+        $somaParcelas = $valorParc * $parcelas;
+        $diferenca    = round((float)$data['valor'] - $somaParcelas, 2);
 
-    return redirect()
-        ->route('finance.expenses.index', ['mes' => $mesBase->format('Y-m')])
-        ->with('success', 'Despesa adicionada!');
-}
+        for ($i = 0; $i < $parcelas; $i++) {
+            $mes   = $mesBase->copy()->addMonths($i);
+            $valor = $valorParc;
+            if ($i === 0) $valor += $diferenca;
+
+            FinanceExpense::create([
+                'grupo_parcelas'  => $grupoId,
+                'descricao'       => $nomeBase . ($parcelas > 1 ? ' (' . ($i + 1) . '/' . $parcelas . ')' : ''),
+                'tipo_despesa'    => $data['tipo_despesa'],
+                'categoria'       => $data['categoria'] ?? null,
+                'forma_pagamento' => 'credito',
+                'credit_card_id'  => $cardId,
+                'parcelas_total'  => $parcelas,
+                'pessoa'          => $data['pessoa'],
+                'valor'           => round($valor, 2),
+                'mes_referencia'  => $mes,
+                'data_compra'     => $i === 0 ? $dataCompra : null,
+                'data_vencimento' => $data['data_vencimento'] ?? null,
+                'data_pagamento'  => $i === 0 ? ($data['data_pagamento'] ?? null) : null,
+                'status'          => $i === 0 ? $data['status'] : 'pendente',
+                'observacao'      => $data['observacao'] ?? null,
+                'origem'          => 'manual',
+            ]);
+        }
+
+        return redirect()
+            ->route('finance.expenses.index', ['mes' => $mesBase->format('Y-m')])
+            ->with('success', 'Despesa adicionada!');
+    }
 
     public function update(Request $request, FinanceExpense $expense)
     {

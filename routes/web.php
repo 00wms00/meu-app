@@ -3,6 +3,7 @@
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\FaturaController;
 use App\Http\Controllers\FinanceExpenseController;
 use App\Http\Controllers\FinanceIncomeController;
@@ -55,19 +56,15 @@ Route::middleware(['auth'])->group(function () {
 
     // ==================== PRODUTOS ====================
     Route::prefix('products')->name('products.')->group(function () {
-        // Normalização
         Route::get('/normalizacao', [ProductController::class, 'normalizacao'])->name('normalizacao');
         Route::post('/{product}/normalizar', [ProductController::class, 'aprovarNormalizacao'])->name('normalizar');
         Route::post('/normalizar-todos', [ProductController::class, 'aprovarTodasNormalizacoes'])->name('normalizar-todos');
 
-        // Categorias
         Route::get('/categorias', [ProductController::class, 'categorias'])->name('categorias');
         Route::post('/categorizar-lote', [ProductController::class, 'categorizarLote'])->name('categorizar-lote');
         Route::post('/{product}/categoria', [ProductController::class, 'atualizarCategoria'])->name('atualizar-categoria');
 
-        // Agrupamentos → ProductAgrupamentoController
         Route::get('/agrupamentos', [ProductAgrupamentoController::class, 'agrupamentos'])->name('agrupamentos');
-      //  Route::post('/agrupar-automatico', [ProductAgrupamentoController::class, 'agruparAutomatico'])->name('agrupar-automatico');
         Route::post('/criar-grupo', [ProductAgrupamentoController::class, 'criarGrupo'])->name('criar-grupo');
         Route::post('/{product}/agrupar', [ProductAgrupamentoController::class, 'agrupar'])->name('agrupar');
         Route::post('/{product}/desagrupar', [ProductAgrupamentoController::class, 'desagrupar'])->name('desagrupar');
@@ -76,28 +73,24 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{product}/desfazer-grupo', [ProductAgrupamentoController::class, 'desfazerGrupo'])->name('desfazer-grupo');
         Route::post('/{product}/adicionar-ao-grupo', [ProductAgrupamentoController::class, 'adicionarAoGrupo'])->name('adicionar-ao-grupo');
 
-        // ML Interativo → ProductMlController
         Route::get('/ml-sugestoes', [ProductMlController::class, 'sugestoesInterativo'])->name('ml-sugestoes');
         Route::post('/ml-agrupar', [ProductMlController::class, 'confirmarAgrupamento'])->name('ml-agrupar');
         Route::get('/ml-interativo', [ProductMlController::class, 'sugestoesInterativo'])->name('ml-interativo');
         Route::post('/ml-confirmar', [ProductMlController::class, 'confirmarAgrupamento'])->name('ml-confirmar');
         Route::get('/{product}/similares', [ProductMlController::class, 'similares'])->name('similares');
 
-        // Fotos → ProductController
         Route::post('/{product}/foto', [ProductController::class, 'uploadFoto'])->name('foto');
         Route::delete('/{product}/foto', [ProductController::class, 'removerFoto'])->name('foto.remover');
 
-        // Alerta de preço → PriceAlertController
         Route::post('/{product}/alerta', [PriceAlertController::class, 'criar'])->name('alerta.criar');
 
-        // CRUD Produtos
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/{product}', [ProductController::class, 'show'])->name('show');
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
     });
 
-    // Alertas de preço → PriceAlertController
+    // Alertas de preço
     Route::get('/alertas', [PriceAlertController::class, 'index'])->name('alertas.index');
     Route::delete('/alertas/{alerta}', [PriceAlertController::class, 'remover'])->name('alertas.remover');
     Route::post('/alertas/{alerta}/toggle', [PriceAlertController::class, 'toggle'])->name('alertas.toggle');
@@ -110,7 +103,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/orcamento', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('/orcamento', [BudgetController::class, 'store'])->name('budgets.store');
 
-    // Categorias
+    // Categorias (produtos)
     Route::resource('categories', CategoryController::class)->except(['show', 'create']);
 
     // Listas de Compras
@@ -122,10 +115,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('shopping-lists/{shopping_list}/frequentes', [ShoppingListController::class, 'addFrequentes'])->name('shopping-lists.frequentes');
     Route::post('shopping-lists/{shopping_list}/sugerir', [ShoppingListController::class, 'sugerirItens'])->name('shopping-lists.sugerir');
     Route::post('shopping-lists/{shopping_list}/limpar-comprados', [ShoppingListController::class, 'limparComprados'])->name('shopping-lists.limpar');
+    Route::post('/lista-rapida', [ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');
     Route::post('items/{item}/toggle', [ShoppingListController::class, 'toggleItem'])->name('items.toggle');
     Route::put('items/{item}', [ShoppingListController::class, 'updateItem'])->name('items.update');
     Route::delete('items/{item}', [ShoppingListController::class, 'removeItem'])->name('items.remove');
-    Route::post('/lista-rapida', [ShoppingListController::class, 'criarListaRapida'])->name('shopping-lists.rapida');
 
     // Ofertas
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
@@ -179,10 +172,17 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
         Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
 
-        // Relatório financeiro (receitas x despesas por período)
+        // Categorias de despesas (CRUD via JSON/Ajax)
+        Route::get('/expense-categories',                             [ExpenseCategoryController::class, 'index'])  ->name('expense_categories.index');
+        Route::post('/expense-categories',                            [ExpenseCategoryController::class, 'store'])  ->name('expense_categories.store');
+        Route::put('/expense-categories/{expenseCategory}',           [ExpenseCategoryController::class, 'update']) ->name('expense_categories.update');
+        Route::delete('/expense-categories/{expenseCategory}',        [ExpenseCategoryController::class, 'destroy'])->name('expense_categories.destroy');
+        Route::post('/expense-categories/reorder',                    [ExpenseCategoryController::class, 'reorder'])->name('expense_categories.reorder');
+
+        // Relatório financeiro
         Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('report.index');
 
-        // Cartões de Crédito (cadastro)
+        // Cartões de Crédito
         Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
         Route::post('/cartoes', [CreditCardController::class, 'store'])->name('credit_cards.store');
         Route::put('/cartoes/{creditCard}', [CreditCardController::class, 'update'])->name('credit_cards.update');
@@ -191,7 +191,6 @@ Route::middleware(['auth'])->group(function () {
 
         // Faturas
         Route::get('/faturas', [FaturaController::class, 'index'])->name('faturas.index');
-        
 
         // Compras no Crédito + Parcelas
         Route::get('/compras-credito', [CreditPurchaseController::class, 'index'])->name('credit_purchases.index');
