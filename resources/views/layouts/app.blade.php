@@ -127,7 +127,7 @@
                             </div>
                         </div>
 
-                        {{-- Dropdown: Veículos (NOVO) --}}
+                        {{-- Dropdown: Veículos --}}
                         <div class="relative">
                             <button @click="openDropdown = openDropdown === 'veiculos' ? null : 'veiculos'"
                                     :aria-expanded="openDropdown === 'veiculos'"
@@ -198,6 +198,11 @@
                                 <a href="{{ route('budgets.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🎯 Orçamento</a>
                                 <a href="{{ route('alertas.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🔔 Alertas de Preço</a>
                                 <a href="{{ route('offers.index') }}"  class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">🏷️ Ofertas / Encartes</a>
+
+                                {{-- Seção: Relatório --}}
+                                <hr class="my-1 border-gray-100">
+                                <p class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Relatório</p>
+                                <a href="{{ url('/financas/relatorio') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" role="menuitem">📊 Relatório Financeiro</a>
                             </div>
                         </div>
 
@@ -254,7 +259,7 @@
                     <a href="{{ route('shopping-lists.index') }}"       class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">📋 Listas de Compras</a>
                     <a href="{{ route('shopping-lists.planejamento') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🗓️ Planejamento</a>
 
-                    {{-- Veículos (NOVO) --}}
+                    {{-- Veículos --}}
                     <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Veículos</p>
                     <a href="{{ route('vehicles.index') }}"                 class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">🚗 Meus Veículos</a>
                     <a href="{{ route('vehicles.create') }}"                class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">➕ Novo Veículo</a>
@@ -276,6 +281,9 @@
                     <a href="{{ route('budgets.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🎯 Orçamento</a>
                     <a href="{{ route('alertas.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🔔 Alertas de Preço</a>
                     <a href="{{ route('offers.index') }}"  class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">🏷️ Ofertas / Encartes</a>
+
+                    <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Relatório</p>
+                    <a href="{{ url('/financas/relatorio') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">📊 Relatório Financeiro</a>
 
                     {{-- Sair --}}
                     <div class="pt-2">
