@@ -149,6 +149,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vehicles/{vehicle}/fuel', [FuelEntryController::class, 'store'])->name('vehicles.fuel.store');
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'update'])->name('vehicles.fuel.update');
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/km', [FuelEntryController::class, 'updateKm'])->name('vehicles.fuel.updateKm');
+    Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/litros', [FuelEntryController::class, 'updateLitros'])->name('vehicles.fuel.updateLitros');
     Route::delete('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'destroy'])->name('vehicles.fuel.destroy');
 
     Route::post('/vehicles/{vehicle}/reminders', [MaintenanceReminderController::class, 'store'])->name('vehicles.reminders.store');
