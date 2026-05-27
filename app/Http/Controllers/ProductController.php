@@ -7,10 +7,12 @@ use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\PriceAlert;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -34,7 +36,7 @@ class ProductController extends Controller
         return view('products.index', compact('products', 'categorias'));
     }
 
-    public function show(Product $product): View
+    public function show(Request $request, Product $product): View
     {
         $this->authorize('view', $product);
 
@@ -47,6 +49,7 @@ class ProductController extends Controller
               ->orWhere('canonical_product_id', $produtoExibicao->id)
         )->pluck('id');
 
+        // ── Série histórica completa ──────────────────────────────
         $items = InvoiceItem::with('invoice')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
@@ -58,18 +61,48 @@ class ProductController extends Controller
         $serie = $items
             ->map(fn ($i) => [
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
-                'valor_unitario' => $i->valor_unitario,
+                'valor_unitario' => (float) $i->valor_unitario,
                 'unidade'        => $i->unidade,
             ])
             ->values();
 
+        // ── Variação primeira → última compra ─────────────────────
         $variacao = null;
-        $primeiro = $serie->first();
-        $ultimo   = $serie->last();
-
-        if ($primeiro && $ultimo && $primeiro['valor_unitario'] > 0) {
-            $variacao = (($ultimo['valor_unitario'] - $primeiro['valor_unitario']) / $primeiro['valor_unitario']) * 100;
+        if ($serie->count() >= 2) {
+            $primeiro = $serie->first()['valor_unitario'];
+            $ultimo   = $serie->last()['valor_unitario'];
+            if ($primeiro > 0) {
+                $variacao = (($ultimo - $primeiro) / $primeiro) * 100;
+            }
         }
+
+        // ── Filtro de período para análise ────────────────────────
+        $periodoAtivo = $request->input('periodo', '30d');
+        [$dataInicioAnalise, $dataFimAnalise] = $this->resolverPeriodo(
+            $periodoAtivo,
+            $request->input('data_inicio'),
+            $request->input('data_fim'),
+        );
+
+        // ── Estatísticas de preço do período ──────────────────────
+        $estatisticas = $this->calcularEstatisticas(
+            $produtoIds, Auth::id(), $dataInicioAnalise, $dataFimAnalise
+        );
+
+        // ── Estatísticas fixas (30d / 6m) para o card comparativo ─
+        $stats30d = $this->calcularEstatisticas(
+            $produtoIds, Auth::id(),
+            now()->subDays(30)->startOfDay(),
+            now()->endOfDay(),
+        );
+        $stats6m = $this->calcularEstatisticas(
+            $produtoIds, Auth::id(),
+            now()->subMonths(6)->startOfDay(),
+            now()->endOfDay(),
+        );
+        $statsHistorico = $this->calcularEstatisticas(
+            $produtoIds, Auth::id(), null, null
+        );
 
         $agrupados = Product::where('canonical_product_id', $produtoExibicao->id)->get();
 
@@ -78,7 +111,10 @@ class ProductController extends Controller
             ->first();
 
         return view('products.show', compact(
-            'product', 'produtoExibicao', 'serie', 'variacao', 'agrupados', 'alertaExistente'
+            'product', 'produtoExibicao', 'serie', 'variacao',
+            'agrupados', 'alertaExistente',
+            'estatisticas', 'stats30d', 'stats6m', 'statsHistorico',
+            'periodoAtivo', 'dataInicioAnalise', 'dataFimAnalise',
         ));
     }
 
@@ -239,6 +275,71 @@ class ProductController extends Controller
         $similares = $mlService->encontrarSimilares($product, 10);
 
         return view('products.similares', compact('product', 'similares'));
+    }
+
+    // ==================== ANÁLISE DE PREÇOS ====================
+
+    /**
+     * Resolve as datas de início/fim a partir do atalho de período.
+     * @return array{0: Carbon|null, 1: Carbon|null}
+     */
+    private function resolverPeriodo(string $periodo, ?string $dataInicio, ?string $dataFim): array
+    {
+        return match ($periodo) {
+            '30d'        => [now()->subDays(30)->startOfDay(),    now()->endOfDay()],
+            '6m'         => [now()->subMonths(6)->startOfDay(),   now()->endOfDay()],
+            'historico'  => [null, null],
+            'custom'     => [
+                $dataInicio ? Carbon::parse($dataInicio)->startOfDay() : now()->subDays(30)->startOfDay(),
+                $dataFim    ? Carbon::parse($dataFim)->endOfDay()      : now()->endOfDay(),
+            ],
+            default      => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
+        };
+    }
+
+    /**
+     * Calcula média, mínimo, máximo, moda e contagem de compras
+     * no período indicado.  Passa null/null para histórico completo.
+     */
+    private function calcularEstatisticas(
+        $produtoIds,
+        int $userId,
+        ?Carbon $inicio,
+        ?Carbon $fim,
+    ): array {
+        $query = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->whereIn('invoice_items.product_id', $produtoIds)
+            ->where('invoices.user_id', $userId)
+            ->where('invoice_items.valor_unitario', '>', 0);
+
+        if ($inicio && $fim) {
+            $query->whereBetween('invoices.data_emissao', [$inicio, $fim]);
+        }
+
+        $agg = (clone $query)
+            ->selectRaw('
+                COUNT(*)                          AS total,
+                AVG(invoice_items.valor_unitario) AS media,
+                MIN(invoice_items.valor_unitario) AS minimo,
+                MAX(invoice_items.valor_unitario) AS maximo
+            ')
+            ->first();
+
+        // Moda: valor_unitario mais frequente
+        $modaRow = (clone $query)
+            ->select('invoice_items.valor_unitario')
+            ->selectRaw('COUNT(*) as freq')
+            ->groupBy('invoice_items.valor_unitario')
+            ->orderByDesc('freq')
+            ->first();
+
+        return [
+            'total'  => (int)   ($agg->total  ?? 0),
+            'media'  => (float) ($agg->media  ?? 0),
+            'minimo' => (float) ($agg->minimo ?? 0),
+            'maximo' => (float) ($agg->maximo ?? 0),
+            'moda'   => $modaRow ? (float) $modaRow->valor_unitario : null,
+        ];
     }
 
     // ==================== HELPERS ====================
