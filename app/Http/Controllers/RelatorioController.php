@@ -24,11 +24,13 @@ class RelatorioController extends Controller
 
     public function periodo(Request $request): View
     {
+        $hoje = now()->format('Y-m-d');
+
         return $this->gerarRelatorio(
             userId:      Auth::id(),
             tipo:        'periodo',
-            dataInicio:  $request->input('data_inicio', now()->startOfMonth()->format('Y-m-d')),
-            dataFim:     $request->input('data_fim',    now()->format('Y-m-d')),
+            dataInicio:  $request->input('data_inicio', $hoje),
+            dataFim:     $request->input('data_fim',    $hoje),
         );
     }
 
@@ -50,7 +52,7 @@ class RelatorioController extends Controller
             $cat->porcentagem = $totalGeral > 0 ? ($cat->gasto_total / $totalGeral) * 100 : 0;
             if (! $cat->categoria_nome) {
                 $cat->categoria_nome  = 'Sem categoria';
-                $cat->categoria_emoji = '📦';
+                $cat->categoria_emoji = '\xF0\x9F\x93\xA6';
                 $cat->categoria_cor   = '#9ca3af';
             }
             return $cat;
@@ -76,9 +78,6 @@ class RelatorioController extends Controller
         ));
     }
 
-    /**
-     * Aplica o filtro de período (mensal ou por datas) em qualquer query de InvoiceItem.
-     */
     private function aplicarFiltroPeriodo(
         Builder $query,
         string  $tipo,
@@ -101,6 +100,8 @@ class RelatorioController extends Controller
 
     private function queryProdutos(int $userId, string $tipo, ?int $mes, ?int $ano, ?string $dataInicio, ?string $dataFim)
     {
+        // produto_nome: usa o nome do canônico quando existir (nome normalizado),
+        //              caso contrário usa o nome do próprio produto.
         $query = InvoiceItem::select(
                 DB::raw('COALESCE(canonico.id,               products.id)               as produto_id'),
                 DB::raw('COALESCE(canonico.nome,             products.nome)             as produto_nome'),
@@ -111,9 +112,9 @@ class RelatorioController extends Controller
                 DB::raw('MIN(invoice_items.valor_unitario)                              as preco_minimo'),
                 DB::raw('MAX(invoice_items.valor_unitario)                              as preco_maximo'),
             )
-            ->join('products',               'invoice_items.product_id',        '=', 'products.id')
-            ->join('invoices',               'invoice_items.invoice_id',         '=', 'invoices.id')
-            ->leftJoin('products as canonico', 'products.canonical_product_id', '=', 'canonico.id')
+            ->join('products',                'invoice_items.product_id',        '=', 'products.id')
+            ->join('invoices',                'invoice_items.invoice_id',        '=', 'invoices.id')
+            ->leftJoin('products as canonico', 'products.canonical_product_id',  '=', 'canonico.id')
             ->where('invoices.user_id', $userId);
 
         $this->aplicarFiltroPeriodo($query, $tipo, $mes, $ano, $dataInicio, $dataFim);
@@ -137,16 +138,16 @@ class RelatorioController extends Controller
     private function queryGastosPorCategoria(int $userId, string $tipo, ?int $mes, ?int $ano, ?string $dataInicio, ?string $dataFim)
     {
         $query = InvoiceItem::select(
-                'categories.id   as categoria_id',
-                'categories.nome as categoria_nome',
+                'categories.id    as categoria_id',
+                'categories.nome  as categoria_nome',
                 'categories.emoji as categoria_emoji',
-                'categories.cor  as categoria_cor',
+                'categories.cor   as categoria_cor',
                 DB::raw('SUM(invoice_items.valor_total)           as gasto_total'),
                 DB::raw('COUNT(DISTINCT invoice_items.invoice_id) as num_compras'),
             )
-            ->join('products',               'invoice_items.product_id',        '=', 'products.id')
-            ->join('invoices',               'invoice_items.invoice_id',         '=', 'invoices.id')
-            ->leftJoin('products as canonico', 'products.canonical_product_id', '=', 'canonico.id')
+            ->join('products',                'invoice_items.product_id',        '=', 'products.id')
+            ->join('invoices',                'invoice_items.invoice_id',        '=', 'invoices.id')
+            ->leftJoin('products as canonico', 'products.canonical_product_id',  '=', 'canonico.id')
             ->leftJoin('categories', fn ($join) =>
                 $join->on(DB::raw('COALESCE(canonico.category_id, products.category_id)'), '=', 'categories.id')
             )
@@ -175,7 +176,7 @@ class RelatorioController extends Controller
     private function arrayMeses(): array
     {
         return [
-            1  => 'Janeiro',   2  => 'Fevereiro', 3  => 'Março',
+            1  => 'Janeiro',   2  => 'Fevereiro', 3  => 'Mar\u00e7o',
             4  => 'Abril',     5  => 'Maio',      6  => 'Junho',
             7  => 'Julho',     8  => 'Agosto',    9  => 'Setembro',
             10 => 'Outubro',   11 => 'Novembro',  12 => 'Dezembro',
