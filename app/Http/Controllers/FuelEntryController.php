@@ -33,7 +33,6 @@ class FuelEntryController extends Controller
 
         FuelEntry::create($data);
 
-        // Atualiza km_atual do veículo se o km informado for maior
         $km = $data['km_abastecimento'] ?? null;
         if ($km && $km > $vehicle->km_atual) {
             $vehicle->update(['km_atual' => $km]);
@@ -46,7 +45,7 @@ class FuelEntryController extends Controller
     }
 
     /**
-     * Atualiza litros (e recalcula R$/L) de um abastecimento existente.
+     * Atualiza litros de um abastecimento existente (rota genérica PATCH).
      */
     public function update(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
     {
@@ -69,6 +68,32 @@ class FuelEntryController extends Controller
     }
 
     /**
+     * Atualiza apenas os litros de um abastecimento (edição inline na tabela).
+     * Aceita o campo "litros" via POST/_method=PATCH.
+     */
+    public function updateLitros(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
+    {
+        if ($vehicle->user_id !== Auth::id() || $fuelEntry->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'litros' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $fuelEntry->update([
+            'litros' => isset($validated['litros']) && $validated['litros'] > 0
+                ? $validated['litros']
+                : null,
+        ]);
+
+        return redirect()
+            ->route('vehicles.show', $vehicle)
+            ->with('success', 'Litros atualizados com sucesso!')
+            ->withFragment('fuel');
+    }
+
+    /**
      * Atualiza apenas o KM de um abastecimento existente.
      */
     public function updateKm(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
@@ -85,7 +110,6 @@ class FuelEntryController extends Controller
 
         $fuelEntry->update(['km_abastecimento' => $km]);
 
-        // Atualiza km_atual do veículo se necessário
         if ($km && $km > $vehicle->km_atual) {
             $vehicle->update(['km_atual' => $km]);
         }
