@@ -207,8 +207,9 @@
 
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="px-6 py-4 border-b">
+                    <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h2 class="text-base font-semibold text-gray-800">Histórico de abastecimentos</h2>
+                        <span class="text-xs text-gray-400">✏️ Clique em Litros ou R$/L para editar</span>
                     </div>
                     @if($fuelEntries->isEmpty())
                         <div class="p-6 text-gray-500 text-sm">Nenhum abastecimento registrado ainda.</div>
@@ -218,10 +219,10 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Litros</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Litros ✏️</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">R$/L</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
-                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">KM</th>
+                                        <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">KM ✏️</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">km/L</th>
                                         <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">R$/km</th>
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
@@ -239,15 +240,54 @@
                                             $custoKm  = $custoKmPorId->get($entry->id)['custo_km'] ?? null;
                                         @endphp
                                         <tr>
+                                            {{-- Data --}}
                                             <td class="px-3 py-2 text-sm text-gray-700">{{ $entry->data->format('d/m/Y') }}</td>
-                                            <td class="px-3 py-2 text-sm text-gray-700 text-right">{{ $entry->litros ? number_format($entry->litros, 3, ',', '.') : '-' }}</td>
-                                            <td class="px-3 py-2 text-sm text-gray-700 text-right">
+
+                                            {{-- Litros — editável inline --}}
+                                            <td class="px-3 py-2 text-sm text-gray-700 text-right" x-data="{ editingLitros: false }">
+                                                <span x-show="!editingLitros" class="cursor-pointer group">
+                                                    <span @click="editingLitros = true"
+                                                          class="tabular-nums {{ $entry->litros ? '' : 'text-amber-500 italic font-medium' }}"
+                                                          title="Clique para editar litros">
+                                                        {{ $entry->litros ? number_format($entry->litros, 3, ',', '.') : '— editar' }}
+                                                    </span>
+                                                    <span @click="editingLitros = true" class="ml-1 text-gray-300 group-hover:text-blue-400 text-xs">✏️</span>
+                                                </span>
+                                                <form x-show="editingLitros"
+                                                      action="{{ route('vehicles.fuel.updateLitros', [$vehicle, $entry]) }}"
+                                                      method="POST"
+                                                      class="inline-flex items-center gap-1">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="number"
+                                                           name="litros"
+                                                           value="{{ $entry->litros }}"
+                                                           min="0"
+                                                           step="0.001"
+                                                           placeholder="Ex: 40.500"
+                                                           class="w-24 border border-blue-400 rounded px-1 py-0.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                                           @keydown.escape="editingLitros = false"
+                                                           x-ref="litrosInput"
+                                                           x-init="$watch('editingLitros', v => v && $nextTick(() => $refs.litrosInput.focus()))"
+                                                    >
+                                                    <button type="submit" class="text-green-600 hover:text-green-800 text-sm" title="Salvar">✔</button>
+                                                    <button type="button" @click="editingLitros = false" class="text-gray-400 hover:text-gray-600 text-sm" title="Cancelar">✕</button>
+                                                </form>
+                                            </td>
+
+                                            {{-- R$/L — calculado, exibido ao lado do campo de litros --}}
+                                            <td class="px-3 py-2 text-sm text-gray-700 text-right tabular-nums">
                                                 @if($entry->litros && $entry->litros > 0)
                                                     {{ number_format($entry->valor / $entry->litros, 3, ',', '.') }}
-                                                @else -
+                                                @else
+                                                    <span class="text-gray-400">—</span>
                                                 @endif
                                             </td>
+
+                                            {{-- Valor --}}
                                             <td class="px-3 py-2 text-sm font-medium text-gray-900 text-right">R$ {{ number_format($entry->valor, 2, ',', '.') }}</td>
+
+                                            {{-- KM — editável inline (existente) --}}
                                             <td class="px-3 py-2 text-sm text-right" x-data="{ editing: false }">
                                                 <span x-show="!editing" class="cursor-pointer group">
                                                     <span @click="editing = true"
@@ -276,17 +316,25 @@
                                                     <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600 text-sm" title="Cancelar">✕</button>
                                                 </form>
                                             </td>
+
+                                            {{-- km/L --}}
                                             <td class="px-3 py-2 text-sm text-right {{ $consumo ? 'text-green-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $consumo ? number_format($consumo, 1, ',', '.') : '-' }}
                                             </td>
+
+                                            {{-- R$/km --}}
                                             <td class="px-3 py-2 text-sm text-right {{ $custoKm ? 'text-purple-700 font-semibold' : 'text-gray-400' }}">
                                                 {{ $custoKm ? number_format($custoKm, 3, ',', '.') : '-' }}
                                             </td>
+
+                                            {{-- Tipo / Posto --}}
                                             <td class="px-3 py-2 text-sm text-gray-600">
                                                 {{ $tiposComb[$entry->tipo_combustivel] ?? ($entry->tipo_combustivel ? ucfirst($entry->tipo_combustivel) : '-') }}
                                                 @if($entry->tanque_cheio) <span class="text-xs text-blue-600">&bull; cheio</span> @endif
                                                 @if($entry->posto) <span class="text-xs text-gray-400 block">{{ $entry->posto }}</span> @endif
                                             </td>
+
+                                            {{-- Remover --}}
                                             <td class="px-3 py-2 text-right text-sm">
                                                 <form action="{{ route('vehicles.fuel.destroy', [$vehicle, $entry]) }}" method="POST" class="inline" onsubmit="return confirm('Remover este abastecimento?')">
                                                     @csrf
