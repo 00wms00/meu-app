@@ -41,16 +41,16 @@ class ProductSimilarityService
         'presunto' => ['presunto', 'presunt', 'apresuntado', 'mortadela'],
     ];
 
-    // Pesos configuráveis — categoria tem mais peso, estabelecimento menos
+    // Pesos configuráveis
     private array $weights = [
         'tfidf'           => 0.40,  // 40% — similaridade textual (TF-IDF + Cosseno)
-        'categoria'       => 0.20,  // 20% — mesma categoria (aumentado de 0.15)
-        'unidade'         => 0.08,  // 8%  — mesma unidade (aumentado de 0.05)
+        'categoria'       => 0.20,  // 20% — mesma categoria
+        'unidade'         => 0.08,  // 8%  — mesma unidade
         'marca'           => 0.10,  // 10% — mesma marca detectada
         'embalagem'       => 0.10,  // 10% — mesmo tipo de embalagem
         'faixa_preco'     => 0.10,  // 10% — faixa de preço similar
         'frequencia'      => 0.05,  // 5%  — frequência de compra similar
-        'estabelecimento' => 0.02,  // 2%  — comprado no mesmo lugar (reduzido de 0.05)
+        'estabelecimento' => 0.02,  // 2%  — comprado no mesmo lugar
     ];
 
     // Tipos de embalagem
@@ -70,6 +70,28 @@ class ProductSimilarityService
         'bombril', 'assim', 'scotch', '3m',
     ];
 
+    // ==================== NORMALIZAÇÃO ====================
+
+    /**
+     * Normaliza o nome do produto para comparação:
+     * - remove acentos
+     * - lowercase
+     * - remove quantidades + unidades (500g, 2l, cx c/12…)
+     * - remove caracteres especiais
+     * - colapsa espaços duplos
+     */
+    public function normalizarNome(string $nome): string
+    {
+        $nome = $this->removerAcentos(Str::lower(trim($nome)));
+        // Remove quantidades com unidades: 500g, 2l, 1.5kg, cx c/12, x un, etc.
+        $nome = preg_replace('/\b\d+[.,]?\d*\s*(kg|g|gr|l|ml|un|und|cx|pc|pct|lt|dz|x)\b/i', '', $nome);
+        $nome = preg_replace('/\bc\/\d+\b/i', '', $nome);
+        // Remove caracteres não alfanuméricos (mantém espaço)
+        $nome = preg_replace('/[^a-z0-9\s]/', ' ', $nome);
+        // Colapsa espaços
+        return trim(preg_replace('/\s+/', ' ', $nome));
+    }
+
     // ==================== MÉTODO PRINCIPAL ====================
 
     public function encontrarSimilares(Product $produto, int $limit = 5): array
@@ -82,22 +104,25 @@ class ProductSimilarityService
 
         if ($todosProdutos->isEmpty()) return [];
 
+        // Normaliza o nome do produto base uma única vez
+        $nomeNorm1 = $this->normalizarNome($produto->nome);
+
         $similares = [];
 
         foreach ($todosProdutos as $p) {
-            $score = $this->calcularScoreCompleto($produto, $p);
+            $nomeNorm2 = $this->normalizarNome($p->nome);
+            $score = $this->calcularScoreCompleto($produto, $p, $nomeNorm1, $nomeNorm2);
 
-            // Corte mínimo elevado de 0.25 para 0.35
-            if ($score < 0.35) {
+            // Corte mínimo reduzido de 0.35 para 0.25
+            if ($score < 0.25) {
                 continue;
             }
 
             $similares[] = [
                 'product'      => $p,
                 'similaridade' => round(min($score, 1) * 100, 1),
-                // Threshold de Média ajustado de 0.45 para 0.50
-                'match'        => $score > 0.70 ? 'Alta' : ($score > 0.50 ? 'Média' : 'Baixa'),
-                'detalhes'     => $this->explicarSimilaridade($produto, $p),
+                'match'        => $score > 0.70 ? 'Alta' : ($score > 0.45 ? 'Média' : 'Baixa'),
+                'detalhes'     => $this->explicarSimilaridade($produto, $p, $nomeNorm1, $nomeNorm2),
             ];
         }
 
@@ -107,14 +132,18 @@ class ProductSimilarityService
 
     // ==================== SCORE COMPLETO ====================
 
-    private function calcularScoreCompleto(Product $p1, Product $p2): float
+    private function calcularScoreCompleto(Product $p1, Product $p2, string $nomeNorm1 = '', string $nomeNorm2 = ''): float
     {
+        // Usa nomes normalizados se fornecidos, senão normaliza na hora
+        $n1 = $nomeNorm1 ?: $this->normalizarNome($p1->nome);
+        $n2 = $nomeNorm2 ?: $this->normalizarNome($p2->nome);
+
         $scores = [
-            'tfidf'           => $this->similaridadeTextual($p1->nome, $p2->nome),
+            'tfidf'           => $this->similaridadeTextual($n1, $n2),
             'categoria'       => $this->mesmaCategoria($p1, $p2),
             'unidade'         => $this->mesmaUnidade($p1, $p2),
-            'marca'           => $this->mesmaMarca($p1->nome, $p2->nome),
-            'embalagem'       => $this->mesmoTipoEmbalagem($p1->nome, $p2->nome),
+            'marca'           => $this->mesmaMarca($n1, $n2),
+            'embalagem'       => $this->mesmoTipoEmbalagem($n1, $n2),
             'faixa_preco'     => $this->faixaPrecoSimilar($p1, $p2),
             'frequencia'      => $this->frequenciaSimilar($p1, $p2),
             'estabelecimento' => $this->mesmoEstabelecimento($p1, $p2),
@@ -125,14 +154,14 @@ class ProductSimilarityService
             $scoreFinal += $value * $this->weights[$key];
         }
 
-        // PENALIZAÇÃO: categoria E unidade divergem — produto provavelmente diferente
+        // PENALIZAÇÃO SUAVIZADA: categoria E unidade divergem — reduz 30% (era 60%)
         if ($scores['categoria'] === 0.0 && $scores['unidade'] === 0.0) {
-            $scoreFinal *= 0.4;
+            $scoreFinal *= 0.70;
         }
 
-        // PENALIZAÇÃO: preço sem sobreposição + texto fraco — evita falso positivo
-        if ($scores['faixa_preco'] === 0.0 && $scores['tfidf'] < 0.6) {
-            $scoreFinal = 0.0;
+        // PENALIZAÇÃO SUAVIZADA: preço sem sobreposição + texto fraco — reduz 50% (antes zeravam)
+        if ($scores['faixa_preco'] === 0.0 && $scores['tfidf'] < 0.50) {
+            $scoreFinal *= 0.50;
         }
 
         return $scoreFinal;
@@ -141,12 +170,12 @@ class ProductSimilarityService
     // ==================== COMPONENTES DO SCORE ====================
 
     /**
-     * 1. Similaridade textual (TF-IDF + Cosseno) - 40%
+     * 1. Similaridade textual (TF-IDF + Cosseno) sobre nome já normalizado — 40%
      */
-    private function similaridadeTextual(string $nome1, string $nome2): float
+    private function similaridadeTextual(string $nomeNorm1, string $nomeNorm2): float
     {
-        $tokens1 = $this->tokenizarAvancado($nome1);
-        $tokens2 = $this->tokenizarAvancado($nome2);
+        $tokens1 = $this->tokenizarAvancado($nomeNorm1, preNormalizado: true);
+        $tokens2 = $this->tokenizarAvancado($nomeNorm2, preNormalizado: true);
 
         if (empty($tokens1) || empty($tokens2)) return 0;
 
@@ -197,12 +226,12 @@ class ProductSimilarityService
     }
 
     /**
-     * 4. Mesma marca detectada - 10%
+     * 4. Mesma marca detectada sobre nome normalizado - 10%
      */
-    private function mesmaMarca(string $nome1, string $nome2): float
+    private function mesmaMarca(string $nomeNorm1, string $nomeNorm2): float
     {
-        $marcas1 = $this->detectarMarcas($nome1);
-        $marcas2 = $this->detectarMarcas($nome2);
+        $marcas1 = $this->detectarMarcas($nomeNorm1);
+        $marcas2 = $this->detectarMarcas($nomeNorm2);
 
         if (empty($marcas1) || empty($marcas2)) return 0;
 
@@ -211,12 +240,12 @@ class ProductSimilarityService
     }
 
     /**
-     * 5. Mesmo tipo de embalagem - 10%
+     * 5. Mesmo tipo de embalagem sobre nome normalizado - 10%
      */
-    private function mesmoTipoEmbalagem(string $nome1, string $nome2): float
+    private function mesmoTipoEmbalagem(string $nomeNorm1, string $nomeNorm2): float
     {
-        $emb1 = $this->detectarEmbalagem($nome1);
-        $emb2 = $this->detectarEmbalagem($nome2);
+        $emb1 = $this->detectarEmbalagem($nomeNorm1);
+        $emb2 = $this->detectarEmbalagem($nomeNorm2);
 
         if (empty($emb1) || empty($emb2)) return 0;
         return $emb1 === $emb2 ? 1.0 : 0;
@@ -274,17 +303,17 @@ class ProductSimilarityService
         return count($comuns) > 0 ? 1.0 : 0;
     }
 
-    // ==================== DETECÇÃO ====================
+    // ==================== DETECÇÃO (recebe nome já normalizado) ====================
 
-    private function detectarMarcas(string $nome): array
+    private function detectarMarcas(string $nomeNorm): array
     {
-        $tokens = $this->tokenizarBasico($nome);
-        return array_intersect($tokens, $this->marcas);
+        $tokens = array_filter(explode(' ', $nomeNorm), fn($t) => strlen($t) > 1);
+        return array_values(array_intersect($tokens, $this->marcas));
     }
 
-    private function detectarEmbalagem(string $nome): ?string
+    private function detectarEmbalagem(string $nomeNorm): ?string
     {
-        $tokens = $this->tokenizarBasico($nome);
+        $tokens = array_filter(explode(' ', $nomeNorm), fn($t) => strlen($t) > 1);
         foreach ($this->tiposEmbalagem as $emb) {
             if (in_array($emb, $tokens)) return $emb;
         }
@@ -295,8 +324,8 @@ class ProductSimilarityService
     {
         foreach ($this->sinonimos as $grupo) {
             $encontrou1 = false; $encontrou2 = false;
-            foreach ($tokens1 as $t) { if (in_array($t, $grupo)) { $encontrou1 = true; break; } }
-            foreach ($tokens2 as $t) { if (in_array($t, $grupo)) { $encontrou2 = true; break; } }
+            foreach ($tokens1 as $t) { if (in_array(Str::lower($t), $grupo)) { $encontrou1 = true; break; } }
+            foreach ($tokens2 as $t) { if (in_array(Str::lower($t), $grupo)) { $encontrou2 = true; break; } }
             if ($encontrou1 && $encontrou2) return 1.0;
         }
         return 0;
@@ -304,16 +333,17 @@ class ProductSimilarityService
 
     // ==================== TOKENIZAÇÃO ====================
 
-    private function tokenizarAvancado(string $nome): array
+    /**
+     * @param bool $preNormalizado  quando true, pula normalização (já feita fora)
+     */
+    private function tokenizarAvancado(string $nome, bool $preNormalizado = false): array
     {
+        if (!$preNormalizado) {
+            $nome = $this->normalizarNome($nome);
+        }
+
         $nome = Str::upper(trim($nome));
         if (empty($nome)) return [];
-
-        $nome = $this->removerAcentos($nome);
-
-        // Remove quantidades com unidades: 500G, 2L, CX C/12, X UN, etc.
-        $nome = preg_replace('/\d+[.,]?\d*\s*(kg|g|l|ml|un|cx|pc|lt|dz|x)?/i', ' ', $nome);
-        $nome = preg_replace('/C\/\d+/i', ' ', $nome);
 
         $nome = preg_replace('/[^A-Z0-9\s]/', ' ', $nome);
         $nome = preg_replace('/\s+/', ' ', trim($nome));
@@ -341,10 +371,7 @@ class ProductSimilarityService
 
     private function tokenizarBasico(string $nome): array
     {
-        $nome = Str::lower(trim($nome));
-        $nome = $this->removerAcentos($nome);
-        $nome = preg_replace('/[^a-z0-9\s]/', ' ', $nome);
-        $nome = preg_replace('/\s+/', ' ', trim($nome));
+        $nome = $this->normalizarNome($nome);
         return array_filter(explode(' ', $nome), fn($t) => strlen($t) > 1);
     }
 
@@ -361,12 +388,6 @@ class ProductSimilarityService
     private function removerAcentos(string $texto): string
     {
         $map = [
-            'a' => 'a', 'a' => 'a', 'a' => 'a', 'a' => 'a', 'a' => 'a',
-            'e' => 'e', 'e' => 'e', 'e' => 'e', 'e' => 'e',
-            'i' => 'i', 'i' => 'i', 'i' => 'i', 'i' => 'i',
-            'o' => 'o', 'o' => 'o', 'o' => 'o', 'o' => 'o', 'o' => 'o',
-            'u' => 'u', 'u' => 'u', 'u' => 'u', 'u' => 'u',
-            'c' => 'c', 'n' => 'n',
             'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'ä' => 'a',
             'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
             'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
@@ -378,28 +399,35 @@ class ProductSimilarityService
     }
 
     /**
-     * Explica por que dois produtos são similares (inclui unidade e preço)
+     * Explica por que dois produtos são similares (usa nomes normalizados)
      */
-    public function explicarSimilaridade(Product $p1, Product $p2): array
+    public function explicarSimilaridade(Product $p1, Product $p2, string $nomeNorm1 = '', string $nomeNorm2 = ''): array
     {
         $razoes = [];
 
-        $tokens1 = $this->tokenizarAvancado($p1->nome);
-        $tokens2 = $this->tokenizarAvancado($p2->nome);
+        $n1 = $nomeNorm1 ?: $this->normalizarNome($p1->nome);
+        $n2 = $nomeNorm2 ?: $this->normalizarNome($p2->nome);
+
+        $tokens1 = $this->tokenizarAvancado($n1, preNormalizado: true);
+        $tokens2 = $this->tokenizarAvancado($n2, preNormalizado: true);
         $comuns  = array_intersect($tokens1, $tokens2);
 
-        if (count($comuns) > 0) {
-            $razoes[] = 'Palavras em comum: ' . implode(', ', array_slice($comuns, 0, 5));
+        // Filtra bigramas da exibição (apenas unigramas nas razões)
+        $comunsUni = array_filter($comuns, fn($t) => !str_contains($t, '_'));
+
+        if (count($comunsUni) > 0) {
+            $razoes[] = 'Palavras em comum: ' . implode(', ', array_map('strtolower', array_slice($comunsUni, 0, 5)));
         }
 
         if ($p1->category_id && $p2->category_id && $p1->category_id === $p2->category_id) {
             $razoes[] = 'Mesma categoria';
         }
 
-        $marcas1 = $this->detectarMarcas($p1->nome);
-        $marcas2 = $this->detectarMarcas($p2->nome);
-        if (array_intersect($marcas1, $marcas2)) {
-            $razoes[] = 'Mesma marca: ' . implode(', ', array_intersect($marcas1, $marcas2));
+        $marcas1 = $this->detectarMarcas($n1);
+        $marcas2 = $this->detectarMarcas($n2);
+        $marcasComuns = array_intersect($marcas1, $marcas2);
+        if ($marcasComuns) {
+            $razoes[] = 'Mesma marca: ' . implode(', ', $marcasComuns);
         }
 
         if ($p1->unidade_padrao && $p2->unidade_padrao &&
@@ -437,8 +465,8 @@ class ProductSimilarityService
 
             $melhor = $similares[0];
 
-            // Só exibe sugestões com similaridade mínima de 60%
-            if ($melhor['similaridade'] < 60) {
+            // Threshold reduzido de 60% para 50%
+            if ($melhor['similaridade'] < 50) {
                 continue;
             }
 
