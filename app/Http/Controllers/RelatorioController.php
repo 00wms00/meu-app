@@ -24,13 +24,11 @@ class RelatorioController extends Controller
 
     public function periodo(Request $request): View
     {
-        $hoje = now()->format('Y-m-d');
-
         return $this->gerarRelatorio(
             userId:      Auth::id(),
             tipo:        'periodo',
-            dataInicio:  $request->input('data_inicio', $hoje),
-            dataFim:     $request->input('data_fim',    $hoje),
+            dataInicio:  $request->input('data_inicio', now()->startOfMonth()->format('Y-m-d')),
+            dataFim:     $request->input('data_fim',    now()->format('Y-m-d')),
         );
     }
 
@@ -72,8 +70,8 @@ class RelatorioController extends Controller
         return view('relatorios.' . $tipo, array_merge(
             compact('produtos', 'totais', 'gastosPorCategoria'),
             ['meses' => $this->arrayMeses(), 'anos' => $this->arrayAnos($userId)],
-            ['maiorGasto'    => $produtos->sortByDesc('gasto_total')->first()],
-            ['maisComprado'  => $produtos->sortByDesc('quantidade_total')->first()],
+            ['maiorGasto'   => $produtos->sortByDesc('gasto_total')->first()],
+            ['maisComprado' => $produtos->sortByDesc('quantidade_total')->first()],
             $extras,
         ));
     }
@@ -100,29 +98,54 @@ class RelatorioController extends Controller
 
     private function queryProdutos(int $userId, string $tipo, ?int $mes, ?int $ano, ?string $dataInicio, ?string $dataFim)
     {
-        // produto_nome: usa o nome do canônico quando existir (nome normalizado),
-        //              caso contrário usa o nome do próprio produto.
+        /*
+         * Nome exibido (prioridade):
+         *  1. canonico.nome_exibicao  (nome bonito definido manualmente no can\u00f4nico)
+         *  2. canonico.nome_normalizado
+         *  3. canonico.nome           (nome bruto do can\u00f4nico)
+         *  4. products.nome_exibicao  (produto sem can\u00f4nico mas j\u00e1 normalizado)
+         *  5. products.nome_normalizado
+         *  6. products.nome           (fallback final)
+         */
         $query = InvoiceItem::select(
-                DB::raw('COALESCE(canonico.id,               products.id)               as produto_id'),
-                DB::raw('COALESCE(canonico.nome,             products.nome)             as produto_nome'),
-                DB::raw('COALESCE(canonico.unidade_padrao,   products.unidade_padrao)   as unidade'),
-                DB::raw('SUM(invoice_items.quantidade)                                  as quantidade_total'),
-                DB::raw('COUNT(DISTINCT invoice_items.invoice_id)                       as num_compras'),
-                DB::raw('SUM(invoice_items.valor_total)                                 as gasto_total'),
-                DB::raw('MIN(invoice_items.valor_unitario)                              as preco_minimo'),
-                DB::raw('MAX(invoice_items.valor_unitario)                              as preco_maximo'),
+                DB::raw('COALESCE(canonico.id, products.id) as produto_id'),
+                DB::raw('
+                    COALESCE(
+                        NULLIF(canonico.nome_exibicao,    \'\'),
+                        NULLIF(canonico.nome_normalizado, \'\'),
+                        canonico.nome,
+                        NULLIF(products.nome_exibicao,    \'\'),
+                        NULLIF(products.nome_normalizado, \'\'),
+                        products.nome
+                    ) as produto_nome
+                '),
+                DB::raw('COALESCE(canonico.unidade_padrao, products.unidade_padrao) as unidade'),
+                DB::raw('SUM(invoice_items.quantidade)                              as quantidade_total'),
+                DB::raw('COUNT(DISTINCT invoice_items.invoice_id)                   as num_compras'),
+                DB::raw('SUM(invoice_items.valor_total)                             as gasto_total'),
+                DB::raw('MIN(invoice_items.valor_unitario)                          as preco_minimo'),
+                DB::raw('MAX(invoice_items.valor_unitario)                          as preco_maximo'),
             )
-            ->join('products',                'invoice_items.product_id',        '=', 'products.id')
-            ->join('invoices',                'invoice_items.invoice_id',        '=', 'invoices.id')
-            ->leftJoin('products as canonico', 'products.canonical_product_id',  '=', 'canonico.id')
+            ->join('products',                 'invoice_items.product_id',        '=', 'products.id')
+            ->join('invoices',                 'invoice_items.invoice_id',        '=', 'invoices.id')
+            ->leftJoin('products as canonico', 'products.canonical_product_id',   '=', 'canonico.id')
             ->where('invoices.user_id', $userId);
 
         $this->aplicarFiltroPeriodo($query, $tipo, $mes, $ano, $dataInicio, $dataFim);
 
         return $query
             ->groupBy(
-                DB::raw('COALESCE(canonico.id,             products.id)'),
-                DB::raw('COALESCE(canonico.nome,           products.nome)'),
+                DB::raw('COALESCE(canonico.id, products.id)'),
+                DB::raw('
+                    COALESCE(
+                        NULLIF(canonico.nome_exibicao,    \'\'),
+                        NULLIF(canonico.nome_normalizado, \'\'),
+                        canonico.nome,
+                        NULLIF(products.nome_exibicao,    \'\'),
+                        NULLIF(products.nome_normalizado, \'\'),
+                        products.nome
+                    )
+                '),
                 DB::raw('COALESCE(canonico.unidade_padrao, products.unidade_padrao)'),
             )
             ->orderByDesc('gasto_total')
@@ -145,9 +168,9 @@ class RelatorioController extends Controller
                 DB::raw('SUM(invoice_items.valor_total)           as gasto_total'),
                 DB::raw('COUNT(DISTINCT invoice_items.invoice_id) as num_compras'),
             )
-            ->join('products',                'invoice_items.product_id',        '=', 'products.id')
-            ->join('invoices',                'invoice_items.invoice_id',        '=', 'invoices.id')
-            ->leftJoin('products as canonico', 'products.canonical_product_id',  '=', 'canonico.id')
+            ->join('products',                 'invoice_items.product_id',        '=', 'products.id')
+            ->join('invoices',                 'invoice_items.invoice_id',        '=', 'invoices.id')
+            ->leftJoin('products as canonico', 'products.canonical_product_id',   '=', 'canonico.id')
             ->leftJoin('categories', fn ($join) =>
                 $join->on(DB::raw('COALESCE(canonico.category_id, products.category_id)'), '=', 'categories.id')
             )
