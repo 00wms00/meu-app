@@ -147,6 +147,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/vehicles/{vehicle}/expenses/{expense}', [VehicleExpenseController::class, 'destroy'])->name('vehicles.expenses.destroy');
 
     Route::post('/vehicles/{vehicle}/fuel', [FuelEntryController::class, 'store'])->name('vehicles.fuel.store');
+    Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'update'])->name('vehicles.fuel.update');
     Route::patch('/vehicles/{vehicle}/fuel/{fuelEntry}/km', [FuelEntryController::class, 'updateKm'])->name('vehicles.fuel.updateKm');
     Route::delete('/vehicles/{vehicle}/fuel/{fuelEntry}', [FuelEntryController::class, 'destroy'])->name('vehicles.fuel.destroy');
 
@@ -180,7 +181,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/expense-categories/reorder',                    [ExpenseCategoryController::class, 'reorder'])->name('expense_categories.reorder');
 
         // Relatório financeiro
-        Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('report.index');
+        Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('finance.report.index');
 
         // Cartões de Crédito
         Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
