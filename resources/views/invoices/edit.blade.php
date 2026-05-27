@@ -85,7 +85,7 @@
                                 <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qtde</th>
                                 <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unid.</th>
                                 <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vl. Unitário</th>
-                                <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase text-orange-600">Desconto %</th>
+                                <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase text-orange-600">Desconto R$</th>
                                 <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vl. Total</th>
                                 <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ação</th>
                             </tr>
@@ -126,20 +126,19 @@
                                                name="itens[{{ $item->id }}][valor_unitario]"
                                                value="{{ number_format($item->valor_unitario, 2, ',', '.') }}"
                                                class="w-24 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm unitario-input"
-                                               data-original-unitario="{{ number_format($item->valor_unitario, 2, '.', '') }}"
                                                data-item-id="{{ $item->id }}"
                                                oninput="recalcularItem('{{ $item->id }}', 'unitario')">
                                     </div>
                                 </td>
                                 <td class="px-3 py-2">
-                                    <div class="flex items-center justify-center">
+                                    <div class="flex items-center justify-end">
+                                        <span class="text-orange-400 text-sm mr-1">R$</span>
                                         <input type="text"
                                                value=""
-                                               placeholder="0"
-                                               class="w-16 text-center border-0 border-b border-orange-300 focus:border-orange-500 focus:ring-0 px-2 py-1 text-sm desconto-input text-orange-600 font-medium"
+                                               placeholder="0,00"
+                                               class="w-20 text-right border-0 border-b border-orange-300 focus:border-orange-500 focus:ring-0 px-2 py-1 text-sm desconto-input text-orange-600 font-medium"
                                                data-item-id="{{ $item->id }}"
                                                oninput="recalcularItem('{{ $item->id }}', 'desconto')">
-                                        <span class="text-orange-400 text-sm ml-1">%</span>
                                     </div>
                                 </td>
                                 <td class="px-3 py-2">
@@ -273,69 +272,74 @@ function formatMoney(value) {
 
 /**
  * Lógica de recálculo:
- * - 'desconto': aplica % sobre o valor unitário ORIGINAL (data-original-unitario),
- *               recalcula unitario e total. Não salva nada, apenas exibe.
- * - 'unitario': salva novo original, zera desconto, recalcula total.
- * - 'total'   : recalcula unitario a partir do total, zera desconto.
- * - 'quantidade': mantém lógica existente de ultimo_campo, respeita desconto ativo.
+ *
+ * 'desconto' (R$):
+ *   novoTotal   = totalOriginal - descontoR$   (guarda total original em data-original-total)
+ *   unitario    = novoTotal / quantidade
+ *   total       = novoTotal
+ *
+ * 'unitario':
+ *   total = unitario * quantidade
+ *   zera desconto, atualiza data-original-total
+ *
+ * 'total':
+ *   unitario = total / quantidade
+ *   zera desconto, atualiza data-original-total
+ *
+ * 'quantidade':
+ *   se ultimo_campo === 'total': mantém total, recalcula unitario
+ *   senão: mantém unitario, recalcula total
+ *   zera desconto, atualiza data-original-total
  */
 function recalcularItem(itemId, campoAlterado) {
     const row = document.querySelector(`[data-item-id="${itemId}"]`);
     if (!row) return;
 
-    const qtdInput      = row.querySelector('.quantidade-input');
-    const unitInput     = row.querySelector('.unitario-input');
-    const descontoInput = row.querySelector('.desconto-input');
-    const totalInput    = row.querySelector('.total-input');
+    const qtdInput         = row.querySelector('.quantidade-input');
+    const unitInput        = row.querySelector('.unitario-input');
+    const descontoInput    = row.querySelector('.desconto-input');
+    const totalInput       = row.querySelector('.total-input');
     const ultimoCampoInput = row.querySelector('.ultimo-campo-input');
 
     const quantidade = parseFloatBR(qtdInput.value);
     if (quantidade <= 0) return;
 
     if (campoAlterado === 'desconto') {
-        // Usa o valor unitário original guardado no data-attribute
-        const unitOriginal = parseFloat(unitInput.dataset.originalUnitario) || parseFloatBR(unitInput.value);
-        const descPct      = parseFloatBR(descontoInput.value);
-        const unitComDesc  = unitOriginal * (1 - descPct / 100);
-        const novoTotal    = unitComDesc * quantidade;
+        // Usa o total original (antes de qualquer desconto) guardado no data-attribute
+        const totalOriginal = parseFloat(totalInput.dataset.originalTotal);
+        const descontoRS    = parseFloatBR(descontoInput.value);
+        const novoTotal     = Math.max(0, totalOriginal - descontoRS);
+        const novoUnitario  = novoTotal / quantidade;
 
-        unitInput.value  = formatMoney(unitComDesc);
         totalInput.value = formatMoney(novoTotal);
+        unitInput.value  = formatMoney(novoUnitario);
         ultimoCampoInput.value = 'unitario';
 
     } else if (campoAlterado === 'unitario') {
-        // Novo unitário digitado → salva como novo original, zera desconto
-        unitInput.dataset.originalUnitario = parseFloatBR(unitInput.value).toFixed(2);
-        if (descontoInput) { descontoInput.value = ''; }
         const novoTotal = parseFloatBR(unitInput.value) * quantidade;
         totalInput.value = formatMoney(novoTotal);
+        totalInput.dataset.originalTotal = novoTotal.toFixed(2);
+        if (descontoInput) descontoInput.value = '';
         ultimoCampoInput.value = 'unitario';
 
     } else if (campoAlterado === 'total') {
         const total = parseFloatBR(totalInput.value);
-        const novoUnitario = total / quantidade;
-        unitInput.value = formatMoney(novoUnitario);
-        unitInput.dataset.originalUnitario = novoUnitario.toFixed(2);
-        if (descontoInput) { descontoInput.value = ''; }
+        unitInput.value = formatMoney(total / quantidade);
+        totalInput.dataset.originalTotal = total.toFixed(2);
+        if (descontoInput) descontoInput.value = '';
         ultimoCampoInput.value = 'total';
 
     } else if (campoAlterado === 'quantidade') {
-        const descPct = descontoInput ? parseFloatBR(descontoInput.value) : 0;
-
         if (ultimoCampoInput.value === 'total') {
-            // Mantém total → recalcula unitario
             const total = parseFloatBR(totalInput.value);
-            const novoUnitario = total / quantidade;
-            unitInput.value = formatMoney(novoUnitario);
-            unitInput.dataset.originalUnitario = novoUnitario.toFixed(2);
-            if (descontoInput) { descontoInput.value = ''; }
+            unitInput.value = formatMoney(total / quantidade);
+            totalInput.dataset.originalTotal = total.toFixed(2);
         } else {
-            // Mantém unitário (com desconto se houver) → recalcula total
-            const unitOriginal = parseFloat(unitInput.dataset.originalUnitario) || parseFloatBR(unitInput.value);
-            const unitComDesc  = descPct > 0 ? unitOriginal * (1 - descPct / 100) : parseFloatBR(unitInput.value);
-            const novoTotal    = unitComDesc * quantidade;
-            totalInput.value   = formatMoney(novoTotal);
+            const novoTotal = parseFloatBR(unitInput.value) * quantidade;
+            totalInput.value = formatMoney(novoTotal);
+            totalInput.dataset.originalTotal = novoTotal.toFixed(2);
         }
+        if (descontoInput) descontoInput.value = '';
     }
 
     atualizarTotais();
@@ -343,20 +347,19 @@ function recalcularItem(itemId, campoAlterado) {
 
 function atualizarTotais() {
     let valorTotal = 0;
-    let qtdItens = 0;
+    let qtdItens   = 0;
 
     document.querySelectorAll('.item-row').forEach(row => {
-        const total = parseFloatBR(row.querySelector('.total-input').value);
-        valorTotal += total;
+        valorTotal += parseFloatBR(row.querySelector('.total-input').value);
         qtdItens++;
     });
 
     const descontos = parseFloatBR(document.getElementById('descontos').value);
     const valorPago = valorTotal - descontos;
 
-    document.getElementById('totalItens').textContent = qtdItens;
-    document.getElementById('valorTotalLabel').textContent = 'R$ ' + formatMoney(valorTotal);
-    document.getElementById('valorPagoLabel').textContent = 'R$ ' + formatMoney(valorPago);
+    document.getElementById('totalItens').textContent       = qtdItens;
+    document.getElementById('valorTotalLabel').textContent  = 'R$ ' + formatMoney(valorTotal);
+    document.getElementById('valorPagoLabel').textContent   = 'R$ ' + formatMoney(valorPago);
 }
 
 function atualizarValorPago() {
@@ -365,14 +368,12 @@ function atualizarValorPago() {
 
 function removerItem(btn, itemId) {
     if (!confirm('Tem certeza que deseja remover este item?')) return;
+    btn.closest('tr').remove();
 
-    const row = btn.closest('tr');
-    row.remove();
-
-    const form = document.getElementById('formEditarNota');
+    const form  = document.getElementById('formEditarNota');
     const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'itens_removidos[]';
+    input.type  = 'hidden';
+    input.name  = 'itens_removidos[]';
     input.value = itemId;
     form.appendChild(input);
 
@@ -381,9 +382,8 @@ function removerItem(btn, itemId) {
 
 function adicionarItem() {
     novoItemIndex++;
-    const newId = 'novo_' + novoItemIndex;
-
-    const tbody = document.getElementById('itensTableBody');
+    const newId  = 'novo_' + novoItemIndex;
+    const tbody  = document.getElementById('itensTableBody');
     const newRow = document.createElement('tr');
     newRow.className = 'hover:bg-gray-50 item-row bg-yellow-50';
     newRow.setAttribute('data-item-id', newId);
@@ -417,18 +417,17 @@ function adicionarItem() {
                 <span class="text-gray-400 text-sm mr-1">R$</span>
                 <input type="text" name="itens[${newId}][valor_unitario]" value="0,00"
                        class="w-24 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm unitario-input"
-                       data-original-unitario="0"
                        data-item-id="${newId}"
                        oninput="recalcularItem('${newId}', 'unitario')">
             </div>
         </td>
         <td class="px-3 py-2">
-            <div class="flex items-center justify-center">
-                <input type="text" value="" placeholder="0"
-                       class="w-16 text-center border-0 border-b border-orange-300 focus:border-orange-500 focus:ring-0 px-2 py-1 text-sm desconto-input text-orange-600 font-medium"
+            <div class="flex items-center justify-end">
+                <span class="text-orange-400 text-sm mr-1">R$</span>
+                <input type="text" value="" placeholder="0,00"
+                       class="w-20 text-right border-0 border-b border-orange-300 focus:border-orange-500 focus:ring-0 px-2 py-1 text-sm desconto-input text-orange-600 font-medium"
                        data-item-id="${newId}"
                        oninput="recalcularItem('${newId}', 'desconto')">
-                <span class="text-orange-400 text-sm ml-1">%</span>
             </div>
         </td>
         <td class="px-3 py-2">
@@ -436,6 +435,7 @@ function adicionarItem() {
                 <span class="text-gray-400 text-sm mr-1">R$</span>
                 <input type="text" name="itens[${newId}][valor_total]" value="0,00"
                        class="w-24 text-right border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 px-2 py-1 text-sm font-semibold total-input"
+                       data-original-total="0"
                        data-item-id="${newId}"
                        oninput="recalcularItem('${newId}', 'total')">
             </div>
@@ -456,12 +456,10 @@ function adicionarItem() {
     newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// Inicializa data-original-unitario em todos os itens existentes ao carregar a página
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.unitario-input').forEach(function(input) {
-        if (!input.dataset.originalUnitario) {
-            input.dataset.originalUnitario = parseFloatBR(input.value).toFixed(2);
-        }
+// Inicializa data-original-total em todos os itens existentes ao carregar a página
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.total-input').forEach(function (input) {
+        input.dataset.originalTotal = parseFloatBR(input.value).toFixed(2);
     });
     atualizarTotais();
 });
