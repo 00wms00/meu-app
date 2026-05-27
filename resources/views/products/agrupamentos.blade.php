@@ -110,7 +110,10 @@
                     <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
                         <div class="flex items-center gap-3">
                             <span class="text-gray-300">↳</span>
-                            <span class="text-sm text-gray-700">{{ \App\Helpers\ProductHelper::displayName($agrupado) }}</span>
+                            <div>
+                                <span class="text-sm text-gray-700">{{ \App\Helpers\ProductHelper::displayName($agrupado) }}</span>
+                                <span class="block text-xs text-gray-400 font-mono">{{ $agrupado->nome_normalizado ?? \App\Helpers\ProductHelper::normalizar($agrupado->nome) }}</span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button"
@@ -127,25 +130,66 @@
                     </div>
                 @endforeach
 
-                {{-- Painel Adicionar (escondido por padrão) --}}
-                <div id="adicionar-{{ $grupo->id }}" class="hidden px-6 py-3 bg-gray-50">
+                {{-- ============================================================ --}}
+                {{-- Painel Adicionar com campo de pesquisa + nome normalizado     --}}
+                {{-- ============================================================ --}}
+                <div id="adicionar-{{ $grupo->id }}" class="hidden px-6 py-4 bg-gray-50 border-t border-gray-200">
                     <form action="{{ route('products.adicionar-ao-grupo', $grupo) }}" method="POST">
                         @csrf
-                        <p class="text-sm text-gray-600 mb-2">Selecione os produtos:</p>
-                        <div class="max-h-48 overflow-y-auto space-y-2 mb-3">
+
+                        {{-- Campo de pesquisa --}}
+                        <div class="relative mb-3">
+                            <span class="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">🔍</span>
+                            <input
+                                type="text"
+                                class="search-adicionar w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                                placeholder="Pesquisar por nome ou nome normalizado…"
+                                autocomplete="off"
+                                data-grupo="{{ $grupo->id }}"
+                            >
+                        </div>
+
+                        {{-- Contador de selecionados --}}
+                        <p class="text-xs text-gray-500 mb-2">
+                            Mostrando <span class="count-visivel-{{ $grupo->id }} font-medium text-gray-700">{{ $naoAgrupados->count() }}</span>
+                            de {{ $naoAgrupados->count() }} produtos &mdash;
+                            <span class="count-selecionados-{{ $grupo->id }} font-medium text-blue-600">0</span> selecionado(s)
+                        </p>
+
+                        {{-- Lista filtrável --}}
+                        <div class="lista-adicionar-{{ $grupo->id }} max-h-56 overflow-y-auto space-y-1 mb-3 rounded border border-gray-200 bg-white p-2">
                             @foreach($naoAgrupados as $prod)
-                                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                    <input type="checkbox" name="produto_ids[]" value="{{ $prod->id }}"
-                                           class="rounded border-gray-300 text-blue-600">
-                                    {{ \App\Helpers\ProductHelper::displayName($prod) }}
+                                @php
+                                    $nomNorm = $prod->nome_normalizado
+                                        ?? \App\Helpers\ProductHelper::normalizar($prod->nome);
+                                @endphp
+                                <label
+                                    class="produto-item-{{ $grupo->id }} flex items-center gap-2 text-sm cursor-pointer hover:bg-blue-50 p-1.5 rounded"
+                                    data-nome="{{ Str::lower($prod->nome) }}"
+                                    data-norm="{{ $nomNorm }}"
+                                >
+                                    <input type="checkbox"
+                                           name="produto_ids[]"
+                                           value="{{ $prod->id }}"
+                                           class="check-adicionar-{{ $grupo->id }} rounded border-gray-300 text-blue-600 shrink-0">
+                                    <div class="min-w-0">
+                                        <span class="block truncate font-medium text-gray-800">{{ \App\Helpers\ProductHelper::displayName($prod) }}</span>
+                                        <span class="block text-xs text-gray-400 font-mono truncate">{{ $nomNorm }}</span>
+                                    </div>
                                 </label>
                             @endforeach
+
+                            {{-- Mensagem sem resultado --}}
+                            <p class="sem-resultado-{{ $grupo->id }} hidden text-center text-gray-400 text-xs py-4">Nenhum produto encontrado.</p>
                         </div>
+
                         <div class="flex gap-2">
                             <button type="submit"
-                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition">Adicionar</button>
+                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition">
+                                Adicionar ao grupo
+                            </button>
                             <button type="button"
-                                    onclick="document.getElementById('adicionar-{{ $grupo->id }}').classList.add('hidden')"
+                                    onclick="fecharAdicionar('{{ $grupo->id }}')"
                                     class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">Cancelar</button>
                         </div>
                     </form>
@@ -172,7 +216,6 @@
                 <p class="text-xs text-gray-500 mt-1">Marque 2+ produtos e crie um grupo, ou torne um produto como principal individualmente</p>
             </div>
 
-            {{-- Linha com nome do grupo + botão Criar Grupo --}}
             <form action="{{ route('products.criar-grupo') }}" method="POST" id="formCriarGrupo" onsubmit="return validarCriarGrupo()">
                 @csrf
                 <div class="px-6 py-3 bg-gray-50 border-b flex flex-wrap gap-3 items-center">
@@ -190,22 +233,26 @@
                     </a>
                 </div>
 
-                {{-- Lista de produtos com checkboxes --}}
                 <div class="divide-y divide-gray-100">
                     @foreach($naoAgrupados as $prod)
+                        @php
+                            $nomNormSolto = $prod->nome_normalizado
+                                ?? \App\Helpers\ProductHelper::normalizar($prod->nome);
+                        @endphp
                         <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
-                            {{-- Checkbox (dentro do form de Criar Grupo) --}}
-                            <label class="flex items-center gap-3 flex-1 cursor-pointer">
+                            <label class="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
                                 <input type="checkbox" name="produto_ids[]" value="{{ $prod->id }}"
-                                       class="produtoCheck rounded border-gray-300 text-blue-600">
-                                <span class="text-sm text-gray-700">{{ \App\Helpers\ProductHelper::displayName($prod) }}</span>
-                                <span class="text-xs text-gray-400">({{ $prod->invoice_items_count }}x)</span>
+                                       class="produtoCheck rounded border-gray-300 text-blue-600 shrink-0">
+                                <div class="min-w-0">
+                                    <span class="block text-sm text-gray-700 font-medium truncate">{{ \App\Helpers\ProductHelper::displayName($prod) }}</span>
+                                    <span class="block text-xs text-gray-400 font-mono truncate">{{ $nomNormSolto }}</span>
+                                </div>
+                                <span class="text-xs text-gray-400 shrink-0">({{ $prod->invoice_items_count }}x)</span>
                             </label>
 
-                            {{-- Botão Tornar Principal (type=button, NÃO submete o formulário) --}}
                             <button type="button"
                                     onclick="tornarPrincipal('{{ $prod->id }}', '{{ \App\Helpers\ProductHelper::displayName($prod) }}')"
-                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition">
+                                    class="ml-2 inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition shrink-0">
                                 📌 Tornar Principal
                             </button>
                         </div>
@@ -221,9 +268,7 @@
     @endif
 </div>
 
-{{-- ============================================ --}}
 {{-- Modal Renomear Grupo --}}
-{{-- ============================================ --}}
 <div id="modalRenomear"
      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
@@ -243,9 +288,7 @@
     </div>
 </div>
 
-{{-- ============================================ --}}
 {{-- Banner de Confirmação --}}
-{{-- ============================================ --}}
 <div id="bannerConfirm"
      class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-gray-300 shadow-lg rounded-lg px-6 py-4 flex items-center gap-4 z-50">
     <span id="bannerConfirmMsg" class="text-sm text-gray-700 flex-1"></span>
@@ -259,6 +302,27 @@
 
 @push('scripts')
 <script>
+// ── Normalização JS (espelha ProductSimilarityService::normalizarNome) ─────
+function normalizarNome(str) {
+    const acentos = {
+        'á':'a','à':'a','ã':'a','â':'a','ä':'a',
+        'é':'e','è':'e','ê':'e','ë':'e',
+        'í':'i','ì':'i','î':'i','ï':'i',
+        'ó':'o','ò':'o','õ':'o','ô':'o','ö':'o',
+        'ú':'u','ù':'u','û':'u','ü':'u',
+        'ç':'c','ñ':'n'
+    };
+    let s = str.toLowerCase();
+    s = s.replace(/[áàãâäéèêëíìîïóòõôöúùûüçñ]/g, c => acentos[c] || c);
+    // remove quantidades+unidades: 500g, 2l, 1.5kg, cx c/12 ...
+    s = s.replace(/\b\d+[.,]?\d*\s*(kg|g|gr|l|ml|un|und|cx|pc|pct|lt|dz|x)\b/gi, '');
+    s = s.replace(/\bc\/\d+\b/gi, '');
+    // remove não-alfanuméricos
+    s = s.replace(/[^a-z0-9\s]/g, ' ');
+    // colapsa espaços
+    return s.replace(/\s+/g, ' ').trim();
+}
+
 // ── Abas ───────────────────────────────────────────────────────────────────
 function mostrarAba(aba) {
     document.getElementById('aba-grupos').classList.toggle('hidden', aba !== 'grupos');
@@ -270,69 +334,88 @@ function mostrarAba(aba) {
         (aba === 'soltos' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700');
 }
 
-// ── Tornar Principal (cria formulário separado, sem aninhar) ──────────────
-function tornarPrincipal(produtoId, nome) {
-    if (!confirm("Tornar '" + nome + "' como produto principal (canônico)?")) {
+// ── Painel Adicionar ───────────────────────────────────────────────────────
+function mostrarAdicionar(grupoId) {
+    const painel = document.getElementById('adicionar-' + grupoId);
+    painel.classList.remove('hidden');
+
+    // Foca o campo de pesquisa automaticamente
+    const searchInput = painel.querySelector('.search-adicionar');
+    if (searchInput) {
+        setTimeout(() => searchInput.focus(), 50);
+    }
+}
+
+function fecharAdicionar(grupoId) {
+    const painel = document.getElementById('adicionar-' + grupoId);
+    painel.classList.add('hidden');
+
+    // Limpa pesquisa e checkboxes ao fechar
+    const searchInput = painel.querySelector('.search-adicionar');
+    if (searchInput) searchInput.value = '';
+
+    document.querySelectorAll('.produto-item-' + grupoId).forEach(item => {
+        item.classList.remove('hidden');
+    });
+    document.querySelectorAll('.check-adicionar-' + grupoId).forEach(cb => {
+        cb.checked = false;
+    });
+
+    atualizarContadores(grupoId);
+}
+
+// ── Pesquisa em tempo real dentro do painel Adicionar ──────────────────────
+document.addEventListener('input', function(e) {
+    if (!e.target.classList.contains('search-adicionar')) return;
+
+    const grupoId = e.target.dataset.grupo;
+    const query   = normalizarNome(e.target.value);
+    const items   = document.querySelectorAll('.produto-item-' + grupoId);
+    const semRes  = document.querySelector('.sem-resultado-' + grupoId);
+    let visiveis  = 0;
+
+    items.forEach(item => {
+        const nomeOriginal = item.dataset.nome || '';
+        const nomeNorm     = item.dataset.norm  || '';
+        const queryNorm    = query;
+
+        // Busca tanto no nome original (lowercase) quanto no normalizado
+        const match = query === ''
+            || nomeOriginal.includes(query)
+            || nomeNorm.includes(queryNorm);
+
+        item.classList.toggle('hidden', !match);
+        if (match) visiveis++;
+    });
+
+    if (semRes) semRes.classList.toggle('hidden', visiveis > 0);
+    atualizarContadores(grupoId);
+});
+
+// ── Atualiza contadores de visíveis/selecionados ───────────────────────────
+function atualizarContadores(grupoId) {
+    const items     = document.querySelectorAll('.produto-item-' + grupoId);
+    const visiveis  = Array.from(items).filter(i => !i.classList.contains('hidden')).length;
+    const selecionados = document.querySelectorAll('.check-adicionar-' + grupoId + ':checked').length;
+
+    const spanV = document.querySelector('.count-visivel-' + grupoId);
+    const spanS = document.querySelector('.count-selecionados-' + grupoId);
+    if (spanV) spanV.textContent = visiveis;
+    if (spanS) spanS.textContent = selecionados;
+}
+
+document.addEventListener('change', function(e) {
+    // Contador dentro do painel Adicionar
+    const match = e.target.className.match(/check-adicionar-(\S+)/);
+    if (match) {
+        atualizarContadores(match[1]);
         return;
     }
 
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/products/' + produtoId + '/tornar-canonico';
-    form.style.display = 'none';
-
-    var csrf = document.createElement('input');
-    csrf.type = 'hidden';
-    csrf.name = '_token';
-    csrf.value = '{{ csrf_token() }}';
-    form.appendChild(csrf);
-
-    document.body.appendChild(form);
-    form.submit();
-}
-
-// ── Modal Renomear Grupo ─────────────────────────────────────────────────────
-function editarNomeGrupo(id, nome) {
-    document.getElementById('formRenomear').action = '/products/' + id + '/renomear-grupo';
-    document.getElementById('inputNomeGrupo').value = nome;
-    document.getElementById('modalRenomear').classList.remove('hidden');
-    document.getElementById('inputNomeGrupo').focus();
-}
-
-document.getElementById('btnFecharRenomear').addEventListener('click', function() {
-    document.getElementById('modalRenomear').classList.add('hidden');
-});
-
-document.getElementById('modalRenomear').addEventListener('click', function(e) {
-    if (e.target === this) document.getElementById('modalRenomear').classList.add('hidden');
-});
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') document.getElementById('modalRenomear').classList.add('hidden');
-});
-
-// ── Painel Adicionar Produtos ao Grupo ──────────────────────────────────────
-function mostrarAdicionar(grupoId) {
-    document.getElementById('adicionar-' + grupoId).classList.remove('hidden');
-}
-
-// ── Validação do Criar Grupo ───────────────────────────────────────────────
-function validarCriarGrupo() {
-    const count = document.querySelectorAll('.produtoCheck:checked').length;
-    if (count < 2) {
-        alert('Selecione pelo menos 2 produtos para criar um grupo.');
-        return false;
-    }
-    return true;
-}
-
-// ── Atualizar botão Criar Grupo conforme checkboxes ────────────────────────
-document.addEventListener('change', function(e) {
+    // Botão Criar Grupo (aba Produtos Soltos)
     if (!e.target.classList.contains('produtoCheck')) return;
-
     const count = document.querySelectorAll('.produtoCheck:checked').length;
-    const btn = document.getElementById('btnCriarGrupo');
-
+    const btn   = document.getElementById('btnCriarGrupo');
     if (!btn) return;
 
     if (count >= 2) {
@@ -347,11 +430,55 @@ document.addEventListener('change', function(e) {
     }
 });
 
+// ── Tornar Principal ───────────────────────────────────────────────────────
+function tornarPrincipal(produtoId, nome) {
+    if (!confirm("Tornar '" + nome + "' como produto principal (canônico)?")) return;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/products/' + produtoId + '/tornar-canonico';
+    form.style.display = 'none';
+
+    var csrf = document.createElement('input');
+    csrf.type  = 'hidden';
+    csrf.name  = '_token';
+    csrf.value = '{{ csrf_token() }}';
+    form.appendChild(csrf);
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// ── Modal Renomear Grupo ───────────────────────────────────────────────────
+function editarNomeGrupo(id, nome) {
+    document.getElementById('formRenomear').action = '/products/' + id + '/renomear-grupo';
+    document.getElementById('inputNomeGrupo').value = nome;
+    document.getElementById('modalRenomear').classList.remove('hidden');
+    document.getElementById('inputNomeGrupo').focus();
+}
+
+document.getElementById('btnFecharRenomear').addEventListener('click', function() {
+    document.getElementById('modalRenomear').classList.add('hidden');
+});
+document.getElementById('modalRenomear').addEventListener('click', function(e) {
+    if (e.target === this) document.getElementById('modalRenomear').classList.add('hidden');
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('modalRenomear').classList.add('hidden');
+});
+
+// ── Validação Criar Grupo ──────────────────────────────────────────────────
+function validarCriarGrupo() {
+    const count = document.querySelectorAll('.produtoCheck:checked').length;
+    if (count < 2) { alert('Selecione pelo menos 2 produtos para criar um grupo.'); return false; }
+    return true;
+}
+
 // ── Banner de Confirmação ──────────────────────────────────────────────────
 (function() {
-    const banner = document.getElementById('bannerConfirm');
-    const msg = document.getElementById('bannerConfirmMsg');
-    const btnOk = document.getElementById('bannerConfirmOk');
+    const banner    = document.getElementById('bannerConfirm');
+    const msg       = document.getElementById('bannerConfirmMsg');
+    const btnOk     = document.getElementById('bannerConfirmOk');
     const btnCancel = document.getElementById('bannerConfirmCancel');
     let pendingForm = null;
 
@@ -366,10 +493,7 @@ document.addEventListener('change', function(e) {
     });
 
     btnOk.addEventListener('click', function() {
-        if (pendingForm) {
-            pendingForm.submit();
-            pendingForm = null;
-        }
+        if (pendingForm) { pendingForm.submit(); pendingForm = null; }
         banner.classList.add('hidden');
     });
 
