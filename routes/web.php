@@ -182,7 +182,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/expense-categories/reorder',                    [ExpenseCategoryController::class, 'reorder'])->name('expense_categories.reorder');
 
         // Relatório financeiro
-        Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('finance.report.index');
+        Route::get('/relatorio', [FinanceReportController::class, 'index'])->name('report.index');
 
         // Cartões de Crédito
         Route::get('/cartoes', [CreditCardController::class, 'index'])->name('credit_cards.index');
