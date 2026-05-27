@@ -46,6 +46,29 @@ class FuelEntryController extends Controller
     }
 
     /**
+     * Atualiza litros (e recalcula R$/L) de um abastecimento existente.
+     */
+    public function update(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
+    {
+        if ($vehicle->user_id !== Auth::id() || $fuelEntry->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'litros' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $fuelEntry->update([
+            'litros' => $validated['litros'] ?: null,
+        ]);
+
+        return redirect()
+            ->route('vehicles.show', $vehicle)
+            ->with('success', 'Litros atualizados!')
+            ->withFragment('fuel');
+    }
+
+    /**
      * Atualiza apenas o KM de um abastecimento existente.
      */
     public function updateKm(Request $request, Vehicle $vehicle, FuelEntry $fuelEntry): RedirectResponse
