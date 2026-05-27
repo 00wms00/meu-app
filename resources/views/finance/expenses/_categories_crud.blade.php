@@ -31,7 +31,7 @@
           <template x-if="editingId !== cat.id">
             <div class="flex items-center gap-2 px-2 py-1.5">
               <span class="w-3.5 h-3.5 rounded-full flex-shrink-0 border border-black/10"
-                    :style="'background:#' + cat.cor.replace('#','')"></span>
+                    :style="'background:' + ensureHash(cat.cor)"></span>
               <span class="text-base leading-none" x-text="cat.emoji || '•'"></span>
               <span class="flex-1 text-sm text-gray-800" x-text="cat.nome"></span>
               <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,9 +140,15 @@
 @push('scripts')
 <script>
 function expenseCategoriesCrud() {
-  // Normaliza cor: garante que fica SEM # para armazenar, COM # para o input[type=color]
-  function stripHash(c)  { return c ? c.replace('#','') : '6366f1'; }
-  function addHash(c)    { const s = stripHash(c); return s.startsWith('#') ? s : '#' + s; }
+  /**
+   * Garante que a cor sempre tenha o prefixo "#" antes de ser enviada ao backend.
+   * O input[type=color] sempre retorna "#rrggbb" (com #), mas o banco pode ter
+   * sido gravado sem o # em versões anteriores — por isso normalizamos nos dois sentidos.
+   */
+  function ensureHash(c) {
+    if (!c) return '#6366f1';
+    return c.startsWith('#') ? c : '#' + c;
+  }
 
   return {
     open: false,
@@ -150,13 +156,13 @@ function expenseCategoriesCrud() {
 
     // novo
     newNome:   '',
-    newCorHex: '#6366f1',   // com # para o input[type=color]
+    newCorHex: '#6366f1',   // input[type=color] exige # no valor
     newEmoji:  '',
 
     // edição
     editingId:  null,
     editNome:   '',
-    editCorHex: '#6b7280',  // com # para o input[type=color]
+    editCorHex: '#6b7280',
     editEmoji:  '',
 
     errorMsg: '',
@@ -166,6 +172,9 @@ function expenseCategoriesCrud() {
       '💡','🛒','🐾','✈️','🎵','💻','🏋️','🍺','💈','🎁',
     ],
 
+    // Expõe ensureHash para uso nas diretivas x-bind do template
+    ensureHash,
+
     init() {
       this.$watch('open', v => { if (v) this.load(); });
     },
@@ -174,13 +183,18 @@ function expenseCategoriesCrud() {
       const r = await fetch('{{ route("finance.expense_categories.index") }}', {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       });
-      this.categories = await r.json();
+      const cats = await r.json();
+      // Normaliza cor com # ao carregar, para o input[type=color] funcionar corretamente
+      this.categories = cats.map(c => ({ ...c, cor: ensureHash(c.cor) }));
     },
 
     async addCategory() {
       this.errorMsg = '';
       const nome = this.newNome.trim();
       if (!nome) return;
+
+      // newCorHex já vem com # (input[type=color] garante isso)
+      const cor = ensureHash(this.newCorHex);
 
       const r = await fetch('{{ route("finance.expense_categories.store") }}', {
         method: 'POST',
@@ -191,35 +205,39 @@ function expenseCategoriesCrud() {
         },
         body: JSON.stringify({
           nome,
-          cor:   stripHash(this.newCorHex),
+          cor,
           emoji: this.newEmoji,
         }),
       });
 
       if (r.ok) {
         const cat = await r.json();
-        this.categories.push(cat);
+        this.categories.push({ ...cat, cor: ensureHash(cat.cor) });
         this.newNome   = '';
         this.newEmoji  = '';
         this.newCorHex = '#6366f1';
-        window.__expenseCats = null; // invalida cache das linhas
+        window.__expenseCats = null;
         window.dispatchEvent(new CustomEvent('categories-updated'));
       } else {
         const e = await r.json().catch(() => ({}));
-        this.errorMsg = e.message || 'Erro ao salvar.';
+        this.errorMsg = e.message
+          || (e.errors?.cor?.[0])
+          || 'Erro ao salvar.';
       }
     },
 
     startEdit(cat) {
       this.editingId  = cat.id;
       this.editNome   = cat.nome;
-      this.editCorHex = addHash(cat.cor);
+      this.editCorHex = ensureHash(cat.cor);
       this.editEmoji  = cat.emoji || '';
     },
 
     cancelEdit() { this.editingId = null; },
 
     async saveEdit(cat) {
+      const cor = ensureHash(this.editCorHex);
+
       const r = await fetch(`/financas/expense-categories/${cat.id}`, {
         method: 'PUT',
         headers: {
@@ -229,7 +247,7 @@ function expenseCategoriesCrud() {
         },
         body: JSON.stringify({
           nome:  this.editNome,
-          cor:   stripHash(this.editCorHex),
+          cor,
           emoji: this.editEmoji,
         }),
       });
@@ -237,10 +255,13 @@ function expenseCategoriesCrud() {
       if (r.ok) {
         const updated = await r.json();
         const idx = this.categories.findIndex(c => c.id === cat.id);
-        if (idx !== -1) this.categories[idx] = updated;
+        if (idx !== -1) this.categories[idx] = { ...updated, cor: ensureHash(updated.cor) };
         this.editingId = null;
         window.__expenseCats = null;
         window.dispatchEvent(new CustomEvent('categories-updated'));
+      } else {
+        const e = await r.json().catch(() => ({}));
+        alert(e.message || e.errors?.cor?.[0] || 'Erro ao salvar.');
       }
     },
 
@@ -262,9 +283,6 @@ function expenseCategoriesCrud() {
       }
     },
   };
-
-  function stripHash(c)  { return (c || '6366f1').replace('#',''); }
-  function addHash(c)    { const s = stripHash(c); return '#' + s; }
 }
 </script>
 @endpush
