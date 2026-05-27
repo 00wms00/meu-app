@@ -22,10 +22,12 @@
         @foreach($meses as $m)
             @php $ativo = $mes->format('Y-m') === $m->format('Y-m'); @endphp
             <a href="{{ route('finance.incomes.index', ['mes' => $m->format('Y-m')]) }}"
-               class="px-3 py-1 text-xs rounded-full border transition
-                      {{ $ativo
-                         ? 'bg-green-600 !text-white border-green-600 font-semibold'
-                         : 'border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700' }}">
+               class="px-3 py-1 text-xs rounded-full border transition font-{{ $ativo ? 'semibold' : 'normal' }}"
+               @if($ativo)
+                   style="background-color:#16a34a; color:#ffffff !important; border-color:#16a34a;"
+               @else
+                   style="border-color:#e5e7eb; color:#6b7280;"
+               @endif>
                 {{ $m->translatedFormat('M/y') }}
             </a>
         @endforeach
