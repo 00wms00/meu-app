@@ -9,7 +9,7 @@
     <div>
         <h1 class="text-2xl font-bold text-gray-900">💰 Receitas</h1>
         <p class="text-sm text-gray-500 mt-0.5">Salários, freelances e outras entradas &mdash;
-            <span class="font-medium text-gray-700">{{ $mes->translatedFormat('F \\d\\e Y') }}</span>
+            <span class="font-medium text-gray-700">{{ $mes->translatedFormat('F \\de Y') }}</span>
         </p>
     </div>
     <a href="{{ route('dashboard') }}" class="btn-back self-start sm:self-auto">← Dashboard</a>
@@ -20,10 +20,11 @@
     <div class="flex flex-wrap gap-2 items-center">
         <span class="text-xs font-medium text-gray-500 uppercase tracking-wide mr-1">Mês:</span>
         @foreach($meses as $m)
+            @php $ativo = $mes->format('Y-m') === $m->format('Y-m'); @endphp
             <a href="{{ route('finance.incomes.index', ['mes' => $m->format('Y-m')]) }}"
                class="px-3 py-1 text-xs rounded-full border transition
-                      {{ $mes->format('Y-m') === $m->format('Y-m')
-                         ? 'bg-green-600 text-white border-green-600 font-semibold'
+                      {{ $ativo
+                         ? 'bg-green-600 !text-white border-green-600 font-semibold'
                          : 'border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700' }}">
                 {{ $m->translatedFormat('M/y') }}
             </a>
