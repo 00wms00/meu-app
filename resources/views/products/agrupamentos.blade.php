@@ -130,15 +130,13 @@
                     </div>
                 @endforeach
 
-                {{-- ============================================================ --}}
-                {{-- Painel Adicionar com campo de pesquisa + nome normalizado     --}}
-                {{-- ============================================================ --}}
+                {{-- Painel Adicionar --}}
                 <div id="adicionar-{{ $grupo->id }}" class="hidden px-6 py-4 bg-gray-50 border-t border-gray-200">
                     <form action="{{ route('products.adicionar-ao-grupo', $grupo) }}" method="POST">
                         @csrf
 
                         {{-- Campo de pesquisa --}}
-                        <div class="relative mb-3">
+                        <div class="relative mb-2">
                             <span class="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">🔍</span>
                             <input
                                 type="text"
@@ -149,22 +147,25 @@
                             >
                         </div>
 
-                        {{-- Contador de selecionados --}}
+                        {{-- Contador --}}
                         <p class="text-xs text-gray-500 mb-2">
-                            Mostrando <span class="count-visivel-{{ $grupo->id }} font-medium text-gray-700">{{ $naoAgrupados->count() }}</span>
-                            de {{ $naoAgrupados->count() }} produtos &mdash;
+                            Mostrando <span class="count-visivel-{{ $grupo->id }} font-medium text-gray-700">{{ min(5, $naoAgrupados->count()) }}</span>
+                            de {{ $naoAgrupados->count() }} &mdash;
                             <span class="count-selecionados-{{ $grupo->id }} font-medium text-blue-600">0</span> selecionado(s)
+                            <span class="hint-busca-{{ $grupo->id }} text-gray-400">
+                                @if($naoAgrupados->count() > 5) &mdash; digite para ver mais @endif
+                            </span>
                         </p>
 
-                        {{-- Lista filtrável --}}
+                        {{-- Lista filtrável (os 5 primeiros visíveis por padrão) --}}
                         <div class="lista-adicionar-{{ $grupo->id }} max-h-56 overflow-y-auto space-y-1 mb-3 rounded border border-gray-200 bg-white p-2">
-                            @foreach($naoAgrupados as $prod)
+                            @foreach($naoAgrupados as $i => $prod)
                                 @php
                                     $nomNorm = $prod->nome_normalizado
                                         ?? \App\Helpers\ProductHelper::normalizar($prod->nome);
                                 @endphp
                                 <label
-                                    class="produto-item-{{ $grupo->id }} flex items-center gap-2 text-sm cursor-pointer hover:bg-blue-50 p-1.5 rounded"
+                                    class="produto-item-{{ $grupo->id }} flex items-center gap-2 text-sm cursor-pointer hover:bg-blue-50 p-1.5 rounded {{ $i >= 5 ? 'item-extra hidden' : '' }}"
                                     data-nome="{{ Str::lower($prod->nome) }}"
                                     data-norm="{{ $nomNorm }}"
                                 >
@@ -179,7 +180,6 @@
                                 </label>
                             @endforeach
 
-                            {{-- Mensagem sem resultado --}}
                             <p class="sem-resultado-{{ $grupo->id }} hidden text-center text-gray-400 text-xs py-4">Nenhum produto encontrado.</p>
                         </div>
 
@@ -221,9 +221,7 @@
                 <div class="px-6 py-3 bg-gray-50 border-b flex flex-wrap gap-3 items-center">
                     <input type="text" name="nome_grupo" placeholder="Nome do grupo (opcional)"
                            class="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm flex-1 min-w-40">
-                    <button type="submit"
-                            id="btnCriarGrupo"
-                            disabled
+                    <button type="submit" id="btnCriarGrupo" disabled
                             class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
                         📁 Selecione 2+ produtos
                     </button>
@@ -249,7 +247,6 @@
                                 </div>
                                 <span class="text-xs text-gray-400 shrink-0">({{ $prod->invoice_items_count }}x)</span>
                             </label>
-
                             <button type="button"
                                     onclick="tornarPrincipal('{{ $prod->id }}', '{{ \App\Helpers\ProductHelper::displayName($prod) }}')"
                                     class="ml-2 inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-md transition shrink-0">
@@ -302,6 +299,8 @@
 
 @push('scripts')
 <script>
+const LIMITE_BUSCA = 5;
+
 // ── Normalização JS (espelha ProductSimilarityService::normalizarNome) ─────
 function normalizarNome(str) {
     const acentos = {
@@ -314,57 +313,57 @@ function normalizarNome(str) {
     };
     let s = str.toLowerCase();
     s = s.replace(/[áàãâäéèêëíìîïóòõôöúùûüçñ]/g, c => acentos[c] || c);
-    // remove quantidades+unidades: 500g, 2l, 1.5kg, cx c/12 ...
     s = s.replace(/\b\d+[.,]?\d*\s*(kg|g|gr|l|ml|un|und|cx|pc|pct|lt|dz|x)\b/gi, '');
     s = s.replace(/\bc\/\d+\b/gi, '');
-    // remove não-alfanuméricos
     s = s.replace(/[^a-z0-9\s]/g, ' ');
-    // colapsa espaços
     return s.replace(/\s+/g, ' ').trim();
 }
 
-// ── Abas ───────────────────────────────────────────────────────────────────
+// ── Abas ──────────────────────────────────────────────────────────────
 function mostrarAba(aba) {
     document.getElementById('aba-grupos').classList.toggle('hidden', aba !== 'grupos');
     document.getElementById('aba-soltos').classList.toggle('hidden', aba !== 'soltos');
-
     document.getElementById('tab-grupos').className = 'px-4 py-2 text-sm font-medium border-b-2 ' +
         (aba === 'grupos' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700');
     document.getElementById('tab-soltos').className = 'px-4 py-2 text-sm font-medium border-b-2 ' +
         (aba === 'soltos' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700');
 }
 
-// ── Painel Adicionar ───────────────────────────────────────────────────────
+// ── Painel Adicionar ──────────────────────────────────────────────────
 function mostrarAdicionar(grupoId) {
     const painel = document.getElementById('adicionar-' + grupoId);
     painel.classList.remove('hidden');
-
-    // Foca o campo de pesquisa automaticamente
-    const searchInput = painel.querySelector('.search-adicionar');
-    if (searchInput) {
-        setTimeout(() => searchInput.focus(), 50);
-    }
+    const inp = painel.querySelector('.search-adicionar');
+    if (inp) setTimeout(() => inp.focus(), 50);
 }
 
 function fecharAdicionar(grupoId) {
     const painel = document.getElementById('adicionar-' + grupoId);
     painel.classList.add('hidden');
 
-    // Limpa pesquisa e checkboxes ao fechar
-    const searchInput = painel.querySelector('.search-adicionar');
-    if (searchInput) searchInput.value = '';
+    const inp = painel.querySelector('.search-adicionar');
+    if (inp) inp.value = '';
 
-    document.querySelectorAll('.produto-item-' + grupoId).forEach(item => {
+    // Restaura estado inicial: só os 5 primeiros visíveis, extras escondidos
+    const items = document.querySelectorAll('.produto-item-' + grupoId);
+    let count = 0;
+    items.forEach(item => {
         item.classList.remove('hidden');
+        count++;
+        if (item.classList.contains('item-extra')) {
+            item.classList.add('hidden');
+        }
     });
-    document.querySelectorAll('.check-adicionar-' + grupoId).forEach(cb => {
-        cb.checked = false;
-    });
+
+    document.querySelectorAll('.check-adicionar-' + grupoId).forEach(cb => cb.checked = false);
+
+    const hint = document.querySelector('.hint-busca-' + grupoId);
+    if (hint) hint.classList.remove('hidden');
 
     atualizarContadores(grupoId);
 }
 
-// ── Pesquisa em tempo real dentro do painel Adicionar ──────────────────────
+// ── Pesquisa em tempo real com limite de 5 resultados ────────────────────
 document.addEventListener('input', function(e) {
     if (!e.target.classList.contains('search-adicionar')) return;
 
@@ -372,32 +371,49 @@ document.addEventListener('input', function(e) {
     const query   = normalizarNome(e.target.value);
     const items   = document.querySelectorAll('.produto-item-' + grupoId);
     const semRes  = document.querySelector('.sem-resultado-' + grupoId);
-    let visiveis  = 0;
+    const hint    = document.querySelector('.hint-busca-' + grupoId);
 
+    // Sem busca ativa: volta ao estado padrão (5 primeiros visíveis)
+    if (query === '') {
+        items.forEach(item => {
+            if (item.classList.contains('item-extra')) {
+                item.classList.add('hidden');
+            } else {
+                item.classList.remove('hidden');
+            }
+        });
+        if (semRes) semRes.classList.add('hidden');
+        if (hint) hint.classList.remove('hidden');
+        atualizarContadores(grupoId);
+        return;
+    }
+
+    // Com busca: mostra só os primeiros LIMITE_BUSCA que correspondem
+    if (hint) hint.classList.add('hidden');
+
+    let exibidos = 0;
     items.forEach(item => {
-        const nomeOriginal = item.dataset.nome || '';
-        const nomeNorm     = item.dataset.norm  || '';
-        const queryNorm    = query;
+        const nomeOrig = item.dataset.nome || '';
+        const nomeNorm = item.dataset.norm  || '';
+        const match    = nomeOrig.includes(query) || nomeNorm.includes(query);
 
-        // Busca tanto no nome original (lowercase) quanto no normalizado
-        const match = query === ''
-            || nomeOriginal.includes(query)
-            || nomeNorm.includes(queryNorm);
-
-        item.classList.toggle('hidden', !match);
-        if (match) visiveis++;
+        if (match && exibidos < LIMITE_BUSCA) {
+            item.classList.remove('hidden');
+            exibidos++;
+        } else {
+            item.classList.add('hidden');
+        }
     });
 
-    if (semRes) semRes.classList.toggle('hidden', visiveis > 0);
+    if (semRes) semRes.classList.toggle('hidden', exibidos > 0);
     atualizarContadores(grupoId);
 });
 
-// ── Atualiza contadores de visíveis/selecionados ───────────────────────────
+// ── Contadores ────────────────────────────────────────────────────────────
 function atualizarContadores(grupoId) {
-    const items     = document.querySelectorAll('.produto-item-' + grupoId);
-    const visiveis  = Array.from(items).filter(i => !i.classList.contains('hidden')).length;
+    const items      = document.querySelectorAll('.produto-item-' + grupoId);
+    const visiveis   = Array.from(items).filter(i => !i.classList.contains('hidden')).length;
     const selecionados = document.querySelectorAll('.check-adicionar-' + grupoId + ':checked').length;
-
     const spanV = document.querySelector('.count-visivel-' + grupoId);
     const spanS = document.querySelector('.count-selecionados-' + grupoId);
     if (spanV) spanV.textContent = visiveis;
@@ -405,108 +421,75 @@ function atualizarContadores(grupoId) {
 }
 
 document.addEventListener('change', function(e) {
-    // Contador dentro do painel Adicionar
-    const match = e.target.className.match(/check-adicionar-(\S+)/);
-    if (match) {
-        atualizarContadores(match[1]);
-        return;
-    }
+    const matchAdic = e.target.className.match(/check-adicionar-(\S+)/);
+    if (matchAdic) { atualizarContadores(matchAdic[1]); return; }
 
-    // Botão Criar Grupo (aba Produtos Soltos)
     if (!e.target.classList.contains('produtoCheck')) return;
     const count = document.querySelectorAll('.produtoCheck:checked').length;
     const btn   = document.getElementById('btnCriarGrupo');
     if (!btn) return;
-
-    if (count >= 2) {
-        btn.textContent = '📁 Criar Grupo (' + count + ' produtos)';
-        btn.disabled = false;
-    } else if (count === 1) {
-        btn.textContent = '📁 Selecione mais 1 produto';
-        btn.disabled = true;
-    } else {
-        btn.textContent = '📁 Selecione 2+ produtos';
-        btn.disabled = true;
-    }
+    if (count >= 2)      { btn.textContent = '📁 Criar Grupo (' + count + ' produtos)'; btn.disabled = false; }
+    else if (count === 1){ btn.textContent = '📁 Selecione mais 1 produto'; btn.disabled = true; }
+    else                 { btn.textContent = '📁 Selecione 2+ produtos';    btn.disabled = true; }
 });
 
-// ── Tornar Principal ───────────────────────────────────────────────────────
+// ── Tornar Principal ───────────────────────────────────────────────────
 function tornarPrincipal(produtoId, nome) {
     if (!confirm("Tornar '" + nome + "' como produto principal (canônico)?")) return;
-
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = '/products/' + produtoId + '/tornar-canonico';
     form.style.display = 'none';
-
     var csrf = document.createElement('input');
-    csrf.type  = 'hidden';
-    csrf.name  = '_token';
-    csrf.value = '{{ csrf_token() }}';
+    csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
     form.appendChild(csrf);
-
     document.body.appendChild(form);
     form.submit();
 }
 
-// ── Modal Renomear Grupo ───────────────────────────────────────────────────
+// ── Modal Renomear ──────────────────────────────────────────────────────
 function editarNomeGrupo(id, nome) {
     document.getElementById('formRenomear').action = '/products/' + id + '/renomear-grupo';
     document.getElementById('inputNomeGrupo').value = nome;
     document.getElementById('modalRenomear').classList.remove('hidden');
     document.getElementById('inputNomeGrupo').focus();
 }
-
-document.getElementById('btnFecharRenomear').addEventListener('click', function() {
-    document.getElementById('modalRenomear').classList.add('hidden');
-});
+document.getElementById('btnFecharRenomear').addEventListener('click', () =>
+    document.getElementById('modalRenomear').classList.add('hidden'));
 document.getElementById('modalRenomear').addEventListener('click', function(e) {
-    if (e.target === this) document.getElementById('modalRenomear').classList.add('hidden');
+    if (e.target === this) this.classList.add('hidden');
 });
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', e => {
     if (e.key === 'Escape') document.getElementById('modalRenomear').classList.add('hidden');
 });
 
-// ── Validação Criar Grupo ──────────────────────────────────────────────────
+// ── Criar Grupo ──────────────────────────────────────────────────────────
 function validarCriarGrupo() {
-    const count = document.querySelectorAll('.produtoCheck:checked').length;
-    if (count < 2) { alert('Selecione pelo menos 2 produtos para criar um grupo.'); return false; }
+    if (document.querySelectorAll('.produtoCheck:checked').length < 2) {
+        alert('Selecione pelo menos 2 produtos para criar um grupo.');
+        return false;
+    }
     return true;
 }
 
-// ── Banner de Confirmação ──────────────────────────────────────────────────
+// ── Banner de Confirmação ────────────────────────────────────────────────
 (function() {
-    const banner    = document.getElementById('bannerConfirm');
-    const msg       = document.getElementById('bannerConfirmMsg');
-    const btnOk     = document.getElementById('bannerConfirmOk');
-    const btnCancel = document.getElementById('bannerConfirmCancel');
-    let pendingForm = null;
+    const banner = document.getElementById('bannerConfirm');
+    const msg    = document.getElementById('bannerConfirmMsg');
+    const btnOk  = document.getElementById('bannerConfirmOk');
+    const btnCan = document.getElementById('bannerConfirmCancel');
+    let pf = null;
 
     document.addEventListener('submit', function(e) {
-        const form = e.target;
-        if (!form.dataset.confirm) return;
-        e.preventDefault();
-        pendingForm = form;
-        msg.textContent = form.dataset.confirm;
-        banner.classList.remove('hidden');
-        btnOk.focus();
+        if (!e.target.dataset.confirm) return;
+        e.preventDefault(); pf = e.target;
+        msg.textContent = pf.dataset.confirm;
+        banner.classList.remove('hidden'); btnOk.focus();
     });
-
-    btnOk.addEventListener('click', function() {
-        if (pendingForm) { pendingForm.submit(); pendingForm = null; }
-        banner.classList.add('hidden');
-    });
-
-    btnCancel.addEventListener('click', function() {
-        pendingForm = null;
-        banner.classList.add('hidden');
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !banner.classList.contains('hidden')) {
-            pendingForm = null;
-            banner.classList.add('hidden');
-        }
+    btnOk.addEventListener('click', () => { if (pf) { pf.submit(); pf = null; } banner.classList.add('hidden'); });
+    btnCan.addEventListener('click', () => { pf = null; banner.classList.add('hidden'); });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !banner.classList.contains('hidden')) { pf = null; banner.classList.add('hidden'); }
     });
 })();
 </script>
