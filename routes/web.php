@@ -84,6 +84,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/{product}/alerta', [PriceAlertController::class, 'criar'])->name('alerta.criar');
 
+        // Autocomplete JSON
+        Route::get('/autocomplete', [ProductController::class, 'autocomplete'])->name('autocomplete');
+
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/{product}', [ProductController::class, 'show'])->name('show');
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');

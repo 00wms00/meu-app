@@ -8,6 +8,7 @@ use App\Models\PriceAlert;
 use App\Models\Product;
 use App\Services\ProductNormalizationService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,6 @@ class ProductController extends Controller
             $query->where('nome', 'ilike', "%{$request->search}%");
         }
 
-        // Para o acordeão carregamos todos (sem paginate) agrupados por categoria
         $allProducts = $query->orderBy('nome')->get();
 
         $grouped = $allProducts->groupBy(function ($p) {
@@ -41,6 +41,38 @@ class ProductController extends Controller
         $total      = $allProducts->count();
 
         return view('products.index', compact('grouped', 'categorias', 'total'));
+    }
+
+    /**
+     * Autocomplete: retorna os 5 primeiros produtos que batem com o termo.
+     */
+    public function autocomplete(Request $request): JsonResponse
+    {
+        $q = trim($request->input('q', ''));
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $results = Product::where('user_id', Auth::id())
+            ->where(function ($query) use ($q) {
+                $query->where('nome', 'ilike', "%{$q}%")
+                      ->orWhere('nome_exibicao', 'ilike', "%{$q}%");
+            })
+            ->with('category')
+            ->orderBy('nome')
+            ->limit(5)
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id'        => $p->id,
+                    'nome'      => $p->nome_exibicao ?: $p->nome,
+                    'categoria' => $p->category?->nome ?? 'Sem categoria',
+                    'url'       => route('products.show', $p),
+                ];
+            });
+
+        return response()->json($results);
     }
 
     public function show(Request $request, Product $product): View
