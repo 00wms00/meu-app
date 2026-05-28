@@ -3,6 +3,16 @@
 @section('title', 'Orçamento Mensal')
 
 @section('content')
+@php
+    $mesAnteriorNav = \Carbon\Carbon::create($ano, $mes, 1)->subMonth();
+    $mesAtualNav    = \Carbon\Carbon::create($ano, $mes, 1);
+    $mesProximoNav  = \Carbon\Carbon::create($ano, $mes, 1)->addMonth();
+
+    $labelAnterior = mb_strtolower($mesAnteriorNav->translatedFormat('M')) . '/' . $mesAnteriorNav->format('y');
+    $labelAtual    = mb_strtolower($mesAtualNav->translatedFormat('M'))    . '/' . $mesAtualNav->format('y');
+    $labelProximo  = mb_strtolower($mesProximoNav->translatedFormat('M'))  . '/' . $mesProximoNav->format('y');
+@endphp
+
 <div class="mb-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -10,12 +20,12 @@
             <p class="mt-1 text-gray-600">{{ $meses[$mes] }} de {{ $ano }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route('budgets.index', ['mes' => $mes == 1 ? 12 : $mes - 1, 'ano' => $mes == 1 ? $ano - 1 : $ano]) }}"
-               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Mês anterior</a>
-            <a href="{{ route('budgets.index', ['mes' => now()->month, 'ano' => now()->year]) }}"
-               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">📅 Hoje</a>
-            <a href="{{ route('budgets.index', ['mes' => $mes == 12 ? 1 : $mes + 1, 'ano' => $mes == 12 ? $ano + 1 : $ano]) }}"
-               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">Próximo mês →</a>
+            <a href="{{ route('budgets.index', ['mes' => $mesAnteriorNav->month, 'ano' => $mesAnteriorNav->year]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← {{ $labelAnterior }}</a>
+            <a href="{{ route('budgets.index', ['mes' => $mesAtualNav->month, 'ano' => $mesAtualNav->year]) }}"
+               class="inline-flex items-center px-3 py-2 border border-blue-400 text-blue-700 bg-blue-50 hover:bg-blue-100 text-sm font-semibold rounded-md transition">{{ $labelAtual }}</a>
+            <a href="{{ route('budgets.index', ['mes' => $mesProximoNav->month, 'ano' => $mesProximoNav->year]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">{{ $labelProximo }} →</a>
         </div>
     </div>
 </div>
@@ -244,7 +254,6 @@
 </div>
 
 <script>
-// ===== Máscara monetária + total ao vivo =====
 function parseBR(str) {
     if (!str) return 0;
     return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
@@ -279,7 +288,6 @@ function mascaraMoeda(input) {
 
 document.querySelectorAll('.cat-valor').forEach(mascaraMoeda);
 
-// ===== Confirmação de cópia =====
 function confirmarCopia() {
     if (confirm('Substituir o orçamento de {{ $meses[$mes] }}/{{ $ano }} pelos valores de {{ $nomeMesAnterior }}/{{ $mesAnteriorData->year }}?\n\nOs limites existentes serão sobrescritos.')) {
         document.getElementById('form-copiar').submit();
