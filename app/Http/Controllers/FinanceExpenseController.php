@@ -86,27 +86,27 @@ class FinanceExpenseController extends Controller
             $itens = collect();
             foreach ($vexps as $e) {
                 $itens->push([
-                    'id'      => $e->id,
+                    'id'            => $e->id,
                     'tipo_registro' => 'expense',
-                    'tipo'    => $e->tipo ?? 'Manutenção',
-                    'descricao' => $e->descricao ?? '',
-                    'valor'   => (float)$e->valor,
-                    'data'    => $e->data->format('d/m'),
-                    'icone'   => '🔧',
-                    'status'  => $e->status ?? 'pendente',
+                    'tipo'          => $e->tipo ?? 'Manutenção',
+                    'descricao'     => $e->descricao ?? '',
+                    'valor'         => (float)$e->valor,
+                    'data'          => $e->data->format('d/m'),
+                    'icone'         => '🔧',
+                    'status'        => $e->status ?? 'pago',   // legado = pago
                 ]);
             }
             foreach ($fuels as $f) {
                 $litros = $f->litros ? number_format((float)$f->litros, 2, ',', '.') . 'L' : '';
                 $itens->push([
-                    'id'      => $f->id,
+                    'id'            => $f->id,
                     'tipo_registro' => 'fuel',
-                    'tipo'    => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''),
-                    'descricao' => trim(($f->posto ?? '') . ($litros ? ' • ' . $litros : '')),
-                    'valor'   => (float)$f->valor,
-                    'data'    => $f->data->format('d/m'),
-                    'icone'   => '⛽',
-                    'status'  => $f->status ?? 'pendente',
+                    'tipo'          => 'Combustível' . ($f->tipo_combustivel ? ' (' . $f->tipo_combustivel . ')' : ''),
+                    'descricao'     => trim(($f->posto ?? '') . ($litros ? ' • ' . $litros : '')),
+                    'valor'         => (float)$f->valor,
+                    'data'          => $f->data->format('d/m'),
+                    'icone'         => '⛽',
+                    'status'        => $f->status ?? 'pago',   // legado = pago
                 ]);
             }
             return [
@@ -120,10 +120,10 @@ class FinanceExpenseController extends Controller
         $totalVeiculos = $vehicleExpensesDoMes->sum('valor');
 
         // Totais veículos por status (soma todos os itens de todos os veículos)
-        $todosItensVeiculos  = $vehicleExpensesDoMes->flatMap(fn($v) => $v['itens']);
-        $veiculoPago         = $todosItensVeiculos->where('status', 'pago')->sum('valor');
-        $veiculoPagoCC       = $todosItensVeiculos->where('status', 'pgoCC')->sum('valor');
-        $veiculoPendente     = $todosItensVeiculos->where('status', 'pendente')->sum('valor');
+        $todosItensVeiculos = $vehicleExpensesDoMes->flatMap(fn($v) => $v['itens']);
+        $veiculoPago        = $todosItensVeiculos->where('status', 'pago')->sum('valor');
+        $veiculoPagoCC      = $todosItensVeiculos->where('status', 'pgoCC')->sum('valor');
+        $veiculoPendente    = $todosItensVeiculos->where('status', 'pendente')->sum('valor');
 
         // ── Totais gerais ─────────────────────────────────────────────────────
         $totalFixas     = $fixas->sum('valor');
