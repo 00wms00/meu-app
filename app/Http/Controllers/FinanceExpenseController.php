@@ -38,14 +38,22 @@ class FinanceExpenseController extends Controller
         // Categorias de despesas do usuário (para o select + modal CRUD)
         $expenseCategories = ExpenseCategory::doUsuario(Auth::id())->get();
 
+        // Notas agrupadas por estabelecimento, com notas individuais expostas
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
+            ->orderBy('data_emissao')
             ->get()
             ->groupBy('nome_estabelecimento')
             ->map(fn($grupo) => [
                 'descricao'  => $grupo->first()->nome_estabelecimento,
                 'valor'      => $grupo->sum('valor_pago'),
                 'quantidade' => $grupo->count(),
+                'notas'      => $grupo->map(fn($inv) => [
+                    'id'          => $inv->id,
+                    'data'        => $inv->data_emissao ? $inv->data_emissao->format('d/m/Y') : '—',
+                    'numero'      => $inv->numero_nota ?? $inv->chave_acesso ?? 'S/N',
+                    'valor'       => (float) $inv->valor_pago,
+                ])->values()->toArray(),
             ])
             ->values();
 

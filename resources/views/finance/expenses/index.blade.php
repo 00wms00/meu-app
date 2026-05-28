@@ -153,33 +153,91 @@
                     </div>
                 @endif
 
-                {{-- Mercado (acordeon) --}}
+                {{-- 🛒 Mercado — acordeon por estabelecimento com notas individuais --}}
                 @if($invoicesDoMes->isNotEmpty())
                     <div class="border-t border-gray-200" x-data="{ openMercado: false }">
-                        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openMercado = !openMercado">
+
+                        {{-- Cabeçalho principal do bloco Mercado --}}
+                        <button type="button"
+                                @click="openMercado = !openMercado"
+                                class="w-full px-5 py-3 bg-green-50 flex items-center justify-between hover:bg-green-100 transition select-none">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🛒 Mercado &mdash; notas importadas</span>
-                                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $invoicesDoMes->count() }} nota(s)</span>
+                                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2 py-0.5">
+                                    {{ $invoicesDoMes->sum('quantidade') }} nota(s)
+                                </span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalMercado, 2, ',', '.') }}</span>
-                                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openMercado ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-green-600 transition-transform duration-200"
+                                     :class="openMercado ? 'rotate-180' : ''"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                 </svg>
                             </div>
-                        </div>
-                        <div x-show="openMercado" x-cloak>
+                        </button>
+
+                        {{-- Lista de estabelecimentos, cada um com sub-acordeon de notas --}}
+                        <div x-show="openMercado"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 -translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-cloak
+                             class="divide-y divide-gray-100">
+
                             @foreach($invoicesDoMes as $inv)
-                                <div class="px-5 py-3 flex items-center gap-3 border-t border-gray-50 hover:bg-green-50/30">
-                                    <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🛒</span>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-800 truncate">{{ $inv['descricao'] }}</p>
-                                        <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s) &bull; Mercado / Alimentação</p>
+                                <div x-data="{ openNota: false }" class="bg-white">
+
+                                    {{-- Linha do estabelecimento --}}
+                                    <button type="button"
+                                            @click="openNota = !openNota"
+                                            class="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-green-50/60 transition text-left">
+                                        <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🛒</span>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate">{{ $inv['descricao'] }}</p>
+                                            <p class="text-xs text-gray-400">{{ $inv['quantidade'] }} nota(s)</p>
+                                        </div>
+                                        <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">
+                                            R$ {{ number_format($inv['valor'], 2, ',', '.') }}
+                                        </span>
+                                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-150"
+                                             :class="openNota ? 'rotate-180' : ''"
+                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+
+                                    {{-- Sub-lista das notas individuais --}}
+                                    <div x-show="openNota"
+                                         x-transition:enter="transition ease-out duration-150"
+                                         x-transition:enter-start="opacity-0"
+                                         x-transition:enter-end="opacity-100"
+                                         x-cloak
+                                         class="pl-14 pr-5 pb-2 bg-green-50/30">
+                                        <table class="w-full text-xs">
+                                            <thead>
+                                                <tr class="text-gray-400 border-b border-gray-100">
+                                                    <th class="text-left py-1.5 font-medium">Data</th>
+                                                    <th class="text-left py-1.5 font-medium">Nº Nota</th>
+                                                    <th class="text-right py-1.5 font-medium">Valor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-50">
+                                                @foreach($inv['notas'] as $nota)
+                                                    <tr class="text-gray-600 hover:bg-green-50/50">
+                                                        <td class="py-1.5 whitespace-nowrap">{{ $nota['data'] }}</td>
+                                                        <td class="py-1.5 font-mono text-gray-400 truncate max-w-[160px]" title="{{ $nota['numero'] }}">{{ Str::limit($nota['numero'], 20) }}</td>
+                                                        <td class="py-1.5 text-right font-semibold tabular-nums text-green-700 whitespace-nowrap">
+                                                            R$ {{ number_format($nota['valor'], 2, ',', '.') }}
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($inv['valor'], 2, ',', '.') }}</span>
-                                    <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
                                 </div>
                             @endforeach
+
                         </div>
                     </div>
                 @endif
