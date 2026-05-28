@@ -48,12 +48,12 @@ class ProductController extends Controller
               ->orWhere('canonical_product_id', $produtoExibicao->id);
         })->pluck('id');
 
-        // Serie historica completa
+        // Serie historica completa — mais recentes primeiro
         $items = InvoiceItem::with(['invoice', 'product'])
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
             ->where('invoices.user_id', Auth::id())
-            ->orderBy('invoices.data_emissao')
+            ->orderByDesc('invoices.data_emissao')
             ->select('invoice_items.*')
             ->get();
 
@@ -67,13 +67,13 @@ class ProductController extends Controller
             ];
         })->values();
 
-        // Variacao primeira -> ultima compra
+        // Variacao: compara a compra mais antiga com a mais recente
         $variacao = null;
         if ($serie->count() >= 2) {
-            $primeiro = $serie->first()['valor_unitario'];
-            $ultimo   = $serie->last()['valor_unitario'];
-            if ($primeiro > 0) {
-                $variacao = (($ultimo - $primeiro) / $primeiro) * 100;
+            $mais_recente = $serie->first()['valor_unitario'];
+            $mais_antigo  = $serie->last()['valor_unitario'];
+            if ($mais_antigo > 0) {
+                $variacao = (($mais_recente - $mais_antigo) / $mais_antigo) * 100;
             }
         }
 
