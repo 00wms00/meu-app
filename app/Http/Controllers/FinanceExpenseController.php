@@ -39,6 +39,7 @@ class FinanceExpenseController extends Controller
         $expenseCategories = ExpenseCategory::doUsuario(Auth::id())->get();
 
         // Notas agrupadas por estabelecimento, com notas individuais expostas
+        // O campo 'numero' é o mesmo exibido em /invoices (badge #NNN)
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->orderBy('data_emissao')
@@ -49,10 +50,10 @@ class FinanceExpenseController extends Controller
                 'valor'      => $grupo->sum('valor_pago'),
                 'quantidade' => $grupo->count(),
                 'notas'      => $grupo->map(fn($inv) => [
-                    'id'          => $inv->id,
-                    'data'        => $inv->data_emissao ? $inv->data_emissao->format('d/m/Y') : '—',
-                    'numero'      => $inv->numero_nota ?? $inv->chave_acesso ?? 'S/N',
-                    'valor'       => (float) $inv->valor_pago,
+                    'id'     => $inv->id,
+                    'data'   => $inv->data_emissao ? $inv->data_emissao->format('d/m/Y') : '—',
+                    'numero' => $inv->numero ?? 'S/N',
+                    'valor'  => (float) $inv->valor_pago,
                 ])->values()->toArray(),
             ])
             ->values();
