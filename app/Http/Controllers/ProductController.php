@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\ProductNormalizationService;
 use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\PriceAlert;
 use App\Models\Product;
+use App\Services\ProductNormalizationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -44,12 +43,12 @@ class ProductController extends Controller
             ? Product::findOrFail($product->canonical_product_id)
             : $product;
 
-        $produtoIds = Product::where(fn ($q) =>
+        $produtoIds = Product::where(function ($q) use ($produtoExibicao) {
             $q->where('id', $produtoExibicao->id)
-              ->orWhere('canonical_product_id', $produtoExibicao->id)
-        )->pluck('id');
+              ->orWhere('canonical_product_id', $produtoExibicao->id);
+        })->pluck('id');
 
-        // ── Série histórica completa ──────────────────────────────
+        // Serie historica completa
         $items = InvoiceItem::with(['invoice', 'product'])
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
@@ -58,17 +57,17 @@ class ProductController extends Controller
             ->select('invoice_items.*')
             ->get();
 
-        $serie = $items
-            ->map(fn ($i) => [
+        $serie = $items->map(function ($i) {
+            return [
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
                 'valor_unitario' => (float) $i->valor_unitario,
                 'unidade'        => $i->unidade,
                 'nome_produto'   => $i->product?->nome_exibicao ?? $i->product?->nome ?? $i->descricao ?? '',
-                'mercado'        => $i->invoice->nome_estabelecimento ?? '—',
-            ])
-            ->values();
+                'mercado'        => $i->invoice->nome_estabelecimento ?? '-',
+            ];
+        })->values();
 
-        // ── Variação primeira → última compra ─────────────────────
+        // Variacao primeira -> ultima compra
         $variacao = null;
         if ($serie->count() >= 2) {
             $primeiro = $serie->first()['valor_unitario'];
@@ -78,33 +77,18 @@ class ProductController extends Controller
             }
         }
 
-        // ── Filtro de período para análise ────────────────────────
+        // Filtro de periodo para analise
         $periodoAtivo = $request->input('periodo', '30d');
         [$dataInicioAnalise, $dataFimAnalise] = $this->resolverPeriodo(
             $periodoAtivo,
             $request->input('data_inicio'),
-            $request->input('data_fim'),
+            $request->input('data_fim')
         );
 
-        // ── Estatísticas de preço do período ──────────────────────
-        $estatisticas = $this->calcularEstatisticas(
-            $produtoIds, Auth::id(), $dataInicioAnalise, $dataFimAnalise
-        );
-
-        // ── Estatísticas fixas (30d / 6m) para o card comparativo ─
-        $stats30d = $this->calcularEstatisticas(
-            $produtoIds, Auth::id(),
-            now()->subDays(30)->startOfDay(),
-            now()->endOfDay(),
-        );
-        $stats6m = $this->calcularEstatisticas(
-            $produtoIds, Auth::id(),
-            now()->subMonths(6)->startOfDay(),
-            now()->endOfDay(),
-        );
-        $statsHistorico = $this->calcularEstatisticas(
-            $produtoIds, Auth::id(), null, null
-        );
+        $estatisticas   = $this->calcularEstatisticas($produtoIds, Auth::id(), $dataInicioAnalise, $dataFimAnalise);
+        $stats30d       = $this->calcularEstatisticas($produtoIds, Auth::id(), now()->subDays(30)->startOfDay(), now()->endOfDay());
+        $stats6m        = $this->calcularEstatisticas($produtoIds, Auth::id(), now()->subMonths(6)->startOfDay(), now()->endOfDay());
+        $statsHistorico = $this->calcularEstatisticas($produtoIds, Auth::id(), null, null);
 
         $agrupados = Product::where('canonical_product_id', $produtoExibicao->id)->get();
 
@@ -116,7 +100,7 @@ class ProductController extends Controller
             'product', 'produtoExibicao', 'serie', 'variacao',
             'agrupados', 'alertaExistente',
             'estatisticas', 'stats30d', 'stats6m', 'statsHistorico',
-            'periodoAtivo', 'dataInicioAnalise', 'dataFimAnalise',
+            'periodoAtivo', 'dataInicioAnalise', 'dataFimAnalise'
         ));
     }
 
@@ -131,9 +115,9 @@ class ProductController extends Controller
         $this->authorize('update', $product);
 
         $validated = $request->validate([
-            'nome_exibicao'        => 'nullable|string|max:255',
-            'normalizacao_status'  => 'nullable|in:pendente,revisar,aprovado',
-            'unidade_padrao'       => 'nullable|string|max:10',
+            'nome_exibicao'       => 'nullable|string|max:255',
+            'normalizacao_status' => 'nullable|in:pendente,revisar,aprovado',
+            'unidade_padrao'      => 'nullable|string|max:10',
         ]);
 
         $product->update($validated);
@@ -189,7 +173,7 @@ class ProductController extends Controller
         return back()->with('success', 'Categoria atualizada!');
     }
 
-    // ==================== NORMALIZAÇÃO ====================
+    // ==================== NORMALIZACAO ====================
 
     public function normalizacao(Request $request, ProductNormalizationService $service): View
     {
@@ -197,13 +181,13 @@ class ProductController extends Controller
         $status = $request->input('status', 'pendente');
 
         $produtos = Product::where('user_id', $userId)
-            ->when($status === 'pendente', fn($q) => $q
-                ->where(function($q) {
+            ->when($status === 'pendente', function ($q) {
+                $q->where(function ($q) {
                     $q->whereNull('normalizacao_status')
                       ->orWhere('normalizacao_status', 'pendente');
-                })
-            )
-            ->when($status === 'revisar', fn($q) => $q->where('normalizacao_status', 'revisar'))
+                });
+            })
+            ->when($status === 'revisar',  fn($q) => $q->where('normalizacao_status', 'revisar'))
             ->when($status === 'aprovado', fn($q) => $q->where('normalizacao_status', 'aprovado'))
             ->when($request->filled('search'), fn($q) => $q->where('nome', 'ilike', "%{$request->search}%"))
             ->orderBy('nome')
@@ -222,16 +206,13 @@ class ProductController extends Controller
     public function aprovarNormalizacao(Product $product, Request $request, ProductNormalizationService $service): RedirectResponse
     {
         $this->authorize('update', $product);
-
         $service->approve($product, $request->input('nome_exibicao'));
-
-        return back()->with('success', "Produto normalizado: " . $product->nome_exibicao);
+        return back()->with('success', 'Produto normalizado: ' . $product->nome_exibicao);
     }
 
     public function aprovarTodasNormalizacoes(ProductNormalizationService $service): RedirectResponse
     {
         $count = $service->approveAllPending(Auth::id());
-
         return back()->with('success', "{$count} produtos aprovados automaticamente!");
     }
 
@@ -263,44 +244,37 @@ class ProductController extends Controller
         }
 
         $product->update(['foto' => null]);
-
         return back()->with('success', 'Foto removida!');
     }
 
-    // ==================== SIMILARES (ML) ====================
+    // ==================== SIMILARES ====================
 
     public function similares(Product $product): View
     {
         $this->authorize('view', $product);
-
         $mlService = app(\App\Services\ProductSimilarityService::class);
         $similares = $mlService->encontrarSimilares($product, 10);
-
         return view('products.similares', compact('product', 'similares'));
     }
 
-    // ==================== ANÁLISE DE PREÇOS ====================
+    // ==================== ANALISE DE PRECOS ====================
 
     private function resolverPeriodo(string $periodo, ?string $dataInicio, ?string $dataFim): array
     {
         return match ($periodo) {
-            '30d'        => [now()->subDays(30)->startOfDay(),    now()->endOfDay()],
-            '6m'         => [now()->subMonths(6)->startOfDay(),   now()->endOfDay()],
-            'historico'  => [null, null],
-            'custom'     => [
+            '30d'       => [now()->subDays(30)->startOfDay(),  now()->endOfDay()],
+            '6m'        => [now()->subMonths(6)->startOfDay(), now()->endOfDay()],
+            'historico' => [null, null],
+            'custom'    => [
                 $dataInicio ? Carbon::parse($dataInicio)->startOfDay() : now()->subDays(30)->startOfDay(),
                 $dataFim    ? Carbon::parse($dataFim)->endOfDay()      : now()->endOfDay(),
             ],
-            default      => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-        ];
+            default     => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
+        };
     }
 
-    private function calcularEstatisticas(
-        $produtoIds,
-        int $userId,
-        ?Carbon $inicio,
-        ?Carbon $fim,
-    ): array {
+    private function calcularEstatisticas($produtoIds, int $userId, ?Carbon $inicio, ?Carbon $fim): array
+    {
         $query = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
             ->where('invoices.user_id', $userId)
@@ -311,12 +285,7 @@ class ProductController extends Controller
         }
 
         $agg = (clone $query)
-            ->selectRaw('
-                COUNT(*)                          AS total,
-                AVG(invoice_items.valor_unitario) AS media,
-                MIN(invoice_items.valor_unitario) AS minimo,
-                MAX(invoice_items.valor_unitario) AS maximo
-            ')
+            ->selectRaw('COUNT(*) AS total, AVG(invoice_items.valor_unitario) AS media, MIN(invoice_items.valor_unitario) AS minimo, MAX(invoice_items.valor_unitario) AS maximo')
             ->first();
 
         $modaRow = (clone $query)
@@ -339,29 +308,14 @@ class ProductController extends Controller
 
     private function contagemPorCategoria(int $userId): array
     {
-        return Cache::remember(
-            'contagem-categorias-' . $userId,
-            300,
-            function () use ($userId): array {
-                $rows = Product::where('user_id', $userId)
-                    ->selectRaw("
-                        CASE
-                            WHEN category_id IS NULL THEN 'sem'
-                            ELSE category_id::text
-                        END AS chave,
-                        COUNT(*) AS total
-                    ")
-                    ->groupByRaw("
-                        CASE
-                            WHEN category_id IS NULL THEN 'sem'
-                            ELSE category_id::text
-                        END
-                    ")
-                    ->pluck('total', 'chave')
-                    ->toArray();
+        return Cache::remember('contagem-categorias-' . $userId, 300, function () use ($userId) {
+            $rows = Product::where('user_id', $userId)
+                ->selectRaw("CASE WHEN category_id IS NULL THEN 'sem' ELSE CAST(category_id AS TEXT) END AS chave, COUNT(*) AS total")
+                ->groupByRaw("CASE WHEN category_id IS NULL THEN 'sem' ELSE CAST(category_id AS TEXT) END")
+                ->pluck('total', 'chave')
+                ->toArray();
 
-                return array_merge(['sem' => 0], $rows);
-            }
-        );
+            return array_merge(['sem' => 0], $rows);
+        });
     }
 }
