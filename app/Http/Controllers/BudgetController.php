@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Traits\ParsesFloatInput;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -95,9 +96,20 @@ class BudgetController extends Controller
             9 => 'Setembro', 10 => 'Outubro',  11 => 'Novembro', 12 => 'Dezembro',
         ];
 
+        // Verifica se o mês anterior tem orçamento cadastrado
+        $mesAnteriorData   = Carbon::create($ano, $mes, 1)->subMonth();
+        $temMesAnterior    = Budget::where('user_id', $userId)
+            ->where('ano', $mesAnteriorData->year)
+            ->where('mes', $mesAnteriorData->month)
+            ->whereHas('budgetCategories')
+            ->exists();
+
+        $nomeMesAnterior = $meses[$mesAnteriorData->month];
+
         return view('budgets.index', compact(
             'budget', 'dadosCategorias', 'categorias', 'meses', 'mes', 'ano',
-            'totalOrcado', 'totalGasto', 'budgetCategories'
+            'totalOrcado', 'totalGasto', 'budgetCategories',
+            'temMesAnterior', 'nomeMesAnterior', 'mesAnteriorData'
         ));
     }
 
@@ -146,5 +158,58 @@ class BudgetController extends Controller
         return redirect()
             ->route('budgets.index', ['mes' => $validated['mes'], 'ano' => $validated['ano']])
             ->with('success', 'Orçamento salvo com sucesso!');
+    }
+
+    /**
+     * Copia valor_total e limites por categoria do mês anterior para o mês atual.
+     */
+    public function copiarMesAnterior(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ano' => 'required|integer|min:2020|max:2100',
+            'mes' => 'required|integer|min:1|max:12',
+        ]);
+
+        $userId = Auth::id();
+        $mes    = (int) $request->mes;
+        $ano    = (int) $request->ano;
+
+        $anterior = Carbon::create($ano, $mes, 1)->subMonth();
+
+        $budgetAnterior = Budget::where('user_id', $userId)
+            ->where('ano', $anterior->year)
+            ->where('mes', $anterior->month)
+            ->with('budgetCategories')
+            ->first();
+
+        if (! $budgetAnterior) {
+            return redirect()
+                ->route('budgets.index', compact('mes', 'ano'))
+                ->with('warning', 'Nenhum orçamento encontrado para o mês anterior.');
+        }
+
+        // Cria / atualiza o budget do mês atual
+        $budgetAtual = Budget::updateOrCreate(
+            ['user_id' => $userId, 'ano' => $ano, 'mes' => $mes],
+            ['valor_total' => $budgetAnterior->valor_total]
+        );
+
+        // Copia os limites por categoria
+        foreach ($budgetAnterior->budgetCategories as $catAnterior) {
+            BudgetCategory::updateOrCreate(
+                ['budget_id' => $budgetAtual->id, 'category_id' => $catAnterior->category_id],
+                ['valor_limite' => $catAnterior->valor_limite]
+            );
+        }
+
+        $meses = [
+            1 => 'Janeiro',  2 => 'Fevereiro', 3 => 'Março',    4 => 'Abril',
+            5 => 'Maio',     6 => 'Junho',     7 => 'Julho',    8 => 'Agosto',
+            9 => 'Setembro', 10 => 'Outubro',  11 => 'Novembro', 12 => 'Dezembro',
+        ];
+
+        return redirect()
+            ->route('budgets.index', compact('mes', 'ano'))
+            ->with('success', "Orçamento copiado de {$meses[$anterior->month]}/{$anterior->year} com sucesso!");
     }
 }

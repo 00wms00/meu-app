@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
     // Orçamento
     Route::get('/orcamento', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('/orcamento', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::post('/orcamento/copiar-mes-anterior', [BudgetController::class, 'copiarMesAnterior'])->name('budgets.copiar');
 
     // Categorias (produtos)
     Route::resource('categories', CategoryController::class)->except(['show', 'create']);

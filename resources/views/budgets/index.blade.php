@@ -9,7 +9,7 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">💰 Orçamento Mensal</h1>
             <p class="mt-1 text-gray-600">{{ $meses[$mes] }} de {{ $ano }}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
             <a href="{{ route('budgets.index', ['mes' => $mes == 1 ? 12 : $mes - 1, 'ano' => $mes == 1 ? $ano - 1 : $ano]) }}"
                class="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-semibold rounded-md transition">← Mês anterior</a>
             <a href="{{ route('budgets.index', ['mes' => now()->month, 'ano' => now()->year]) }}"
@@ -22,6 +22,9 @@
 
 @if(session('success'))
 <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">✅ {{ session('success') }}</div>
+@endif
+@if(session('warning'))
+<div class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-4">⚠️ {{ session('warning') }}</div>
 @endif
 
 <!-- Cards de Resumo -->
@@ -82,18 +85,17 @@
             <div class="divide-y divide-gray-200">
                 @foreach($dadosCategorias as $cat)
                 @php
-                    // Definir cor da barra baseado no status
                     if ($cat['limite'] == 0) {
-                        $barColor = '#d1d5db'; // cinza
+                        $barColor = '#d1d5db';
                         $textColor = '#9ca3af';
                     } elseif ($cat['porcentagem'] >= 100) {
-                        $barColor = '#ef4444'; // vermelho
+                        $barColor = '#ef4444';
                         $textColor = '#dc2626';
                     } elseif ($cat['porcentagem'] >= 80) {
-                        $barColor = '#f59e0b'; // amarelo
+                        $barColor = '#f59e0b';
                         $textColor = '#d97706';
                     } else {
-                        $barColor = '#22c55e'; // verde
+                        $barColor = '#22c55e';
                         $textColor = '#16a34a';
                     }
                     $barWidth = min(100, $cat['porcentagem']);
@@ -124,8 +126,6 @@
                             @endif
                         </div>
                     </div>
-
-                    <!-- Barra de Progresso com estilo inline -->
                     <div style="width: 100%; background-color: #e5e7eb; border-radius: 9999px; height: 10px; overflow: hidden;">
                         <div style="width: {{ $barWidth }}%; background-color: {{ $barColor }}; height: 10px; border-radius: 9999px; transition: all 0.5s ease;"></div>
                     </div>
@@ -162,10 +162,33 @@
     <!-- Formulário de Orçamento -->
     <div>
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-6">
-            <div class="px-6 py-4 border-b bg-blue-50 rounded-t-lg">
-                <h2 class="text-lg font-semibold text-gray-800">⚙️ Definir Orçamento</h2>
-                <p class="text-xs text-gray-500 mt-1">{{ $meses[$mes] }}/{{ $ano }}</p>
+            <div class="px-6 py-4 border-b bg-blue-50 rounded-t-lg flex items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">⚙️ Definir Orçamento</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ $meses[$mes] }}/{{ $ano }}</p>
+                </div>
+
+                {{-- Botão Copiar Mês Anterior --}}
+                @if($temMesAnterior)
+                <form action="{{ route('budgets.copiar') }}" method="POST" id="form-copiar">
+                    @csrf
+                    <input type="hidden" name="mes" value="{{ $mes }}">
+                    <input type="hidden" name="ano" value="{{ $ano }}">
+                    <button
+                        type="button"
+                        onclick="confirmarCopia()"
+                        title="Copiar orçamento de {{ $nomeMesAnterior }}/{{ $mesAnteriorData->year }}"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold rounded-md transition shadow-sm whitespace-nowrap"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-4 10h6a2 2 0 002-2v-8a2 2 0 00-2-2h-6a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Copiar {{ $nomeMesAnterior }}
+                    </button>
+                </form>
+                @endif
             </div>
+
             <div class="p-6">
                 <form action="{{ route('budgets.store') }}" method="POST">
                     @csrf
@@ -178,20 +201,30 @@
                         </p>
                     </div>
 
+                    {{-- Campo Orçamento Total com máscara --}}
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Orçamento Total</label>
+                        <label for="valor_total" class="block text-sm font-medium text-gray-700 mb-1">Orçamento Total</label>
                         <div class="flex items-center">
                             <span class="text-gray-500 mr-1 text-lg">R$</span>
-                            <input type="text" name="valor_total"
-                                   value="{{ $budget->valor_total > 0 ? number_format($budget->valor_total, 2, ',', '.') : '' }}"
-                                   class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-lg font-bold"
-                                   placeholder="0,00">
+                            <input
+                                type="text"
+                                id="valor_total"
+                                name="valor_total"
+                                value="{{ $budget->valor_total > 0 ? number_format($budget->valor_total, 2, ',', '.') : '' }}"
+                                class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-lg font-bold"
+                                placeholder="0,00"
+                                inputmode="numeric"
+                                autocomplete="off"
+                            >
                         </div>
+                        @error('valor_total')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="border-t pt-4">
                         <label class="block text-sm font-medium text-gray-700 mb-3">Limites por Categoria</label>
-                        <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        <div class="space-y-2 max-h-80 overflow-y-auto pr-1" id="lista-categorias">
                             @foreach($categorias as $cat)
                             @php
                                 $orcamentoCat = $budgetCategories->firstWhere('category_id', $cat->id);
@@ -199,13 +232,18 @@
                             @endphp
                             <div class="flex items-center gap-2">
                                 <span class="text-sm w-6">{{ $cat->emoji }}</span>
-                                <span class="text-xs text-gray-600 w-24 truncate">{{ $cat->nome }}</span>
+                                <span class="text-xs text-gray-600 w-24 truncate" title="{{ $cat->nome }}">{{ $cat->nome }}</span>
                                 <div class="flex items-center flex-1">
                                     <span class="text-gray-400 text-xs mr-1">R$</span>
-                                    <input type="text" name="categorias[{{ $cat->id }}][valor_limite]"
-                                           value="{{ $valorAtual > 0 ? number_format($valorAtual, 2, ',', '.') : '' }}"
-                                           class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs py-1.5"
-                                           placeholder="0,00">
+                                    <input
+                                        type="text"
+                                        name="categorias[{{ $cat->id }}][valor_limite]"
+                                        value="{{ $valorAtual > 0 ? number_format($valorAtual, 2, ',', '.') : '' }}"
+                                        class="cat-valor w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-xs py-1.5"
+                                        placeholder="0,00"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                    >
                                     <input type="hidden" name="categorias[{{ $cat->id }}][category_id]" value="{{ $cat->id }}">
                                 </div>
                             </div>
@@ -222,4 +260,31 @@
         </div>
     </div>
 </div>
+
+<script>
+// ===== Máscara monetária BR =====
+function mascaraMoeda(input) {
+    input.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '');
+        if (!v) { this.value = ''; return; }
+        v = (parseInt(v, 10) / 100).toFixed(2);
+        this.value = v
+            .replace('.', ',')
+            .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    });
+    // Seleciona tudo ao focar para facilitar edição
+    input.addEventListener('focus', function () {
+        setTimeout(() => this.select(), 10);
+    });
+}
+
+document.querySelectorAll('#valor_total, .cat-valor').forEach(mascaraMoeda);
+
+// ===== Confirmação de cópia =====
+function confirmarCopia() {
+    if (confirm('Substituir o orçamento de {{ $meses[$mes] }}/{{ $ano }} pelos valores de {{ $nomeMesAnterior }}/{{ $mesAnteriorData->year }}?\n\nOs limites existentes serão sobrescritos.')) {
+        document.getElementById('form-copiar').submit();
+    }
+}
+</script>
 @endsection
