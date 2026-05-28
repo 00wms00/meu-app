@@ -35,11 +35,11 @@ class FinanceExpenseController extends Controller
 
         $creditCards = CreditCard::orderBy('nome')->get();
 
-        // Categorias de despesas do usuário (para o select + modal CRUD)
         $expenseCategories = ExpenseCategory::doUsuario(Auth::id())->get();
 
-        // Notas agrupadas por estabelecimento, com notas individuais expostas
+        // Notas agrupadas por estabelecimento
         // O campo 'numero' é o mesmo exibido em /invoices (badge #NNN)
+        // O campo 'status' permite marcar cada nota como pendente/pago/pgoCC
         $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->orderBy('data_emissao')
@@ -54,6 +54,7 @@ class FinanceExpenseController extends Controller
                     'data'   => $inv->data_emissao ? $inv->data_emissao->format('d/m/Y') : '—',
                     'numero' => $inv->numero ?? 'S/N',
                     'valor'  => (float) $inv->valor_pago,
+                    'status' => $inv->status ?? 'pago',
                 ])->values()->toArray(),
             ])
             ->values();
@@ -151,7 +152,6 @@ class FinanceExpenseController extends Controller
                 ->with('success', 'Despesa adicionada!');
         }
 
-        // Crédito
         $parcelas   = max(1, (int)($data['parcelas_total'] ?? 1));
         $valorParc  = round((float)$data['valor'] / $parcelas, 2);
         $cardId     = $data['credit_card_id'];

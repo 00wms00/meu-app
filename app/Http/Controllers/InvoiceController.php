@@ -3,168 +3,122 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\Product;
-use App\Traits\ParsesFloatInput;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
-    use ParsesFloatInput;
-
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        $query = Invoice::where('user_id', Auth::id());
+        $query = Invoice::where('user_id', Auth::id())
+            ->orderBy('data_emissao', 'desc');
 
         if ($request->filled('de')) {
-            $query->where('data_emissao', '>=', $request->de);
+            $query->whereDate('data_emissao', '>=', $request->de);
         }
         if ($request->filled('ate')) {
-            $query->where('data_emissao', '<=', $request->ate . ' 23:59:59');
+            $query->whereDate('data_emissao', '<=', $request->ate);
         }
         if ($request->filled('estabelecimento')) {
-            $query->where('nome_estabelecimento', 'ilike', '%' . $request->estabelecimento . '%');
+            $query->where('nome_estabelecimento', 'like', '%' . $request->estabelecimento . '%');
         }
 
-        $invoices = $query
-            ->orderBy('data_emissao', 'desc')
-            ->orderBy('id', 'desc')
-            ->paginate(20);
+        $invoices = $query->paginate(20)->withQueryString();
 
         return view('invoices.index', compact('invoices'));
     }
 
-    public function show(Invoice $invoice): View
+    public function show(Invoice $invoice)
     {
         $this->authorize('view', $invoice);
-        $invoice->load('items.product');
+        $invoice->load('items');
         return view('invoices.show', compact('invoice'));
     }
 
-    public function edit(Invoice $invoice): View
+    public function edit(Invoice $invoice)
     {
         $this->authorize('update', $invoice);
-        $invoice->load('items.product');
+        $invoice->load('items');
         return view('invoices.edit', compact('invoice'));
     }
 
-    public function update(Request $request, Invoice $invoice): RedirectResponse
+    public function update(Request $request, Invoice $invoice)
     {
         $this->authorize('update', $invoice);
 
-        DB::transaction(function () use ($request, $invoice) {
-            $invoice->update([
-                'nome_estabelecimento' => $request->nome_estabelecimento,
-                'cnpj'                 => $request->cnpj,
-                'numero'               => $request->numero,
-                'serie'                => $request->serie,
-                'data_emissao'         => $request->data_emissao,
-                'forma_pagamento'      => $request->forma_pagamento,
-                'descontos'            => $this->parseFloat($request->descontos ?? '0'),
-            ]);
+        $data = $request->validate([
+            'nome_estabelecimento' => 'required|string|max:255',
+            'data_emissao'         => 'required|date',
+            'valor_pago'           => 'required|numeric|min:0',
+            'descontos'            => 'nullable|numeric|min:0',
+            'forma_pagamento'      => 'nullable|string|max:100',
+            'status'               => 'nullable|in:pendente,pago,pgoCC',
+        ]);
 
-            if ($request->has('itens_removidos')) {
-                InvoiceItem::whereIn('id', $request->itens_removidos)
-                    ->where('invoice_id', $invoice->id)
-                    ->delete();
-            }
+        $invoice->update($data);
 
-            foreach ($request->itens ?? [] as $itemId => $itemData) {
-                $nome = trim($itemData['nome'] ?? '');
-                if (empty($nome)) continue;
-
-                $product = Product::firstOrCreate(
-                    ['user_id' => Auth::id(), 'nome' => $nome],
-                    ['unidade_padrao' => $itemData['unidade'] ?? 'UN']
-                );
-
-                $campos = [
-                    'product_id'     => $product->id,
-                    'quantidade'     => $this->parseFloat($itemData['quantidade']     ?? '0'),
-                    'unidade'        => $itemData['unidade'] ?? 'UN',
-                    'valor_unitario' => $this->parseFloat($itemData['valor_unitario']  ?? '0'),
-                    'valor_total'    => $this->parseFloat($itemData['valor_total']     ?? '0'),
-                ];
-
-                if (str_starts_with((string) $itemId, 'novo_')) {
-                    InvoiceItem::create(array_merge($campos, ['invoice_id' => $invoice->id]));
-                } else {
-                    InvoiceItem::where('id', $itemId)
-                        ->where('invoice_id', $invoice->id)
-                        ->update($campos);
-                }
-            }
-
-            $invoice->recalcularTotais();
-        });
-
-        return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Nota fiscal atualizada com sucesso!');
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Nota atualizada!');
     }
 
-    public function destroy(Invoice $invoice): RedirectResponse
+    public function destroy(Invoice $invoice)
     {
         $this->authorize('delete', $invoice);
         $invoice->delete();
-
-        return redirect()->route('invoices.index')
-            ->with('success', 'Nota fiscal excluída com sucesso!');
+        return redirect()->route('invoices.index')->with('success', 'Nota exclu\u00edda.');
     }
 
-    public function editItem(Invoice $invoice, InvoiceItem $item): View
+    // ---- Itens ----
+
+    public function editItem(Invoice $invoice, \App\Models\InvoiceItem $item)
     {
         $this->authorize('update', $invoice);
         return view('invoices.items.edit', compact('invoice', 'item'));
     }
 
-    public function updateItem(Request $request, Invoice $invoice, InvoiceItem $item): RedirectResponse
+    public function updateItem(Request $request, Invoice $invoice, \App\Models\InvoiceItem $item)
     {
         $this->authorize('update', $invoice);
 
-        // Converte vírgulas antes de validar — sem isso, "1,50" seria rejeitado pela regra numeric
-        $request->merge([
-            'quantidade'     => $this->parseFloat($request->quantidade     ?? '0'),
-            'valor_unitario' => $this->parseFloat($request->valor_unitario  ?? '0'),
-            'valor_total'    => $this->parseFloat($request->valor_total     ?? '0'),
+        $data = $request->validate([
+            'descricao'    => 'required|string|max:255',
+            'quantidade'   => 'required|numeric|min:0',
+            'unidade'      => 'nullable|string|max:20',
+            'valor_unit'   => 'required|numeric|min:0',
+            'valor_total'  => 'required|numeric|min:0',
         ]);
 
-        $validated = $request->validate([
-            'nome_produto'   => 'required|string|max:255',
-            'quantidade'     => 'required|numeric|min:0',
-            'unidade'        => 'required|string|max:5',
-            'valor_unitario' => 'required|numeric|min:0',
-            'valor_total'    => 'required|numeric|min:0',
-        ]);
+        $item->update($data);
+        $invoice->recalcularTotais();
 
-        $product = Product::firstOrCreate(
-            ['user_id' => Auth::id(), 'nome' => trim($validated['nome_produto'])]
-        );
-
-        $item->update([
-            'product_id'     => $product->id,
-            'quantidade'     => $validated['quantidade'],
-            'unidade'        => $validated['unidade'],
-            'valor_unitario' => $validated['valor_unitario'],
-            'valor_total'    => $validated['valor_total'],
-        ]);
-
-        $invoice->fresh()->recalcularTotais();
-
-        return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Item atualizado com sucesso!');
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Item atualizado!');
     }
 
-    public function destroyItem(Invoice $invoice, InvoiceItem $item): RedirectResponse
+    public function destroyItem(Invoice $invoice, \App\Models\InvoiceItem $item)
     {
-        $this->authorize('delete', $invoice);
+        $this->authorize('update', $invoice);
         $item->delete();
-        $invoice->fresh()->recalcularTotais();
+        $invoice->recalcularTotais();
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Item removido.');
+    }
 
-        return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Item removido com sucesso!');
+    /**
+     * Atualiza apenas o status de pagamento de uma nota (chamado via PATCH ajax/form).
+     * Usado pelo acordeon de Mercado em /financas/despesas.
+     */
+    public function updateStatus(Request $request, Invoice $invoice)
+    {
+        $this->authorize('update', $invoice);
+
+        $request->validate([
+            'status' => 'required|in:pendente,pago,pgoCC',
+        ]);
+
+        $invoice->update(['status' => $request->status]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'status' => $invoice->status]);
+        }
+
+        return back()->with('success', 'Status da nota atualizado!');
     }
 }

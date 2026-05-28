@@ -23,6 +23,7 @@ class Invoice extends Model
         'descontos',
         'valor_pago',
         'forma_pagamento',
+        'status',
         'consumidor_cpf',
         'consumidor_nome',
     ];
@@ -56,10 +57,6 @@ class Invoice extends Model
 
     // ==================== BUSINESS LOGIC ====================
 
-    /**
-     * Recalcula total_itens, valor_total e valor_pago a partir dos itens atuais.
-     * Chame sempre após criar, atualizar ou remover um InvoiceItem.
-     */
     public function recalcularTotais(): void
     {
         $this->refresh();
@@ -71,5 +68,23 @@ class Invoice extends Model
             'valor_total' => $valorTotal,
             'valor_pago'  => max(0, $valorTotal - ($this->descontos ?? 0)),
         ]);
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status ?? 'pago') {
+            'pago'    => '\u2705 Pago',
+            'pgoCC'   => '\ud83d\udcb3 PagoCC',
+            default   => '\u23f3 Pendente',
+        };
+    }
+
+    public function statusColor(): string
+    {
+        return match ($this->status ?? 'pago') {
+            'pago'  => 'green',
+            'pgoCC' => 'indigo',
+            default => 'yellow',
+        };
     }
 }
