@@ -21,6 +21,7 @@ class FuelEntry extends Model
         'posto',
         'tanque_cheio',
         'descricao',
+        'status',
     ];
 
     protected $casts = [
@@ -42,12 +43,6 @@ class FuelEntry extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
-    /**
-     * Retorna o consumo médio (km/l) comparando este abastecimento
-     * com o anterior que tenha km registrado.
-     * Usa a collection já carregada (passada como parâmetro) para
-     * evitar N+1 queries na view.
-     */
     public function consumoMedio(?Collection $allEntries = null): ?float
     {
         if (! $this->km_abastecimento || ! $this->litros) {
@@ -76,23 +71,6 @@ class FuelEntry extends Model
         return round($km / $this->litros, 2);
     }
 
-    /**
-     * Retorna array de pontos para os gráficos de consumo e custo:
-     * [
-     *   [
-     *     'entry_id'   => 42,
-     *     'label'      => '12/05/2025',
-     *     'consumo'    => 12.5,   // km/L
-     *     'custo_km'   => 0.285,  // R$/km
-     *     'km_rodados' => 450,    // km entre abastecimentos
-     *     'km'         => 45230,  // hodômetro
-     *     'litros'     => 36.000,
-     *     'valor'      => 200.00,
-     *   ],
-     *   ...
-     * ]
-     * Apenas entradas com km e litros informados, ordem cronológica.
-     */
     public static function historicoConsumo(Collection $entries): array
     {
         $sorted = $entries

@@ -17,6 +17,7 @@ class VehicleExpense extends Model
         'valor',
         'descricao',
         'km_servico',
+        'status',
     ];
 
     protected $casts = [
