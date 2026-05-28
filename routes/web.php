@@ -26,6 +26,7 @@ use App\Http\Controllers\OfferController;
 use App\Http\Controllers\LancamentoManualController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleExpenseController;
+use App\Http\Controllers\VehicleItemStatusController;
 use App\Http\Controllers\VehicleReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -178,6 +179,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/despesas/{expense}', [FinanceExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::patch('/despesas/{expense}/toggle-pago', [FinanceExpenseController::class, 'togglePago'])->name('expenses.toggle');
         Route::post('/despesas/duplicar-fixas', [FinanceExpenseController::class, 'duplicarFixas'])->name('expenses.duplicar');
+
+        // Status inline dos itens do bloco Veículos
+        Route::patch('/veiculo-itens/expense/{vehicleExpense}/status',
+            [VehicleItemStatusController::class, 'updateExpenseStatus'])
+            ->name('vehicle_items.expense.status');
+        Route::patch('/veiculo-itens/fuel/{fuelEntry}/status',
+            [VehicleItemStatusController::class, 'updateFuelStatus'])
+            ->name('vehicle_items.fuel.status');
 
         // Categorias de despesas (CRUD via JSON/Ajax)
         Route::get('/expense-categories',                             [ExpenseCategoryController::class, 'index'])  ->name('expense_categories.index');

@@ -117,7 +117,7 @@
                 </h2>
             </div>
 
-            {{-- Badges de categoria com cor + emoji corretos --}}
+            {{-- Badges de categoria --}}
             @if($porCategoria->isNotEmpty())
                 <div class="px-5 py-3 bg-gray-50 border-b flex flex-wrap gap-2">
                     @foreach($porCategoria as $cat => $val)
@@ -153,11 +153,9 @@
                     </div>
                 @endif
 
-                {{-- 🛒 Mercado — acordeon por estabelecimento com notas individuais --}}
+                {{-- 🛒 Mercado --}}
                 @if($invoicesDoMes->isNotEmpty())
                     <div class="border-t border-gray-200" x-data="{ openMercado: false }">
-
-                        {{-- Cabeçalho principal do bloco Mercado --}}
                         <button type="button"
                                 @click="openMercado = !openMercado"
                                 class="w-full px-5 py-3 bg-green-50 flex items-center justify-between hover:bg-green-100 transition select-none">
@@ -176,19 +174,14 @@
                                 </svg>
                             </div>
                         </button>
-
-                        {{-- Lista de estabelecimentos, cada um com sub-acordeon de notas --}}
                         <div x-show="openMercado"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0 -translate-y-1"
                              x-transition:enter-end="opacity-100 translate-y-0"
                              x-cloak
                              class="divide-y divide-gray-100">
-
                             @foreach($invoicesDoMes as $inv)
                                 <div x-data="{ openNota: false }" class="bg-white">
-
-                                    {{-- Linha do estabelecimento --}}
                                     <button type="button"
                                             @click="openNota = !openNota"
                                             class="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-green-50/60 transition text-left">
@@ -206,8 +199,6 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                         </svg>
                                     </button>
-
-                                    {{-- Sub-lista das notas individuais --}}
                                     <div x-show="openNota"
                                          x-transition:enter="transition ease-out duration-150"
                                          x-transition:enter-start="opacity-0"
@@ -230,9 +221,97 @@
                                                         <td class="py-1.5 font-mono text-gray-400 truncate max-w-[160px]" title="{{ $nota['numero'] }}">
                                                             {{ Str::limit($nota['numero'], 20) }}
                                                         </td>
+                                                        <td class="py-1.5" x-data="vehicleItemStatus('invoice', {{ $nota['id'] }}, '{{ $nota['status'] }}', '{{ csrf_token() }}')"
+                                                            @click.stop>
+                                                            <select
+                                                                x-model="status"
+                                                                @change="save()"
+                                                                :disabled="saving"
+                                                                :class="{
+                                                                    'bg-yellow-100 text-yellow-800 border-yellow-300': status === 'pendente',
+                                                                    'bg-green-100  text-green-800  border-green-300':  status === 'pago',
+                                                                    'bg-indigo-100 text-indigo-800 border-indigo-300': status === 'pgoCC'
+                                                                }"
+                                                                class="rounded px-1.5 py-0.5 text-xs font-medium border cursor-pointer focus:outline-none transition disabled:opacity-60">
+                                                                <option value="pendente">⏳ Pendente</option>
+                                                                <option value="pago">✅ Pago</option>
+                                                                <option value="pgoCC">💳 PagoCC</option>
+                                                            </select>
+                                                            <span x-show="saved" x-cloak
+                                                                  x-transition:enter="transition ease-out duration-200"
+                                                                  x-transition:leave="transition ease-in duration-500"
+                                                                  class="ml-1 text-green-600 text-xs">✓</span>
+                                                        </td>
+                                                        <td class="py-1.5 text-right font-semibold tabular-nums text-green-700 whitespace-nowrap">
+                                                            R$ {{ number_format($nota['valor'], 2, ',', '.') }}
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
-                                                        {{-- ✏️ Select inline de status — salva via PATCH sem reload --}}
-                                                        <td class="py-1.5" x-data="invoiceStatus({{ $nota['id'] }}, '{{ $nota['status'] }}', '{{ csrf_token() }}')"
+                {{-- 🚗 Veículos (acordeon) --}}
+                @if($vehicleExpensesDoMes->isNotEmpty())
+                    <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
+                        <div class="px-5 py-3 bg-blue-50 flex items-center justify-between cursor-pointer select-none hover:bg-blue-100 transition" @click="openVeiculos = !openVeiculos">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-blue-700 uppercase tracking-wide">🚗 Veículos &mdash; despesas importadas</span>
+                                <span class="text-xs text-blue-600 bg-blue-200 rounded-full px-2">{{ $vehicleExpensesDoMes->sum('quantidade') }} lançamento(s)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-blue-700 tabular-nums">R$ {{ number_format($totalVeiculos, 2, ',', '.') }}</span>
+                                <svg class="w-4 h-4 text-blue-600 transition-transform duration-200" :class="openVeiculos ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div x-show="openVeiculos" x-cloak>
+                            @foreach($vehicleExpensesDoMes as $vexp)
+                                <div class="border-t border-gray-50" x-data="{ open: false }">
+                                    <div class="px-5 py-3 flex items-center gap-3 hover:bg-blue-50/30 cursor-pointer select-none" @click="open = !open">
+                                        <span class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs shrink-0">🚗</span>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate">{{ $vexp['descricao'] }}</p>
+                                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) &bull; Carro</p>
+                                        </div>
+                                        <span class="text-sm font-bold tabular-nums text-blue-700 whitespace-nowrap">R$ {{ number_format($vexp['valor'], 2, ',', '.') }}</span>
+                                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
+
+                                    {{-- Sub-lista dos itens com select de status --}}
+                                    <div x-show="open" x-cloak class="pl-14 pr-5 pb-3 bg-blue-50/10">
+                                        <table class="w-full text-xs">
+                                            <thead>
+                                                <tr class="text-gray-400 border-b border-gray-100">
+                                                    <th class="text-left py-1.5 font-medium">Data</th>
+                                                    <th class="text-left py-1.5 font-medium">Tipo / Descrição</th>
+                                                    <th class="text-left py-1.5 font-medium">Status</th>
+                                                    <th class="text-right py-1.5 font-medium">Valor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-50">
+                                                @foreach($vexp['itens'] as $item)
+                                                    <tr class="text-gray-600 hover:bg-blue-50/40">
+                                                        <td class="py-1.5 whitespace-nowrap">{{ $item['icone'] }} {{ $item['data'] }}</td>
+                                                        <td class="py-1.5 truncate max-w-[200px]">
+                                                            <span class="font-medium">{{ $item['tipo'] }}</span>
+                                                            @if($item['descricao'])
+                                                                <span class="text-gray-400"> &bull; {{ $item['descricao'] }}</span>
+                                                            @endif
+                                                        </td>
+
+                                                        {{-- ✏️ Select inline de status —— salva via PATCH sem reload --}}
+                                                        <td class="py-1.5"
+                                                            x-data="vehicleItemStatus('{{ $item['tipo_registro'] }}', {{ $item['id'] }}, '{{ $item['status'] }}', '{{ csrf_token() }}')"
                                                             @click.stop>
                                                             <select
                                                                 x-model="status"
@@ -254,58 +333,13 @@
                                                                   class="ml-1 text-green-600 text-xs">✓</span>
                                                         </td>
 
-                                                        <td class="py-1.5 text-right font-semibold tabular-nums text-green-700 whitespace-nowrap">
-                                                            R$ {{ number_format($nota['valor'], 2, ',', '.') }}
+                                                        <td class="py-1.5 text-right font-semibold tabular-nums text-blue-700 whitespace-nowrap">
+                                                            R$ {{ number_format($item['valor'], 2, ',', '.') }}
                                                         </td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>
                                         </table>
-                                    </div>
-                                </div>
-                            @endforeach
-
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Veículos (acordeon) --}}
-                @if($vehicleExpensesDoMes->isNotEmpty())
-                    <div class="border-t border-gray-200" x-data="{ openVeiculos: false }">
-                        <div class="px-5 py-3 bg-green-50 flex items-center justify-between cursor-pointer select-none hover:bg-green-100 transition" @click="openVeiculos = !openVeiculos">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">🚗 Veículos &mdash; despesas importadas</span>
-                                <span class="text-xs text-green-600 bg-green-200 rounded-full px-2">{{ $vehicleExpensesDoMes->sum('quantidade') }} lançamento(s)</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-bold text-green-700 tabular-nums">R$ {{ number_format($totalVeiculos, 2, ',', '.') }}</span>
-                                <svg class="w-4 h-4 text-green-600 transition-transform duration-200" :class="openVeiculos ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div x-show="openVeiculos" x-cloak>
-                            @foreach($vehicleExpensesDoMes as $vexp)
-                                <div class="border-t border-gray-50" x-data="{ open: false }">
-                                    <div class="px-5 py-3 flex items-center gap-3 hover:bg-green-50/30 cursor-pointer select-none" @click="open = !open">
-                                        <span class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs shrink-0">🚗</span>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-800 truncate">{{ $vexp['descricao'] }}</p>
-                                            <p class="text-xs text-gray-400">{{ $vexp['quantidade'] }} lançamento(s) &bull; Carro</p>
-                                        </div>
-                                        <span class="text-sm font-bold tabular-nums text-green-700 whitespace-nowrap">R$ {{ number_format($vexp['valor'], 2, ',', '.') }}</span>
-                                        <span class="text-xs text-gray-300 bg-gray-100 px-2 py-0.5 rounded-full">auto</span>
-                                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                        </svg>
-                                    </div>
-                                    <div x-show="open" x-cloak class="pl-14 pr-5 pb-3 space-y-1 bg-green-50/20">
-                                        @foreach($vexp['itens'] as $item)
-                                            <div class="flex justify-between text-xs text-gray-500 py-1 border-b border-gray-50 last:border-0">
-                                                <span class="truncate mr-4">{{ $item['data'] }} &mdash; {{ $item['tipo'] }}@if($item['descricao']) &bull; {{ $item['descricao'] }}@endif</span>
-                                                <span class="tabular-nums whitespace-nowrap font-medium">R$ {{ number_format($item['valor'], 2, ',', '.') }}</span>
-                                            </div>
-                                        @endforeach
                                     </div>
                                 </div>
                             @endforeach
@@ -328,7 +362,6 @@
             class="bg-white rounded-lg shadow p-5 sticky top-4"
             x-data="novaDepesaForm()"
         >
-            {{-- Cabeçalho do form + botão gerenciar categorias --}}
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-base font-semibold text-gray-800">➕ Nova Despesa</h2>
                 <button type="button"
@@ -412,7 +445,6 @@
                     </div>
                 </div>
 
-                {{-- Campos de crédito --}}
                 <div x-show="formaPgto === 'credito'" x-cloak class="space-y-3">
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Cartão de crédito</label>
@@ -484,10 +516,17 @@
 @push('scripts')
 <script>
 /**
- * Alpine.js component para o select de status inline por nota (bloco Mercado).
- * Envia PATCH /invoices/{id}/status sem reload de página.
+ * Alpine.js component unificado para selects de status inline.
+ * Funciona para: invoices (Mercado), vehicle_expenses e fuel_entries (Veículos).
+ *
+ * tipo: 'invoice' | 'expense' | 'fuel'
  */
-function invoiceStatus(id, initialStatus, csrfToken) {
+function vehicleItemStatus(tipo, id, initialStatus, csrfToken) {
+    const urlMap = {
+        invoice: `/invoices/${id}/status`,
+        expense: `/financas/veiculo-itens/expense/${id}/status`,
+        fuel:    `/financas/veiculo-itens/fuel/${id}/status`,
+    };
     return {
         status: initialStatus,
         saving: false,
@@ -496,12 +535,12 @@ function invoiceStatus(id, initialStatus, csrfToken) {
             this.saving = true;
             this.saved  = false;
             try {
-                const res = await fetch(`/invoices/${id}/status`, {
+                const res = await fetch(urlMap[tipo], {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type':  'application/json',
-                        'Accept':        'application/json',
-                        'X-CSRF-TOKEN':  csrfToken,
+                        'Content-Type': 'application/json',
+                        'Accept':       'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({ status: this.status }),
                 });
@@ -518,15 +557,12 @@ function invoiceStatus(id, initialStatus, csrfToken) {
 }
 
 function novaDepesaForm() {
-    // normaliza cor: sempre retorna com #
     function corComHash(c) { return c ? '#' + c.replace('#','') : '#e5e7eb'; }
-
     return {
         formaPgto: '{{ old('forma_pagamento', 'pix') }}',
         cats: @json($expenseCategories),
         selectedCat: '{{ old('categoria') }}',
         selectedCatCor: '#e5e7eb',
-
         init() {
             this.syncCor();
             window.addEventListener('categories-updated', async () => {
@@ -538,7 +574,6 @@ function novaDepesaForm() {
                 this.syncCor();
             });
         },
-
         syncCor() {
             const found = this.cats.find(c => c.nome === this.selectedCat);
             this.selectedCatCor = found ? corComHash(found.cor) : '#e5e7eb';
