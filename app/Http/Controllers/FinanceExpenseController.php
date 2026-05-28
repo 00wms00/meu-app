@@ -37,13 +37,14 @@ class FinanceExpenseController extends Controller
 
         $expenseCategories = ExpenseCategory::doUsuario(Auth::id())->get();
 
-        // Notas agrupadas por estabelecimento
-        // O campo 'numero' é o mesmo exibido em /invoices (badge #NNN)
-        // O campo 'status' permite marcar cada nota como pendente/pago/pgoCC
-        $invoicesDoMes = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
+        // ── Notas fiscais do mês ─────────────────────────────────────────────
+        // Busca raw para poder somar por status individualmente
+        $invoicesRaw = Invoice::whereBetween('data_emissao', [$mesInicio, $mesFim])
             ->where('user_id', Auth::id())
             ->orderBy('data_emissao')
-            ->get()
+            ->get();
+
+        $invoicesDoMes = $invoicesRaw
             ->groupBy('nome_estabelecimento')
             ->map(fn($grupo) => [
                 'descricao'  => $grupo->first()->nome_estabelecimento,
@@ -59,8 +60,14 @@ class FinanceExpenseController extends Controller
             ])
             ->values();
 
-        $totalMercado = $invoicesDoMes->sum('valor');
+        $totalMercado = $invoicesRaw->sum('valor_pago');
 
+        // Totais do Mercado separados por status
+        $mercadoPago      = $invoicesRaw->where('status', 'pago')->sum('valor_pago');
+        $mercadoPagoCC    = $invoicesRaw->where('status', 'pgoCC')->sum('valor_pago');
+        $mercadoPendente  = $invoicesRaw->where('status', 'pendente')->sum('valor_pago');
+
+        // ── Veículos ─────────────────────────────────────────────────────────
         $vexpRaw = VehicleExpense::whereBetween('data', [$mesInicio, $mesFim])
             ->whereHas('vehicle', fn($q) => $q->where('user_id', Auth::id()))
             ->with('vehicle')
@@ -96,13 +103,26 @@ class FinanceExpenseController extends Controller
         })->values();
 
         $totalVeiculos  = $vehicleExpensesDoMes->sum('valor');
+
+        // ── Totais gerais ─────────────────────────────────────────────────────
         $totalFixas     = $fixas->sum('valor');
         $totalVariaveis = $variaveis->sum('valor') + $totalMercado + $totalVeiculos;
         $totalGeral     = $totalFixas + $totalVariaveis;
-        $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado + $totalVeiculos;
-        $totalPagoCC    = $expenses->where('status', 'pgoCC')->sum('valor');
-        $totalPendente  = $expenses->where('status', 'pendente')->sum('valor');
 
+        // Pago  = despesas manuais pagas  + mercado pago  + veículos (sem status próprio → tratados como pago)
+        $totalPago     = $expenses->where('status', 'pago')->sum('valor')
+                       + $mercadoPago
+                       + $totalVeiculos;
+
+        // PagoCC = despesas manuais pgoCC + mercado pgoCC
+        $totalPagoCC   = $expenses->where('status', 'pgoCC')->sum('valor')
+                       + $mercadoPagoCC;
+
+        // Pendente = despesas manuais pendentes + mercado pendente
+        $totalPendente = $expenses->where('status', 'pendente')->sum('valor')
+                       + $mercadoPendente;
+
+        // ── Por categoria ─────────────────────────────────────────────────────
         $porCategoria = $variaveis->groupBy('categoria')->map(fn($g) => $g->sum('valor'))->sortByDesc(fn($v) => $v);
         if ($totalMercado > 0) $porCategoria->put('Mercado', $porCategoria->get('Mercado', 0) + $totalMercado);
         if ($totalVeiculos > 0) $porCategoria->put('Carro',   $porCategoria->get('Carro', 0)   + $totalVeiculos);
