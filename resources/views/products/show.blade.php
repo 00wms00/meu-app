@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    {{-- Tabela --}}
+    {{-- Tabela Todas as Compras --}}
     <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <div class="p-6 border-b">
             <h2 class="text-lg font-semibold text-gray-800">📋 Todas as Compras</h2>
@@ -253,17 +253,27 @@
             <table class="w-full" aria-label="Histórico de compras">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="text-left py-3 px-6 text-sm font-semibold text-gray-700">Data</th>
-                        <th scope="col" class="text-center py-3 px-6 text-sm font-semibold text-gray-700">Unidade</th>
-                        <th scope="col" class="text-right py-3 px-6 text-sm font-semibold text-gray-700">Preço Unitário</th>
+                        <th scope="col" class="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Produto</th>
+                        <th scope="col" class="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Data</th>
+                        <th scope="col" class="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Mercado</th>
+                        <th scope="col" class="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">UN</th>
+                        <th scope="col" class="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Preço Unit.</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-100">
                     @foreach($serie as $ponto)
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="py-3 px-6 text-sm">{{ $ponto['data'] }}</td>
-                            <td class="py-3 px-6 text-sm text-center">{{ $ponto['unidade'] }}</td>
-                            <td class="py-3 px-6 text-sm text-right font-semibold tabular-nums">
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-3 px-4 text-sm text-gray-800 max-w-[200px]">
+                                <span class="block truncate" title="{{ $ponto['nome_produto'] }}">{{ $ponto['nome_produto'] }}</span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
+                                {{ \Carbon\Carbon::parse($ponto['data'])->format('d/m/Y') }}
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-600 max-w-[180px]">
+                                <span class="block truncate" title="{{ $ponto['mercado'] }}">{{ $ponto['mercado'] }}</span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-center text-gray-500">{{ $ponto['unidade'] ?: '—' }}</td>
+                            <td class="py-3 px-4 text-sm text-right font-semibold tabular-nums text-gray-900">
                                 R$ {{ number_format($ponto['valor_unitario'], 2, ',', '.') }}
                             </td>
                         </tr>

@@ -50,7 +50,7 @@ class ProductController extends Controller
         )->pluck('id');
 
         // ── Série histórica completa ──────────────────────────────
-        $items = InvoiceItem::with('invoice')
+        $items = InvoiceItem::with(['invoice.store', 'product'])
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
             ->where('invoices.user_id', Auth::id())
@@ -63,6 +63,8 @@ class ProductController extends Controller
                 'data'           => $i->invoice->data_emissao->format('Y-m-d'),
                 'valor_unitario' => (float) $i->valor_unitario,
                 'unidade'        => $i->unidade,
+                'nome_produto'   => $i->product?->nome_exibicao ?? $i->product?->nome ?? $i->descricao ?? '',
+                'mercado'        => $i->invoice->store?->nome ?? $i->invoice->nome_emitente ?? '—',
             ])
             ->values();
 
