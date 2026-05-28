@@ -86,16 +86,16 @@
                 @foreach($dadosCategorias as $cat)
                 @php
                     if ($cat['limite'] == 0) {
-                        $barColor = '#d1d5db';
+                        $barColor  = '#d1d5db';
                         $textColor = '#9ca3af';
                     } elseif ($cat['porcentagem'] >= 100) {
-                        $barColor = '#ef4444';
+                        $barColor  = '#ef4444';
                         $textColor = '#dc2626';
                     } elseif ($cat['porcentagem'] >= 80) {
-                        $barColor = '#f59e0b';
+                        $barColor  = '#f59e0b';
                         $textColor = '#d97706';
                     } else {
-                        $barColor = '#22c55e';
+                        $barColor  = '#22c55e';
                         $textColor = '#16a34a';
                     }
                     $barWidth = min(100, $cat['porcentagem']);
@@ -107,15 +107,15 @@
                             <span class="text-sm font-medium text-gray-800">{{ $cat['nome'] }}</span>
                             @if($cat['limite'] > 0)
                                 @if($cat['status'] === 'excedido')
-                                <span style="background-color: #fee2e2; color: #dc2626;" class="text-xs px-2 py-0.5 rounded-full font-medium">🔴 Excedido</span>
+                                <span style="background-color:#fee2e2;color:#dc2626" class="text-xs px-2 py-0.5 rounded-full font-medium">🔴 Excedido</span>
                                 @elseif($cat['status'] === 'alerta')
-                                <span style="background-color: #fef3c7; color: #d97706;" class="text-xs px-2 py-0.5 rounded-full font-medium">🟡 Alerta</span>
+                                <span style="background-color:#fef3c7;color:#d97706" class="text-xs px-2 py-0.5 rounded-full font-medium">🟡 Alerta</span>
                                 @endif
                             @endif
                         </div>
                         <div class="text-right text-sm">
                             @if($cat['gasto'] > 0)
-                            <span class="font-semibold" style="color: {{ $cat['limite'] > 0 && $cat['gasto'] > $cat['limite'] ? '#dc2626' : '#374151' }}">
+                            <span class="font-semibold" style="color:{{ $cat['limite'] > 0 && $cat['gasto'] > $cat['limite'] ? '#dc2626' : '#374151' }}">
                                 R$ {{ number_format($cat['gasto'], 2, ',', '.') }}
                             </span>
                             @else
@@ -126,25 +126,21 @@
                             @endif
                         </div>
                     </div>
-                    <div style="width: 100%; background-color: #e5e7eb; border-radius: 9999px; height: 10px; overflow: hidden;">
-                        <div style="width: {{ $barWidth }}%; background-color: {{ $barColor }}; height: 10px; border-radius: 9999px; transition: all 0.5s ease;"></div>
+                    <div style="width:100%;background-color:#e5e7eb;border-radius:9999px;height:10px;overflow:hidden">
+                        <div style="width:{{ $barWidth }}%;background-color:{{ $barColor }};height:10px;border-radius:9999px;transition:all .5s ease"></div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px;">
-                        <span style="color: {{ $cat['porcentagem'] > 100 ? '#dc2626' : '#6b7280' }}; font-weight: {{ $cat['porcentagem'] > 100 ? '500' : '400' }};">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
+                        <span style="color:{{ $cat['porcentagem'] > 100 ? '#dc2626' : '#6b7280' }};font-weight:{{ $cat['porcentagem'] > 100 ? '500' : '400' }}">
                             {{ number_format($cat['porcentagem'], 1, ',', '.') }}%
                         </span>
                         @if($cat['limite'] > 0)
                             @if($cat['porcentagem'] > 100)
-                            <span style="color: #dc2626; font-weight: 500;">
-                                R$ {{ number_format($cat['gasto'] - $cat['limite'], 2, ',', '.') }} acima
-                            </span>
+                            <span style="color:#dc2626;font-weight:500">R$ {{ number_format($cat['gasto'] - $cat['limite'], 2, ',', '.') }} acima</span>
                             @else
-                            <span style="color: #9ca3af;">
-                                R$ {{ number_format($cat['limite'] - $cat['gasto'], 2, ',', '.') }} livre
-                            </span>
+                            <span style="color:#9ca3af">R$ {{ number_format($cat['limite'] - $cat['gasto'], 2, ',', '.') }} livre</span>
                             @endif
                         @else
-                        <span style="color: #9ca3af;">Sem limite</span>
+                        <span style="color:#9ca3af">Sem limite</span>
                         @endif
                     </div>
                 </div>
@@ -168,7 +164,6 @@
                     <p class="text-xs text-gray-500 mt-0.5">{{ $meses[$mes] }}/{{ $ano }}</p>
                 </div>
 
-                {{-- Botão Copiar Mês Anterior --}}
                 @if($temMesAnterior)
                 <form action="{{ route('budgets.copiar') }}" method="POST" id="form-copiar">
                     @csrf
@@ -190,36 +185,23 @@
             </div>
 
             <div class="p-6">
-                <form action="{{ route('budgets.store') }}" method="POST">
+                <form action="{{ route('budgets.store') }}" method="POST" id="form-orcamento">
                     @csrf
                     <input type="hidden" name="ano" value="{{ $ano }}">
                     <input type="hidden" name="mes" value="{{ $mes }}">
 
                     <div class="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                         <p class="text-xs text-yellow-700">
-                            💡 <strong>Dica:</strong> Defina limites por categoria para acompanhar seus gastos.
+                            💡 <strong>Dica:</strong> Defina limites por categoria. O total é calculado automaticamente.
                         </p>
                     </div>
 
-                    {{-- Campo Orçamento Total com máscara --}}
-                    <div class="mb-4">
-                        <label for="valor_total" class="block text-sm font-medium text-gray-700 mb-1">Orçamento Total</label>
-                        <div class="flex items-center">
-                            <span class="text-gray-500 mr-1 text-lg">R$</span>
-                            <input
-                                type="text"
-                                id="valor_total"
-                                name="valor_total"
-                                value="{{ $budget->valor_total > 0 ? number_format($budget->valor_total, 2, ',', '.') : '' }}"
-                                class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-lg font-bold"
-                                placeholder="0,00"
-                                inputmode="numeric"
-                                autocomplete="off"
-                            >
-                        </div>
-                        @error('valor_total')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
+                    {{-- Total calculado ao vivo (somente leitura) --}}
+                    <div class="mb-4 flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span class="text-sm font-medium text-blue-800">Total orçado</span>
+                        <span id="total-preview" class="text-lg font-bold text-blue-700">
+                            R$ {{ number_format($totalOrcado, 2, ',', '.') }}
+                        </span>
                     </div>
 
                     <div class="border-t pt-4">
@@ -228,7 +210,7 @@
                             @foreach($categorias as $cat)
                             @php
                                 $orcamentoCat = $budgetCategories->firstWhere('category_id', $cat->id);
-                                $valorAtual = $orcamentoCat ? (float) $orcamentoCat->valor_limite : 0;
+                                $valorAtual   = $orcamentoCat ? (float) $orcamentoCat->valor_limite : 0;
                             @endphp
                             <div class="flex items-center gap-2">
                                 <span class="text-sm w-6">{{ $cat->emoji }}</span>
@@ -262,23 +244,40 @@
 </div>
 
 <script>
-// ===== Máscara monetária BR =====
+// ===== Máscara monetária + total ao vivo =====
+function parseBR(str) {
+    if (!str) return 0;
+    return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function formatBR(n) {
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function recalcTotal() {
+    let total = 0;
+    document.querySelectorAll('.cat-valor').forEach(function (el) {
+        total += parseBR(el.value);
+    });
+    document.getElementById('total-preview').textContent = 'R$ ' + formatBR(total);
+}
+
 function mascaraMoeda(input) {
     input.addEventListener('input', function () {
         let v = this.value.replace(/\D/g, '');
-        if (!v) { this.value = ''; return; }
+        if (!v) { this.value = ''; recalcTotal(); return; }
         v = (parseInt(v, 10) / 100).toFixed(2);
         this.value = v
             .replace('.', ',')
             .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        recalcTotal();
     });
-    // Seleciona tudo ao focar para facilitar edição
     input.addEventListener('focus', function () {
         setTimeout(() => this.select(), 10);
     });
 }
 
-document.querySelectorAll('#valor_total, .cat-valor').forEach(mascaraMoeda);
+document.querySelectorAll('.cat-valor').forEach(mascaraMoeda);
 
 // ===== Confirmação de cópia =====
 function confirmarCopia() {

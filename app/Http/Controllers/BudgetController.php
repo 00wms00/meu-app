@@ -96,9 +96,8 @@ class BudgetController extends Controller
             9 => 'Setembro', 10 => 'Outubro',  11 => 'Novembro', 12 => 'Dezembro',
         ];
 
-        // Verifica se o mês anterior tem orçamento cadastrado
-        $mesAnteriorData   = Carbon::create($ano, $mes, 1)->subMonth();
-        $temMesAnterior    = Budget::where('user_id', $userId)
+        $mesAnteriorData = Carbon::create($ano, $mes, 1)->subMonth();
+        $temMesAnterior  = Budget::where('user_id', $userId)
             ->where('ano', $mesAnteriorData->year)
             ->where('mes', $mesAnteriorData->month)
             ->whereHas('budgetCategories')
@@ -115,12 +114,7 @@ class BudgetController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // Converte vírgulas para pontos antes da validação
         $input = $request->all();
-
-        if (! empty($input['valor_total'])) {
-            $input['valor_total'] = $this->parseFloat($input['valor_total']);
-        }
 
         if (! empty($input['categorias'])) {
             foreach ($input['categorias'] as $key => $cat) {
@@ -131,7 +125,6 @@ class BudgetController extends Controller
         $validator = Validator::make($input, [
             'ano'                              => 'required|integer|min:2020|max:2100',
             'mes'                              => 'required|integer|min:1|max:12',
-            'valor_total'                      => 'nullable|numeric|min:0',
             'categorias'                       => 'nullable|array',
             'categorias.*.category_id'         => 'required|exists:categories,id',
             'categorias.*.valor_limite'        => 'nullable|numeric|min:0',
@@ -143,9 +136,13 @@ class BudgetController extends Controller
 
         $validated = $validator->validated();
 
+        // valor_total = soma dos limites das categorias
+        $valorTotal = collect($validated['categorias'] ?? [])
+            ->sum(fn($cat) => (float) ($cat['valor_limite'] ?? 0));
+
         $budget = Budget::updateOrCreate(
             ['user_id' => Auth::id(), 'ano' => $validated['ano'], 'mes' => $validated['mes']],
-            ['valor_total' => $validated['valor_total'] ?? 0]
+            ['valor_total' => $valorTotal]
         );
 
         foreach ($validated['categorias'] ?? [] as $cat) {
@@ -160,9 +157,6 @@ class BudgetController extends Controller
             ->with('success', 'Orçamento salvo com sucesso!');
     }
 
-    /**
-     * Copia valor_total e limites por categoria do mês anterior para o mês atual.
-     */
     public function copiarMesAnterior(Request $request): RedirectResponse
     {
         $request->validate([
@@ -188,13 +182,14 @@ class BudgetController extends Controller
                 ->with('warning', 'Nenhum orçamento encontrado para o mês anterior.');
         }
 
-        // Cria / atualiza o budget do mês atual
+        // valor_total = soma dos limites copiados
+        $valorTotal = $budgetAnterior->budgetCategories->sum(fn($c) => (float) $c->valor_limite);
+
         $budgetAtual = Budget::updateOrCreate(
             ['user_id' => $userId, 'ano' => $ano, 'mes' => $mes],
-            ['valor_total' => $budgetAnterior->valor_total]
+            ['valor_total' => $valorTotal]
         );
 
-        // Copia os limites por categoria
         foreach ($budgetAnterior->budgetCategories as $catAnterior) {
             BudgetCategory::updateOrCreate(
                 ['budget_id' => $budgetAtual->id, 'category_id' => $catAnterior->category_id],
