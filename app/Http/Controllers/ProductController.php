@@ -50,7 +50,7 @@ class ProductController extends Controller
         )->pluck('id');
 
         // ── Série histórica completa ──────────────────────────────
-        $items = InvoiceItem::with(['invoice.store', 'product'])
+        $items = InvoiceItem::with(['invoice', 'product'])
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
             ->where('invoices.user_id', Auth::id())
@@ -64,7 +64,7 @@ class ProductController extends Controller
                 'valor_unitario' => (float) $i->valor_unitario,
                 'unidade'        => $i->unidade,
                 'nome_produto'   => $i->product?->nome_exibicao ?? $i->product?->nome ?? $i->descricao ?? '',
-                'mercado'        => $i->invoice->store?->nome ?? $i->invoice->nome_emitente ?? '—',
+                'mercado'        => $i->invoice->nome_estabelecimento ?? '—',
             ])
             ->values();
 
@@ -281,10 +281,6 @@ class ProductController extends Controller
 
     // ==================== ANÁLISE DE PREÇOS ====================
 
-    /**
-     * Resolve as datas de início/fim a partir do atalho de período.
-     * @return array{0: Carbon|null, 1: Carbon|null}
-     */
     private function resolverPeriodo(string $periodo, ?string $dataInicio, ?string $dataFim): array
     {
         return match ($periodo) {
@@ -296,13 +292,9 @@ class ProductController extends Controller
                 $dataFim    ? Carbon::parse($dataFim)->endOfDay()      : now()->endOfDay(),
             ],
             default      => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-        };
+        ];
     }
 
-    /**
-     * Calcula média, mínimo, máximo, moda e contagem de compras
-     * no período indicado.  Passa null/null para histórico completo.
-     */
     private function calcularEstatisticas(
         $produtoIds,
         int $userId,
@@ -327,7 +319,6 @@ class ProductController extends Controller
             ')
             ->first();
 
-        // Moda: valor_unitario mais frequente
         $modaRow = (clone $query)
             ->select('invoice_items.valor_unitario')
             ->selectRaw('COUNT(*) as freq')
