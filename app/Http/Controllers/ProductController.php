@@ -20,7 +20,8 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $query = Product::where('user_id', Auth::id());
+        $userId = Auth::id();
+        $query  = Product::where('user_id', $userId)->with('category');
 
         if ($request->filled('categoria')) {
             $query->where('category_id', $request->categoria);
@@ -29,10 +30,17 @@ class ProductController extends Controller
             $query->where('nome', 'ilike', "%{$request->search}%");
         }
 
-        $products   = $query->orderBy('nome')->paginate(50);
-        $categorias = Category::where('user_id', Auth::id())->ordenado()->get();
+        // Para o acordeão carregamos todos (sem paginate) agrupados por categoria
+        $allProducts = $query->orderBy('nome')->get();
 
-        return view('products.index', compact('products', 'categorias'));
+        $grouped = $allProducts->groupBy(function ($p) {
+            return $p->category?->nome ?? 'Sem categoria';
+        })->sortKeys();
+
+        $categorias = Category::where('user_id', $userId)->ordenado()->get();
+        $total      = $allProducts->count();
+
+        return view('products.index', compact('grouped', 'categorias', 'total'));
     }
 
     public function show(Request $request, Product $product): View
