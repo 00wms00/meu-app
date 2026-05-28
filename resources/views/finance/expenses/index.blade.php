@@ -32,7 +32,7 @@
 </div>
 
 {{-- KPIs --}}
-<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.5rem;">
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:1rem; margin-bottom:1.5rem;">
     <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Total geral</p>
         <p class="text-xl font-bold text-gray-900">R$ {{ number_format($totalGeral, 2, ',', '.') }}</p>
@@ -48,6 +48,10 @@
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">✅ Pago</p>
         <p class="text-xl font-bold text-green-600">R$ {{ number_format($totalPago, 2, ',', '.') }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">💳 Pago CC</p>
+        <p class="text-xl font-bold text-indigo-600">R$ {{ number_format($totalPagoCC, 2, ',', '.') }}</p>
     </div>
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-xs text-gray-500 uppercase tracking-wide">⏳ Pendente</p>
@@ -359,6 +363,7 @@
                         <select name="status" required class="form-control text-sm w-full">
                             <option value="pendente" {{ old('status','pendente')==='pendente'?'selected':'' }}>Pendente</option>
                             <option value="pago"     {{ old('status')==='pago'    ?'selected':'' }}>Pago</option>
+                            <option value="pgoCC"    {{ old('status')==='pgoCC'   ?'selected':'' }}>💳 Pago CC</option>
                         </select>
                     </div>
                 </div>

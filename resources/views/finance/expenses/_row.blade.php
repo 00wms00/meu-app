@@ -107,6 +107,9 @@
                 @if($expense->data_pagamento)
                     <span class="text-green-700">pago {{ $expense->data_pagamento->format('d/m') }}</span>
                 @endif
+                @if($expense->status === 'pgoCC')
+                    <span class="bg-indigo-50 text-indigo-700 px-1.5 rounded text-xs font-semibold">💳 Pago CC</span>
+                @endif
             </p>
         </div>
 
@@ -239,9 +242,10 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                <select name="status" class="form-control text-sm w-full">
+                <select name="status" required class="form-control text-sm w-full">
                     <option value="pendente" {{ $expense->status==='pendente'?'selected':'' }}>Pendente</option>
                     <option value="pago"     {{ $expense->status==='pago'    ?'selected':'' }}>Pago</option>
+                    <option value="pgoCC"    {{ $expense->status==='pgoCC'   ?'selected':'' }}>💳 Pago CC</option>
                 </select>
             </div>
             <div>

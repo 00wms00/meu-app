@@ -90,6 +90,7 @@ class FinanceExpenseController extends Controller
         $totalVariaveis = $variaveis->sum('valor') + $totalMercado + $totalVeiculos;
         $totalGeral     = $totalFixas + $totalVariaveis;
         $totalPago      = $expenses->where('status', 'pago')->sum('valor') + $totalMercado + $totalVeiculos;
+        $totalPagoCC    = $expenses->where('status', 'pgoCC')->sum('valor');
         $totalPendente  = $expenses->where('status', 'pendente')->sum('valor');
 
         $porCategoria = $variaveis->groupBy('categoria')->map(fn($g) => $g->sum('valor'))->sortByDesc(fn($v) => $v);
@@ -102,7 +103,7 @@ class FinanceExpenseController extends Controller
         return view('finance.expenses.index', compact(
             'expenses', 'fixas', 'variaveis', 'mes',
             'totalFixas', 'totalVariaveis', 'totalGeral',
-            'totalPago', 'totalPendente', 'porCategoria', 'meses',
+            'totalPago', 'totalPagoCC', 'totalPendente', 'porCategoria', 'meses',
             'invoicesDoMes', 'totalMercado',
             'vehicleExpensesDoMes', 'totalVeiculos',
             'creditCards', 'expenseCategories'
@@ -123,7 +124,7 @@ class FinanceExpenseController extends Controller
             'mes_referencia'  => 'required|date_format:Y-m',
             'data_vencimento' => 'nullable|date',
             'data_pagamento'  => 'nullable|date',
-            'status'          => 'required|in:pago,pendente',
+            'status'          => 'required|in:pago,pendente,pgoCC',
             'observacao'      => 'nullable|string|max:500',
         ]);
 
@@ -218,7 +219,7 @@ class FinanceExpenseController extends Controller
             'mes_referencia'  => 'required|date_format:Y-m',
             'data_vencimento' => 'nullable|date',
             'data_pagamento'  => 'nullable|date',
-            'status'          => 'required|in:pago,pendente',
+            'status'          => 'required|in:pago,pendente,pgoCC',
             'observacao'      => 'nullable|string|max:500',
         ]);
 
