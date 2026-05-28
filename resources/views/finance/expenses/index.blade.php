@@ -219,6 +219,7 @@
                                                 <tr class="text-gray-400 border-b border-gray-100">
                                                     <th class="text-left py-1.5 font-medium">Data</th>
                                                     <th class="text-left py-1.5 font-medium">Nº Nota</th>
+                                                    <th class="text-left py-1.5 font-medium">Status</th>
                                                     <th class="text-right py-1.5 font-medium">Valor</th>
                                                 </tr>
                                             </thead>
@@ -226,7 +227,33 @@
                                                 @foreach($inv['notas'] as $nota)
                                                     <tr class="text-gray-600 hover:bg-green-50/50">
                                                         <td class="py-1.5 whitespace-nowrap">{{ $nota['data'] }}</td>
-                                                        <td class="py-1.5 font-mono text-gray-400 truncate max-w-[160px]" title="{{ $nota['numero'] }}">{{ Str::limit($nota['numero'], 20) }}</td>
+                                                        <td class="py-1.5 font-mono text-gray-400 truncate max-w-[160px]" title="{{ $nota['numero'] }}">
+                                                            {{ Str::limit($nota['numero'], 20) }}
+                                                        </td>
+
+                                                        {{-- ✏️ Select inline de status — salva via PATCH sem reload --}}
+                                                        <td class="py-1.5" x-data="invoiceStatus({{ $nota['id'] }}, '{{ $nota['status'] }}', '{{ csrf_token() }}')"
+                                                            @click.stop>
+                                                            <select
+                                                                x-model="status"
+                                                                @change="save()"
+                                                                :disabled="saving"
+                                                                :class="{
+                                                                    'bg-yellow-100 text-yellow-800 border-yellow-300': status === 'pendente',
+                                                                    'bg-green-100  text-green-800  border-green-300':  status === 'pago',
+                                                                    'bg-indigo-100 text-indigo-800 border-indigo-300': status === 'pgoCC'
+                                                                }"
+                                                                class="rounded px-1.5 py-0.5 text-xs font-medium border cursor-pointer focus:outline-none transition disabled:opacity-60">
+                                                                <option value="pendente">⏳ Pendente</option>
+                                                                <option value="pago">✅ Pago</option>
+                                                                <option value="pgoCC">💳 PagoCC</option>
+                                                            </select>
+                                                            <span x-show="saved" x-cloak
+                                                                  x-transition:enter="transition ease-out duration-200"
+                                                                  x-transition:leave="transition ease-in duration-500"
+                                                                  class="ml-1 text-green-600 text-xs">✓</span>
+                                                        </td>
+
                                                         <td class="py-1.5 text-right font-semibold tabular-nums text-green-700 whitespace-nowrap">
                                                             R$ {{ number_format($nota['valor'], 2, ',', '.') }}
                                                         </td>
@@ -456,6 +483,40 @@
 
 @push('scripts')
 <script>
+/**
+ * Alpine.js component para o select de status inline por nota (bloco Mercado).
+ * Envia PATCH /invoices/{id}/status sem reload de página.
+ */
+function invoiceStatus(id, initialStatus, csrfToken) {
+    return {
+        status: initialStatus,
+        saving: false,
+        saved:  false,
+        async save() {
+            this.saving = true;
+            this.saved  = false;
+            try {
+                const res = await fetch(`/invoices/${id}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'Accept':        'application/json',
+                        'X-CSRF-TOKEN':  csrfToken,
+                    },
+                    body: JSON.stringify({ status: this.status }),
+                });
+                if (!res.ok) throw new Error('Erro ao salvar');
+                this.saved = true;
+                setTimeout(() => { this.saved = false; }, 2000);
+            } catch (e) {
+                alert('Não foi possível salvar o status. Tente novamente.');
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+}
+
 function novaDepesaForm() {
     // normaliza cor: sempre retorna com #
     function corComHash(c) { return c ? '#' + c.replace('#','') : '#e5e7eb'; }
