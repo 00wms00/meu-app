@@ -43,9 +43,6 @@ class ProductController extends Controller
         return view('products.index', compact('grouped', 'categorias', 'total'));
     }
 
-    /**
-     * Autocomplete: retorna os 5 primeiros produtos que batem com o termo.
-     */
     public function autocomplete(Request $request): JsonResponse
     {
         $q = trim($request->input('q', ''));
@@ -88,7 +85,6 @@ class ProductController extends Controller
               ->orWhere('canonical_product_id', $produtoExibicao->id);
         })->pluck('id');
 
-        // Serie historica completa
         $items = InvoiceItem::with(['invoice', 'product'])
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->whereIn('invoice_items.product_id', $produtoIds)
@@ -107,7 +103,6 @@ class ProductController extends Controller
             ];
         })->values();
 
-        // Variacao primeira -> ultima compra
         $variacao = null;
         if ($serie->count() >= 2) {
             $primeiro = $serie->first()['valor_unitario'];
@@ -117,7 +112,6 @@ class ProductController extends Controller
             }
         }
 
-        // Filtro de periodo para analise
         $periodoAtivo = $request->input('periodo', '30d');
         [$dataInicioAnalise, $dataFimAnalise] = $this->resolverPeriodo(
             $periodoAtivo,
@@ -201,8 +195,6 @@ class ProductController extends Controller
             ->where('user_id', Auth::id())
             ->update(['category_id' => $request->categoria ?: null]);
 
-        Cache::forget('contagem-categorias-' . Auth::id());
-
         return back()->with('success', count($ids) . ' produto(s) categorizado(s)!');
     }
 
@@ -211,8 +203,6 @@ class ProductController extends Controller
         $this->authorize('update', $product);
 
         $product->update(['category_id' => $request->categoria ?: null]);
-
-        Cache::forget('contagem-categorias-' . Auth::id());
 
         return back()->with('success', 'Categoria atualizada!');
     }
@@ -350,23 +340,26 @@ class ProductController extends Controller
 
     // ==================== HELPERS ====================
 
+    /**
+     * Retorna array [category_id (int) => total (int), 'sem' => total_sem_categoria]
+     * SEM cache — query leve e sempre atualizada.
+     */
     private function contagemPorCategoria(int $userId): array
     {
-        return Cache::remember('contagem-categorias-' . $userId, 300, function () use ($userId) {
-            // Busca a contagem diretamente via Eloquent, sem CAST — as chaves ficam int
-            $rows = Product::where('user_id', $userId)
-                ->whereNotNull('category_id')
-                ->selectRaw('category_id, COUNT(*) AS total')
-                ->groupBy('category_id')
-                ->pluck('total', 'category_id')
-                ->mapWithKeys(fn($total, $id) => [(int) $id => (int) $total])
-                ->toArray();
+        $todos = Product::where('user_id', $userId)
+            ->get(['category_id']);
 
-            $sem = Product::where('user_id', $userId)
-                ->whereNull('category_id')
-                ->count();
+        $contagem = ['sem' => 0];
 
-            return array_merge(['sem' => $sem], $rows);
-        });
+        foreach ($todos as $p) {
+            if ($p->category_id === null) {
+                $contagem['sem']++;
+            } else {
+                $id = (int) $p->category_id;
+                $contagem[$id] = ($contagem[$id] ?? 0) + 1;
+            }
+        }
+
+        return $contagem;
     }
 }
