@@ -353,13 +353,20 @@ class ProductController extends Controller
     private function contagemPorCategoria(int $userId): array
     {
         return Cache::remember('contagem-categorias-' . $userId, 300, function () use ($userId) {
+            // Busca a contagem diretamente via Eloquent, sem CAST — as chaves ficam int
             $rows = Product::where('user_id', $userId)
-                ->selectRaw("CASE WHEN category_id IS NULL THEN 'sem' ELSE CAST(category_id AS TEXT) END AS chave, COUNT(*) AS total")
-                ->groupByRaw("CASE WHEN category_id IS NULL THEN 'sem' ELSE CAST(category_id AS TEXT) END")
-                ->pluck('total', 'chave')
+                ->whereNotNull('category_id')
+                ->selectRaw('category_id, COUNT(*) AS total')
+                ->groupBy('category_id')
+                ->pluck('total', 'category_id')
+                ->mapWithKeys(fn($total, $id) => [(int) $id => (int) $total])
                 ->toArray();
 
-            return array_merge(['sem' => 0], $rows);
+            $sem = Product::where('user_id', $userId)
+                ->whereNull('category_id')
+                ->count();
+
+            return array_merge(['sem' => $sem], $rows);
         });
     }
 }
