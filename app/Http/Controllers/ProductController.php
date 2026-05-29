@@ -201,6 +201,8 @@ class ProductController extends Controller
             ->where('user_id', Auth::id())
             ->update(['category_id' => $request->categoria ?: null]);
 
+        Cache::forget('contagem-categorias-' . Auth::id());
+
         return back()->with('success', count($ids) . ' produto(s) categorizado(s)!');
     }
 
@@ -209,6 +211,8 @@ class ProductController extends Controller
         $this->authorize('update', $product);
 
         $product->update(['category_id' => $request->categoria ?: null]);
+
+        Cache::forget('contagem-categorias-' . Auth::id());
 
         return back()->with('success', 'Categoria atualizada!');
     }
@@ -310,7 +314,7 @@ class ProductController extends Controller
                 $dataFim    ? Carbon::parse($dataFim)->endOfDay()      : now()->endOfDay(),
             ],
             default     => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-        };
+        ];
     }
 
     private function calcularEstatisticas($produtoIds, int $userId, ?Carbon $inicio, ?Carbon $fim): array
