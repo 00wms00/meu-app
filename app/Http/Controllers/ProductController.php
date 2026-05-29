@@ -314,7 +314,7 @@ class ProductController extends Controller
                 $dataFim    ? Carbon::parse($dataFim)->endOfDay()      : now()->endOfDay(),
             ],
             default     => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
-        ];
+        };
     }
 
     private function calcularEstatisticas($produtoIds, int $userId, ?Carbon $inicio, ?Carbon $fim): array
