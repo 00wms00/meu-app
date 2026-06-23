@@ -143,7 +143,7 @@ class InvoiceParser
     }
 
     // ============================================================
-    // PARSERS ORIGINAIS (sem alteração)
+    // PARSERS ORIGINAIS
     // ============================================================
 
     private function parseEstabelecimento(DOMXPath $xpath): array
@@ -224,12 +224,17 @@ class InvoiceParser
             $quantidade = isset($parts[1]) ? $this->parseFloat($parts[1]) : 0;
         }
 
+        // Unidade: o HTML traz "UN UN0001" ou "KG KG0001" — pega só a primeira palavra
         $unidade = '';
         $spanUN = $xpath->query(".//span[contains(@class, 'RUN')]", $td1);
         if ($spanUN->length > 0) {
             $txt   = strip_tags($spanUN->item(0)->nodeValue);
             $parts = explode(':', $txt);
-            $unidade = isset($parts[1]) ? trim($parts[1]) : '';
+            if (isset($parts[1])) {
+                // Extrai apenas a primeira sequência de letras (UN, KG, LT, PC, etc.)
+                preg_match('/^\s*([A-Za-z]+)/', $parts[1], $m);
+                $unidade = isset($m[1]) ? strtoupper(trim($m[1])) : trim($parts[1]);
+            }
         }
 
         $valorUnitario = 0.0;
