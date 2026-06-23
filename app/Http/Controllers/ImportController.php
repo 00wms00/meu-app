@@ -126,7 +126,9 @@ class ImportController extends Controller
             return back()->withErrors(['chave' => 'Esta nota já foi importada anteriormente.']);
         }
 
-        DB::transaction(function () use ($data) {
+        $invoice = null;
+
+        DB::transaction(function () use ($data, &$invoice) {
             $invoice = Invoice::create([
                 'user_id'                  => Auth::id(),
                 'chave'                    => $data['chave'],
@@ -166,8 +168,8 @@ class ImportController extends Controller
         Cache::forget('planejamento-' . Auth::id());
         session()->forget('parsed_invoice');
 
-        return redirect()->route('dashboard')
-            ->with('success', 'Nota fiscal importada com sucesso!');
+        return redirect()->route('invoices.show', $invoice)
+            ->with('success', 'Nota fiscal importada! Confira os valores e ajuste se necessário.');
     }
 
     private function sessionData(): ?array
