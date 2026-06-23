@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -61,7 +63,56 @@ class InvoiceController extends Controller
             'status'               => 'nullable|in:pendente,pago,pgoCC',
         ]);
 
+        // 1. Atualiza campos principais da nota
         $invoice->update($data);
+
+        // 2. Remove itens marcados para exclusão
+        $itensRemovidos = $request->input('itens_removidos', []);
+        if (!empty($itensRemovidos)) {
+            InvoiceItem::whereIn('id', $itensRemovidos)
+                ->where('invoice_id', $invoice->id)
+                ->delete();
+        }
+
+        // 3. Atualiza / cria itens enviados pelo form
+        $itens = $request->input('itens', []);
+        foreach ($itens as $key => $itemData) {
+            $isNovo    = str_starts_with((string) $key, 'novo_');
+            $qtd       = $this->normalizarDecimal($itemData['quantidade']   ?? '0');
+            $unitario  = $this->normalizarDecimal($itemData['valor_unitario'] ?? '0');
+            $total     = $this->normalizarDecimal($itemData['valor_total']   ?? '0');
+
+            if ($isNovo) {
+                // Cria produto genérico e item novo
+                $produto = Product::firstOrCreate(
+                    ['user_id' => Auth::id(), 'nome' => trim($itemData['nome'] ?? 'Produto')],
+                    ['unidade' => $itemData['unidade'] ?? 'UN']
+                );
+
+                InvoiceItem::create([
+                    'invoice_id'    => $invoice->id,
+                    'product_id'    => $produto->id,
+                    'descricao'     => $produto->nome,
+                    'quantidade'    => $qtd,
+                    'unidade'       => $itemData['unidade'] ?? 'UN',
+                    'valor_unitario'=> $unitario,
+                    'valor_total'   => $total,
+                ]);
+            } else {
+                // Atualiza item existente
+                InvoiceItem::where('id', $key)
+                    ->where('invoice_id', $invoice->id)
+                    ->update([
+                        'quantidade'     => $qtd,
+                        'unidade'        => $itemData['unidade'] ?? 'UN',
+                        'valor_unitario' => $unitario,
+                        'valor_total'    => $total,
+                    ]);
+            }
+        }
+
+        // 4. Recalcula valor_total e valor_pago a partir dos itens
+        $invoice->recalcularTotais();
 
         return redirect()->route('invoices.show', $invoice)->with('success', 'Nota atualizada!');
     }
@@ -75,10 +126,9 @@ class InvoiceController extends Controller
             return '0';
         }
         $value = trim($value);
-        // Formato BR: tem ponto como separador de milhar e vírgula como decimal
         if (str_contains($value, ',')) {
-            $value = str_replace('.', '', $value);   // remove pontos de milhar
-            $value = str_replace(',', '.', $value);  // vírgula → ponto decimal
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
         }
         return $value;
     }
@@ -90,7 +140,7 @@ class InvoiceController extends Controller
         return redirect()->route('invoices.index')->with('success', 'Nota excluída.');
     }
 
-    // ---- Itens ----
+    // ---- Itens individuais ----
 
     public function editItem(Invoice $invoice, \App\Models\InvoiceItem $item)
     {
