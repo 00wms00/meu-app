@@ -27,6 +27,12 @@
     @csrf
     @method('PUT')
 
+    {{-- Campos hidden que recebem os valores numéricos (ponto decimal) antes do submit --}}
+    <input type="hidden" name="valor_pago" id="input_valor_pago"
+           value="{{ old('valor_pago', $invoice->valor_pago) }}">
+    <input type="hidden" name="descontos_raw" id="input_descontos_raw"
+           value="{{ old('descontos_raw', $invoice->descontos) }}">
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Coluna da Esquerda -->
         <div class="lg:col-span-2 space-y-6">
@@ -211,11 +217,21 @@
                             <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Descontos</label>
                             <div class="flex items-center">
                                 <span class="text-gray-400 mr-1">R$</span>
-                                <input type="text" name="descontos" id="descontos"
-                                       value="{{ old('descontos', number_format($invoice->descontos, 2, ',', '.')) }}"
+                                {{-- Campo visual (BR) — NÃO tem name para não ir no POST --}}
+                                <input type="text" id="descontos"
+                                       value="{{ old('descontos_raw') !== null ? number_format(old('descontos_raw'), 2, ',', '.') : number_format($invoice->descontos, 2, ',', '.') }}"
                                        class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm"
                                        oninput="atualizarValorPago()">
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Status</label>
+                            <select name="status"
+                                    class="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                <option value="pago"   {{ old('status', $invoice->status) == 'pago'    ? 'selected' : '' }}>✅ Pago</option>
+                                <option value="pgoCC"  {{ old('status', $invoice->status) == 'pgoCC'   ? 'selected' : '' }}>💳 Pago CC</option>
+                                <option value="pendente" {{ old('status', $invoice->status) == 'pendente' ? 'selected' : '' }}>⏳ Pendente</option>
+                            </select>
                         </div>
                         <div class="border-t pt-3 mt-3">
                             <div class="flex justify-between items-center">
@@ -270,27 +286,6 @@ function formatMoney(value) {
     return value.toFixed(2).replace('.', ',');
 }
 
-/**
- * Lógica de recálculo:
- *
- * 'desconto' (R$):
- *   novoTotal   = totalOriginal - descontoR$   (guarda total original em data-original-total)
- *   unitario    = novoTotal / quantidade
- *   total       = novoTotal
- *
- * 'unitario':
- *   total = unitario * quantidade
- *   zera desconto, atualiza data-original-total
- *
- * 'total':
- *   unitario = total / quantidade
- *   zera desconto, atualiza data-original-total
- *
- * 'quantidade':
- *   se ultimo_campo === 'total': mantém total, recalcula unitario
- *   senão: mantém unitario, recalcula total
- *   zera desconto, atualiza data-original-total
- */
 function recalcularItem(itemId, campoAlterado) {
     const row = document.querySelector(`[data-item-id="${itemId}"]`);
     if (!row) return;
@@ -305,30 +300,25 @@ function recalcularItem(itemId, campoAlterado) {
     if (quantidade <= 0) return;
 
     if (campoAlterado === 'desconto') {
-        // Usa o total original (antes de qualquer desconto) guardado no data-attribute
         const totalOriginal = parseFloat(totalInput.dataset.originalTotal);
         const descontoRS    = parseFloatBR(descontoInput.value);
         const novoTotal     = Math.max(0, totalOriginal - descontoRS);
         const novoUnitario  = novoTotal / quantidade;
-
         totalInput.value = formatMoney(novoTotal);
         unitInput.value  = formatMoney(novoUnitario);
         ultimoCampoInput.value = 'unitario';
-
     } else if (campoAlterado === 'unitario') {
         const novoTotal = parseFloatBR(unitInput.value) * quantidade;
         totalInput.value = formatMoney(novoTotal);
         totalInput.dataset.originalTotal = novoTotal.toFixed(2);
         if (descontoInput) descontoInput.value = '';
         ultimoCampoInput.value = 'unitario';
-
     } else if (campoAlterado === 'total') {
         const total = parseFloatBR(totalInput.value);
         unitInput.value = formatMoney(total / quantidade);
         totalInput.dataset.originalTotal = total.toFixed(2);
         if (descontoInput) descontoInput.value = '';
         ultimoCampoInput.value = 'total';
-
     } else if (campoAlterado === 'quantidade') {
         if (ultimoCampoInput.value === 'total') {
             const total = parseFloatBR(totalInput.value);
@@ -355,11 +345,15 @@ function atualizarTotais() {
     });
 
     const descontos = parseFloatBR(document.getElementById('descontos').value);
-    const valorPago = valorTotal - descontos;
+    const valorPago = Math.max(0, valorTotal - descontos);
 
-    document.getElementById('totalItens').textContent       = qtdItens;
-    document.getElementById('valorTotalLabel').textContent  = 'R$ ' + formatMoney(valorTotal);
-    document.getElementById('valorPagoLabel').textContent   = 'R$ ' + formatMoney(valorPago);
+    document.getElementById('totalItens').textContent      = qtdItens;
+    document.getElementById('valorTotalLabel').textContent = 'R$ ' + formatMoney(valorTotal);
+    document.getElementById('valorPagoLabel').textContent  = 'R$ ' + formatMoney(valorPago);
+
+    // Atualiza os hidden que serão submetidos com ponto decimal
+    document.getElementById('input_valor_pago').value   = valorPago.toFixed(2);
+    document.getElementById('input_descontos_raw').value = descontos.toFixed(2);
 }
 
 function atualizarValorPago() {
@@ -456,7 +450,6 @@ function adicionarItem() {
     newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// Inicializa data-original-total em todos os itens existentes ao carregar a página
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.total-input').forEach(function (input) {
         input.dataset.originalTotal = parseFloatBR(input.value).toFixed(2);

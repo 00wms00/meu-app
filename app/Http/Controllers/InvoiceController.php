@@ -46,6 +46,12 @@ class InvoiceController extends Controller
     {
         $this->authorize('update', $invoice);
 
+        // Normaliza campos monetários: aceita vírgula (BR) ou ponto (EN)
+        $request->merge([
+            'valor_pago' => $this->normalizarDecimal($request->input('valor_pago')),
+            'descontos'  => $this->normalizarDecimal($request->input('descontos_raw', '0')),
+        ]);
+
         $data = $request->validate([
             'nome_estabelecimento' => 'required|string|max:255',
             'data_emissao'         => 'required|date',
@@ -60,11 +66,28 @@ class InvoiceController extends Controller
         return redirect()->route('invoices.show', $invoice)->with('success', 'Nota atualizada!');
     }
 
+    /**
+     * Converte string monetária BR ("1.234,56") ou EN ("1234.56") para float string ("1234.56").
+     */
+    private function normalizarDecimal(?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return '0';
+        }
+        $value = trim($value);
+        // Formato BR: tem ponto como separador de milhar e vírgula como decimal
+        if (str_contains($value, ',')) {
+            $value = str_replace('.', '', $value);   // remove pontos de milhar
+            $value = str_replace(',', '.', $value);  // vírgula → ponto decimal
+        }
+        return $value;
+    }
+
     public function destroy(Invoice $invoice)
     {
         $this->authorize('delete', $invoice);
         $invoice->delete();
-        return redirect()->route('invoices.index')->with('success', 'Nota exclu\u00edda.');
+        return redirect()->route('invoices.index')->with('success', 'Nota excluída.');
     }
 
     // ---- Itens ----
@@ -103,7 +126,6 @@ class InvoiceController extends Controller
 
     /**
      * Atualiza apenas o status de pagamento de uma nota (chamado via PATCH ajax/form).
-     * Usado pelo acordeon de Mercado em /financas/despesas.
      */
     public function updateStatus(Request $request, Invoice $invoice)
     {
