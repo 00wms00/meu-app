@@ -11,14 +11,14 @@ return new class extends Migration
         Schema::table('finance_expenses', function (Blueprint $table) {
             if (!Schema::hasColumn('finance_expenses', 'credit_card_id')) {
                 $table->foreignId('credit_card_id')->nullable()->after('forma_pagamento')
-                      ->constrained('finance_credit_cards')->nullOnDelete();
+                    ->constrained('finance_credit_cards')->nullOnDelete();
             }
             if (!Schema::hasColumn('finance_expenses', 'parcelas_total')) {
                 $table->unsignedTinyInteger('parcelas_total')->default(1)->after('credit_card_id');
             }
             if (!Schema::hasColumn('finance_expenses', 'installment_id')) {
                 $table->foreignId('installment_id')->nullable()->after('parcelas_total')
-                      ->constrained('finance_installments')->nullOnDelete();
+                    ->constrained('finance_installments')->nullOnDelete();
             }
         });
     }
