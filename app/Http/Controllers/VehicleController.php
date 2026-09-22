@@ -44,6 +44,8 @@ class VehicleController extends Controller
             ->orderBy('id')
             ->get();
 
+        
+
         $chartConsumo = FuelEntry::historicoConsumo($allFuelAsc);
 
         $consumoMedioGeral = count($chartConsumo)
@@ -60,7 +62,11 @@ class VehicleController extends Controller
             ->orderBy('km_ultimo_servico')
             ->get();
 
-        $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
+       // $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
+        $fuelEntries = $allFuelAsc
+            ->sortByDesc('data')
+            ->sortByDesc('id')
+            ->values();
 
         // Lista de postos já usados pelo usuário (todos os veículos) para autocomplete
         $vehicleIds = Vehicle::where('user_id', Auth::id())->pluck('id');
