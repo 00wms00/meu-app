@@ -63,11 +63,15 @@ class VehicleController extends Controller
             ->get();
 
        // $fuelEntries = $allFuelAsc->sortByDesc('data')->sortByDesc('id');
-        $fuelEntries = $allFuelAsc
+      /*  $fuelEntries = $allFuelAsc
             ->sortByDesc('data')
             ->sortByDesc('id')
             ->values();
-
+*/
+        $fuelEntries = FuelEntry::where('vehicle_id', $vehicle->id)
+            ->orderByDesc('data')
+            ->orderByDesc('id')
+            ->get();
         // Lista de postos já usados pelo usuário (todos os veículos) para autocomplete
         $vehicleIds = Vehicle::where('user_id', Auth::id())->pluck('id');
         $postosUsados = FuelEntry::whereIn('vehicle_id', $vehicleIds)
