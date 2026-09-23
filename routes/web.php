@@ -3,6 +3,7 @@
 use App\Http\Controllers\CreditCardController;
 use App\Http\Controllers\CreditPurchaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataTransferController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\FaturaController;
 use App\Http\Controllers\FinanceExpenseController;
@@ -38,6 +39,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Backup completo do aplicativo
+    Route::get('/dados/transferencia', [DataTransferController::class, 'index'])->name('data-transfer.index');
+    Route::get('/dados/transferencia/exportar', [DataTransferController::class, 'export'])->name('data-transfer.export');
+    Route::post('/dados/transferencia/importar', [DataTransferController::class, 'import'])->name('data-transfer.import');
 
     // Importação
     Route::get('/import/create', [ImportController::class, 'create'])->name('import.create');

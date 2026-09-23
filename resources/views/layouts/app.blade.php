@@ -213,6 +213,12 @@
                             </button>
                         </form>
 
+                        <a href="{{ route('data-transfer.index') }}"
+                           class="px-3 py-2 rounded text-sm {{ request()->routeIs('data-transfer.*') ? 'bg-gray-900 text-white font-medium' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}"
+                           title="Backup e transferência de dados">
+                            💾 Dados
+                        </a>
+
                     @else
                         <a href="{{ route('login') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded text-sm">
                             🔑 Login
@@ -284,6 +290,10 @@
 
                     <p class="px-3 pt-1 pb-1 text-xs font-medium text-gray-500">Relatório</p>
                     <a href="{{ url('/financas/relatorio') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white pl-6">📊 Relatório Financeiro</a>
+
+                    {{-- Transferência de dados --}}
+                    <p class="px-3 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sistema</p>
+                    <a href="{{ route('data-transfer.index') }}" class="block px-3 py-2 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white">💾 Backup e transferência</a>
 
                     {{-- Sair --}}
                     <div class="pt-2">
