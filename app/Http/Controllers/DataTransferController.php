@@ -160,6 +160,13 @@ class DataTransferController extends Controller
                     }
 
                     $record = array_intersect_key($record, array_flip($columns));
+                    if ($table === 'fuel_entries') {
+                        unset($record['preco_por_litro']);
+                    }
+                    if ($table === 'maintenance_reminders') {
+                        unset($record['km_alerta']);
+                    }
+
                     $values = $record;
                     unset($values['id']);
 
